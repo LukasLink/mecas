@@ -30,7 +30,7 @@ Alternative column names are allowed and are listed below.
 
 1. sgRNA identifier (required)
 
-   Required canonical name:
+   Canonical name:
    - sgrna_id
 
    Alternative accepted name:
@@ -55,7 +55,7 @@ Alternative column names are allowed and are listed below.
 
 2. sgRNA sequence (required)
 
-   Required canonical name:
+   Canonical name:
    - sgrna_seq
 
    Alternative accepted names:
@@ -74,7 +74,7 @@ Alternative column names are allowed and are listed below.
 
 3. Entrez gene ID (required)
 
-   Required canonical name:
+   Canonical name:
    - entrez_id
 
    Alternative accepted name:
@@ -98,7 +98,7 @@ Alternative column names are allowed and are listed below.
 
 4. Gene symbol (required)
 
-   Required canonical name:
+   Canonical name:
    - gene_symbol
 
    Alternative accepted names:
@@ -114,7 +114,7 @@ Alternative column names are allowed and are listed below.
 
 5. Control/type annotation (required)
 
-   Required canonical name:
+   Canonical name:
    - control
 
    Alternative accepted name:
@@ -132,30 +132,37 @@ Alternative column names are allowed and are listed below.
 
 Optional columns
 ----------------
+6. Alignment Sequence (required for make_reference; optional otherwise)
 
-6. Count (optional)
-
-   Optional canonical name:
-   - count
+   Canonical name:
+   - align_seq
+   
+    Alternative accepted name:
+   - alignment_sequence
+   - alignment_seq
+   - align_sequence
 
    Requirements:
    - If provided, no missing values are allowed.
-   - Values must be integers or strings containing only numbers.
+   - Values must be strings containing only [A, T, G, C, N].
 
    Examples of valid values:
-   - 1
-   - 10
-   - "25"
+   - GTTTAAGAGCTATGCTGGANNANNNGNNAACAGCATAGCAAGTTTAAATAAGGCTAGTCCGTTATCA
+   - ATAGCAAGTTTAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACC
 
    If this column is not provided:
-   - The pipeline will fill count with 1 for all rows.
+   - You will not be able to use make_reference, and will have to create your
+      own STAR_index
 
    Description:
-   This column can be used to specify reference copy number in the library.
+   This column should contain the the sequences that STAR will try to align
+   your reads to. It should contain the sgRNA, and all
+   Constant parts that are not discarded during read/UMI counting.
+   (UMIs are always removed from the read and should not be included in the aligment sequence!)
 
-7. Sublibrary (optional)
+7. Sublibrary (required for sublibrary matching; optional otherwise)
 
-   Optional canonical name:
+   Canonical name:
    - sublib
 
    Alternative accepted name:
@@ -173,6 +180,28 @@ Optional columns
    Description:
    This column identifies the sublibrary to which the sgRNA belongs.
    It should 
+   
+8. Count (optional)
+
+   Canonical name:
+   - count
+
+   Requirements:
+   - If provided, no missing values are allowed.
+   - Values must be integers or strings containing only numbers.
+
+   Examples of valid values:
+   - 1
+   - 10
+   - "25"
+
+   If this column is not provided:
+   - The pipeline will fill count with 1 for all rows.
+
+   Description:
+   This column can be used to specify reference copy number in the library.
+
+
 
 
 Notes
