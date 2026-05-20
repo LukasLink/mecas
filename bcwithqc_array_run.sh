@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-#SBATCH -J BCWQC_ARRAY_DCA                # chmod +x ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/bcwithqc_array_run.sh
+#SBATCH -J BCWQC_PA                      # chmod +x ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/bcwithqc_array_run.sh
 #SBATCH -A lsteinme                       # sbatch ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/bcwithqc_array_run.sh
-#SBATCH --mem=40g
+#SBATCH --mem=65g                         #  --dependency=afterok:46151850
 #SBATCH -N 1
 #SBATCH --cpus-per-task=10
-#SBATCH -t 96:00:00
+#SBATCH --constraint=avx512
+#SBATCH -t 35:00:00
 #SBATCH --qos normal
 #SBATCH --array=0-11
 #SBATCH -o /g/steinmetz/link/logs/log_%x_%A_%a.out
 #SBATCH -e /g/steinmetz/link/logs/log_%x_%A_%a.err
-#SBATCH --mail-type=START,END,FAIL
+#SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=lukas.link@embl.de
 
 set -euo pipefail
@@ -18,14 +19,15 @@ set -euo pipefail
 # USER OPTIONS
 ################################################################################
 
-OUTPUT_FOLDER="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+OUTPUT_FOLDER="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
 
-BCWITHQC_CONFIG="/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/bcwithqc_config_stagger.json"
-STAR_INDEX="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA/star_index/NOPE"
+BCWITHQC_CONFIG="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
+STAR_INDEX="/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4"
 BCWITHQC_BIN="/home/link/.conda/envs/py313/bin/bcwithqc"
 
 NUM_THREADS="${SLURM_CPUS_PER_TASK:-10}"
 KEEP_INTERMEDIARY=false
+OVERRIDE_OR_ABORT_OR_SKIP_WHEN_PREVIOUS_RESULTS="override"
 VERBOSITY="-vv"
 
 ################################################################################
@@ -66,6 +68,44 @@ check_dir_exists() {
   fi
 }
 
+dir_is_nonempty() {
+  local d="$1"
+
+  [[ -d "$d" ]] || return 1
+
+  local first_entry
+  first_entry="$(find "$d" -mindepth 1 -maxdepth 1 -print -quit)"
+
+  [[ -n "$first_entry" ]]
+}
+
+handle_existing_run_output_dir() {
+  local run_output_dir="$1"
+  local run_name="$2"
+
+  if dir_is_nonempty "$run_output_dir"; then
+    case "$OVERRIDE_OR_ABORT_OR_SKIP_WHEN_PREVIOUS_RESULTS" in
+      override)
+        echo "[$run_name] Existing non-empty output directory found; deleting because mode is override:"
+        echo "[$run_name] $run_output_dir"
+        rm -rf -- "$run_output_dir"
+        ;;
+
+      abort)
+        echo "ERROR: [$run_name] Output directory is non-empty, aborting: $run_output_dir" >&2
+        exit 1
+        ;;
+
+      skip)
+        echo "[$run_name] Existing non-empty output directory found; skipping this sample because mode is skip:"
+        echo "[$run_name] $run_output_dir"
+        return 1
+        ;;
+    esac
+  fi
+
+  return 0
+}
 OUTPUT_FOLDER="$(normalize_path "$OUTPUT_FOLDER")"
 STAR_INDEX="$(normalize_path "$STAR_INDEX")"
 BCWITHQC_CONFIG="$(normalize_path "$BCWITHQC_CONFIG")"
@@ -84,6 +124,16 @@ if [[ ! -x "$BCWITHQC_BIN" ]]; then
   echo "ERROR: bcwithqc executable is not executable or not found: $BCWITHQC_BIN" >&2
   exit 1
 fi
+
+case "$OVERRIDE_OR_ABORT_OR_SKIP_WHEN_PREVIOUS_RESULTS" in
+  override|abort|skip)
+    ;;
+  *)
+    echo "ERROR: OVERRIDE_OR_ABORT_OR_SKIP_WHEN_PREVIOUS_RESULTS must be one of: override, abort, skip" >&2
+    echo "Current value: $OVERRIDE_OR_ABORT_OR_SKIP_WHEN_PREVIOUS_RESULTS" >&2
+    exit 1
+    ;;
+esac
 
 if [[ -z "${SLURM_ARRAY_TASK_ID:-}" || -z "${SLURM_ARRAY_TASK_MIN:-}" || -z "${SLURM_ARRAY_TASK_MAX:-}" ]]; then
   echo "ERROR: This script must be submitted as a Slurm array job." >&2
@@ -128,6 +178,10 @@ run_bcwithqc_one_input_dir() {
 
   local run_output_dir="$RUNS_DIR/$run_name"
   local star_dir="$run_output_dir/STAR_files"
+
+  if ! handle_existing_run_output_dir "$run_output_dir" "$run_name"; then
+    return 0
+  fi
 
   mkdir -p "$run_output_dir" "$star_dir"
 

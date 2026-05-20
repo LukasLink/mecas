@@ -140,7 +140,7 @@ if (!is.null(params$config) && !is.na(params$config) && nzchar(params$config)) {
 # Source pipeline functions
 #-------------------------------------------------------------------------------
 
-source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
+source(file.path(project_root_dir, "R", "R_functions", "zzz_source_all.R"))
 
 #-------------------------------------------------------------------------------
 # Run setup

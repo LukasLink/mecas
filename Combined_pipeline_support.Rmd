@@ -73,7 +73,7 @@ rds_output_folder <- make_clean_dir(output_folder, "/rds/")
 ## Checking sequences to prepare for reference building
 Change the raw_path to the path where your fastq file is located, and then then run the read_raw block to have a look at your reads. This will also tell you the most common read length, which will be used for calculating SJDB_OVERHANG.
 ```{r read_raw, eval=FALSE}
-raw_path = "/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/1/HepG2_dual_rep_PA_subsample/subsample_10/QC_filtered/bcwithqc_test/U_L1_1.fastq.gz"
+raw_path = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered/U_L1_1.fastq.gz"
 # raw_path = "/g/steinmetz/STOCKS/Data/Assay/sequencing/2025/2025-12-21-222F7TMNX/222F7TMNX_LX_iBeer_round2_25s001568-1-1_Kaiser_lane1HCSSubset5CR12ndpositive_sequence.txt.gz"
 
 check_raw_reads <- function(
@@ -196,7 +196,7 @@ check_raw_reads(raw_path, show_start = 4560)
 check_raw_reads(raw_path, show_start = 5000)
 check_raw_reads(raw_path, show_start = 8000)
 sjdb_table <- check_raw_reads_dir(
-  dir_path = "/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/1/HepG2_dual_rep_PA_subsample/subsample_10/QC_filtered",
+  dir_path = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_resequence/QC_filtered",
   recursive = FALSE
 )
 
@@ -272,8 +272,8 @@ if (library_source == "lukas_custom"){
 }
 ```
 
-## Generate Reference Fasta
-Generate the reference.fasta file, which will be used by STAR.
+## Generate Reference
+Generate the reference.fasta and reference.file, which will be used by STAR.
 
 ```{r make_reference_fasta, eval=FALSE}
 #add cassette
@@ -1247,4 +1247,9 @@ ok_renamed <- file.rename(old_full, new_full)
 if (!all(ok_renamed)) warning("Some renames failed:\n", paste(basename(old_full)[!ok_renamed], collapse = "\n"))
 cat("Done.\n")
 
+
+CM_specific_library <- CM_specific_library %>% 
+  mutate(align_seq = paste0("TCTTGTGGAAAGGACGAAACACCG", sgRNA_seq, "GTTTAAGAGCTATGCTGGAACAGCATAGCAAGTTTAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"))
+CM_specific_library <- CM_specific_library %>% 
+  mutate(align_seq = paste0("TCTTGTGGAAAGGACGAAACACCG", sgRNA_seq, "GTTTAAGAGCTATGCTGGANNANNNGNNAACAGCATAGCAAGTTTAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"))
 ```
