@@ -27,13 +27,14 @@ generate_bcwithqc_config <- function(
       "ATCGAT"
     ),
     first_constant_sequence = "CTTGTGGAAAGGACGAAACACCG",
-    stagger_min_length = 0,
-    stagger_max_length = 4,
-    second_constant_sequence = "GTTTAAGAGCTATGCTGGAAA",
+    second_constant_sequence = "GTTTAAGAGCTATGCTGGA",
+    umi_length = 9,
+    third_constant_sequence = "AACAGCATAG",
     stagger_maxerrors = 0,
     first_constant_maxerrors = 1,
     sgrna_maxerrors = 1,
     second_constant_maxerrors = 1,
+    third_constant_maxerror = 1,
     keep_nonbarcode = TRUE
 ) {
   # ---------------------------------------------------------------------------
@@ -121,6 +122,24 @@ generate_bcwithqc_config <- function(
           blocktype = "constantRegion",
           blockname = "con2",
           keepblock = TRUE
+        ),
+        
+        list(
+          maxerrors = 0,
+          blockfunction = "UMI",
+          length = umi_length,
+          blocktype = "randomBarcode",
+          blockname = "umi",
+          keepblock = FALSE
+        ),
+        
+        list(
+          maxerrors = third_constant_maxerror,
+          blockfunction = "barcode",
+          sequence = as.list(third_constant_sequence),
+          blocktype = "constantRegion",
+          blockname = "con3",
+          keepblock = TRUE
         )
       )
     )
@@ -155,8 +174,8 @@ generate_bcwithqc_config <- function(
 # If running interactively or sourcing from an Rmd:
 #
 config <- generate_bcwithqc_config(
-  merged_sgRNA_df = merged_sgRNA_df,
-  output_json_path = file.path("/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test", "bcwithqc_config_stagger.json")
+  merged_sgRNA_df = CM_specific_library,
+  output_json_path = file.path("/g/steinmetz/link/Amplicon_barcode_analysis/library", "bcwithqc_config_CM_specific_library.json")
 )
 # 
 # If loading merged_sgRNA_df from RDS:
@@ -167,3 +186,4 @@ config <- generate_bcwithqc_config(
 #   merged_sgRNA_df = merged_sgRNA_df,
 #   output_json_path = "config.json"
 # )
+
