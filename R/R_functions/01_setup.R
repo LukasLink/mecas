@@ -1,33 +1,84 @@
-# R/project_setup.R
+# project_setup.R
 
 # ---- global knitr / options ----
 knitr::opts_chunk$set(echo = FALSE)
 options(bitmapType = "cairo")
 
 # ---- packages ----
-library(tidyverse)
-library(Matrix)
-library(conflicted)
-library(MAUDE)
-library(ggplot2)
-library(ggrepel)
-library(writexl)
-library(stringr)
-library(AnnotationDbi)
-library(org.Hs.eg.db)
-library(ggbreak)
-library(yaml)
-library(tools)
-library(logger)
 
-conflicts_prefer(dplyr::rename)
-conflicts_prefer(dplyr::filter)
-conflicts_prefer(dplyr::select)
-conflicts_prefer(dplyr::slice)
-conflicts_prefer(dplyr::first)
-conflicts_prefer(base::setdiff)
-conflicts_prefer(base::intersect)
+cran_packages <- c(
+  "tidyverse",
+  "Matrix",
+  "conflicted",
+  "ggplot2",
+  "ggrepel",
+  "writexl",
+  "stringr",
+  "ggbreak",
+  "yaml",
+  "tools",
+  "logger"
+)
 
+bioc_packages <- c(
+  "AnnotationDbi",
+  "org.Hs.eg.db"
+)
+
+other_packages <- c(
+  "MAUDE"
+)
+
+check_packages <- function(packages, source = "CRAN") {
+  missing <- packages[!vapply(packages, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]
+  
+  if (length(missing) > 0) {
+    message("Missing ", source, " package(s): ", paste(missing, collapse = ", "))
+    
+    if (source == "CRAN") {
+      message("Install with:")
+      message("install.packages(c(", paste(sprintf('"%s"', missing), collapse = ", "), "))")
+    }
+    
+    if (source == "Bioconductor") {
+      message("Install with:")
+      message("BiocManager::install(c(", paste(sprintf('"%s"', missing), collapse = ", "), "))")
+    }
+    
+    stop("Required package(s) missing.", call. = FALSE)
+  }
+}
+
+check_packages(cran_packages, "CRAN")
+check_packages(bioc_packages, "Bioconductor")
+check_packages(other_packages, "other source")
+
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(Matrix)
+  library(conflicted)
+  library(MAUDE)
+  library(ggplot2)
+  library(ggrepel)
+  library(writexl)
+  library(stringr)
+  library(AnnotationDbi)
+  library(org.Hs.eg.db)
+  library(ggbreak)
+  library(yaml)
+  library(tools)
+  library(logger)
+})
+
+suppressMessages({
+  conflicts_prefer(dplyr::rename)
+  conflicts_prefer(dplyr::filter)
+  conflicts_prefer(dplyr::select)
+  conflicts_prefer(dplyr::slice)
+  conflicts_prefer(dplyr::first)
+  conflicts_prefer(base::setdiff)
+  conflicts_prefer(base::intersect)
+})
 #-------------------------------------------------------------------------------
 # Small helpers
 #-------------------------------------------------------------------------------
@@ -110,15 +161,14 @@ config_to_user_opts <- function(config) {
   list(
     # Run behavior
     first_time = config$run$first_time %||% FALSE,
+    machine = config$run$machine %||% "local",
     
     # Directories / paths
     output_folder = config$paths$output_folder,
     input_folder = config$paths$input_folder %||% "",
     library_path = config$paths$library_path %||% "",
     
-    reference_fasta = config$paths$reference_fasta_path %||% "",
-    reference_fasta_path = config$paths$reference_fasta_path %||% "",
-    reference_gtf_path = config$paths$reference_gtf_path %||% "",
+    star_index_folder = config$paths$star_index_folder %||% "",
     
     # Optional FASTQ name parser table
     fastq_name_table_xlsx = config$paths$fastq_name_table_xlsx %||% "",
@@ -127,7 +177,6 @@ config_to_user_opts <- function(config) {
     # Optional bcwithqc paths
     bcwithqc_dir = config$bcwithqc$bcwithqc_dir %||% "",
     bcwithqc_config_path = config$bcwithqc$bcwithqc_config_path %||% "",
-    bcwithqc_rf_folder = config$bcwithqc$bcwithqc_rf_folder %||% "",
     
     # align_UMI_tools options
     UMI_regex = config$align_UMI_tools$umi_regex %||% "",
@@ -148,10 +197,15 @@ config_to_user_opts <- function(config) {
     read_counting = config$counting$read_counting %||% "align_UMI_tools",
     data_type = config$counting$data_type %||% "reads",
     
-    # Resources
-    n_threads = config$resources$n_threads %||% 1,
-    max_mem_bytes = config$resources$max_mem_bytes %||% NA,
-    genome_sa_index_n_bases = config$resources$genome_sa_index_n_bases %||% "",
+    # SLURM / resource settings
+    slurm_account = config$slurm$account %||% "",
+    slurm_qos = config$slurm$qos %||% "",
+    slurm_cpus = config$slurm$cpus %||% 1,
+    slurm_mem = config$slurm$mem %||% "4g",
+    slurm_wall_time = config$slurm$wall_time %||% "01:00:00",
+    slurm_partition = config$slurm$partition %||% "",
+    slurm_array = config$slurm$array %||% 1,
+    slurm_email = config$slurm$email %||% "",
     
     # Replicates / grouping
     method = config$replicates$method %||% "",
@@ -169,10 +223,6 @@ config_to_user_opts <- function(config) {
     drop_0s = config$filtering$drop_0s %||% FALSE,
     strict_mode = config$filtering$strict_mode %||% FALSE,
     min_guides_per_gene = config$filtering$min_guides_per_gene %||% 0,
-    
-    # Legacy/simple thresholds used by older branches of the Rmd
-    simplified_rf_threshold = config$filtering$simplified_rf_threshold %||% 1000,
-    simplified_cf_threshold = config$filtering$simplified_cf_threshold %||% 1000,
     
     # Output naming
     extra_suffix = config$output$extra_suffix %||% ""
@@ -254,54 +304,56 @@ project_setup <- function(project_root_dir,
   #=============================================================================
   # Normalize resolved options and comma-separated/vector list fields
   #=============================================================================
-  first_time                        <- opt$first_time
-  output_folder                     <- opt$output_folder
-  input_folder                      <- opt$input_folder
-  library_path                      <- opt$library_path
-  reference_fasta_path              <- opt$reference_fasta_path
-  reference_fasta                   <- reference_fasta_path
-  reference_gtf_path                <- opt$reference_gtf_path
-  fastq_name_table_xlsx             <- opt$fastq_name_table_xlsx
-  strict_file_match                 <- opt$strict_file_match
+  first_time                        <- check_input(opt$first_time, "first_time")
+  machine                           <- check_input(opt$machine, "machine")
   
-  bcwithqc_dir                      <- opt$bcwithqc_dir
-  bcwithqc_config_path              <- opt$bcwithqc_config_path
-  bcwithqc_rf_folder                <- opt$bcwithqc_rf_folder
-  UMI_regex                         <- opt$UMI_regex
+  output_folder                     <- check_input(opt$output_folder, "output_folder")
+  input_folder                      <- check_input(opt$input_folder, "input_folder")
+  library_path                      <- check_input(opt$library_path, "library_path")
+  star_index_folder                 <- check_input(opt$star_index_folder, "star_index_folder")
+  fastq_name_table_xlsx             <- check_input(opt$fastq_name_table_xlsx, "fastq_name_table_xlsx")
+  strict_file_match                 <- check_input(opt$strict_file_match, "strict_file_match")
   
-  skip_list                         <- parse_comma_list(opt$skip_list)
-  skip_list_sublib                  <- parse_comma_list(opt$skip_list_sublib)
-  skip_list_sample                  <- parse_comma_list(opt$skip_list_sample)
-  include_controls_list             <- parse_comma_list(opt$include_controls_list)
-  use_only_these_controls_list      <- parse_comma_list(opt$use_only_these_controls_list)
+  bcwithqc_dir                      <- check_input(opt$bcwithqc_dir, "bcwithqc_dir")
+  bcwithqc_config_path              <- check_input(opt$bcwithqc_config_path, "bcwithqc_config_path")
+  UMI_regex                         <- check_input(opt$UMI_regex, "UMI_regex")
   
-  read_counting                     <- opt$read_counting
-  data_type                         <- opt$data_type
-  method                            <- opt$method
-  norm_method                       <- opt$norm_method
-  combine_for_guide_stats           <- opt$combine_for_guide_stats
-  combine_for_gene_stats            <- opt$combine_for_gene_stats
+  skip_list                         <- check_input(parse_comma_list(opt$skip_list), "skip_list")
+  skip_list_sublib                  <- check_input(parse_comma_list(opt$skip_list_sublib), "skip_list_sublib")
+  skip_list_sample                  <- check_input(parse_comma_list(opt$skip_list_sample), "skip_list_sample")
+  include_controls_list             <- check_input(parse_comma_list(opt$include_controls_list), "include_controls_list")
+  use_only_these_controls_list      <- check_input(parse_comma_list(opt$use_only_these_controls_list), "use_only_these_controls_list")
   
-  recover_input                     <- opt$recover_input
-  subsample_controls                <- opt$subsample_controls
-  use_custom_bins                   <- opt$use_custom_bins
-  same_controls_in_all_sublibraries <- opt$same_controls_in_all_sublibraries
+  read_counting                     <- check_input(opt$read_counting, "read_counting")
+  data_type                         <- check_input(opt$data_type, "data_type")
+  method                            <- check_input(opt$method, "method")
+  norm_method                       <- check_input(opt$norm_method, "norm_method")
+  combine_for_guide_stats           <- check_input(opt$combine_for_guide_stats, "combine_for_guide_stats")
+  combine_for_gene_stats            <- check_input(opt$combine_for_gene_stats, "combine_for_gene_stats")
   
-  extra_suffix                      <- opt$extra_suffix
-  simplified_rf_threshold           <- opt$simplified_rf_threshold
-  simplified_cf_threshold           <- opt$simplified_cf_threshold
-  upper_lower_percentage            <- opt$upper_lower_percentage
+  recover_input                     <- check_input(opt$recover_input, "recover_input")
+  subsample_controls                <- check_input(opt$subsample_controls, "subsample_controls")
+  use_custom_bins                   <- check_input(opt$use_custom_bins, "use_custom_bins")
+  same_controls_in_all_sublibraries <- check_input(opt$same_controls_in_all_sublibraries, "same_controls_in_all_sublibraries")
   
-  drop_0s                           <- opt$drop_0s
-  strict_mode                       <- opt$strict_mode
-  min_guides_per_gene               <- opt$min_guides_per_gene
-  auto_combine_replicates           <- opt$auto_combine_replicates
+  extra_suffix                      <- check_input(opt$extra_suffix, "extra_suffix")
+  upper_lower_percentage            <- check_input(opt$upper_lower_percentage, "upper_lower_percentage")
   
-  n_threads                         <- opt$n_threads
-  max_mem_bytes                     <- opt$max_mem_bytes
-  genome_sa_index_n_bases           <- opt$genome_sa_index_n_bases
+  drop_0s                           <- check_input(opt$drop_0s, "drop_0s")
+  strict_mode                       <- check_input(opt$strict_mode, "strict_mode")
+  min_guides_per_gene               <- check_input(opt$min_guides_per_gene, "min_guides_per_gene")
+  auto_combine_replicates           <- check_input(opt$auto_combine_replicates, "auto_combine_replicates")
   
-
+  slurm_account                     <- check_input(opt$slurm_account, "slurm_account")
+  slurm_qos                         <- check_input(opt$slurm_qos, "slurm_qos")
+  slurm_cpus                        <- check_input(opt$slurm_cpus, "slurm_cpus")
+  slurm_mem                         <- check_input(opt$slurm_mem, "slurm_mem")
+  slurm_wall_time                   <- check_input(opt$slurm_wall_time, "slurm_wall_time")
+  slurm_partition                   <- check_input(opt$slurm_partition, "slurm_partition")
+  slurm_array                       <- check_input(opt$slurm_array, "slurm_array")
+  slurm_email                       <- check_input(opt$slurm_email, "slurm_email")
+  
+  check_config_dependencies(opt)
   #=============================================================================
   # Construct special suffixes
   #=============================================================================
@@ -390,12 +442,16 @@ project_setup <- function(project_root_dir,
   
   # Keep subfolder names relative. Avoid leading slashes here.
   genome_output_folder <- make_clean_dir(output_folder, "ref")
+  grouped_output_folder <- make_clean_dir(output_folder, "/grouped/")
   dedup_output_folder <- make_clean_dir(output_folder, "dedup")
   bcwithqc_output_folder <- make_clean_dir(output_folder, "bcwithqc_output")
   mapped_output_folder <- make_clean_dir(output_folder, "mapped")
   rds_output_folder <- make_clean_dir(output_folder, "rds")
   results_output_folder <- make_clean_dir(output_folder, "results")
+  
+  symlinks_folder <- get_file_path(output_folder, "symlinks")
   fastq_symlinks_folder <- make_clean_dir(output_folder, "fastq_symlinks")
+  bcwithqc_symlinks_folder <- make_clean_dir(output_folder, "bcwithqc_symlinks")
   
   log_folder <- make_clean_dir(output_folder, "logs")
   log_file <- file.path(
@@ -408,7 +464,7 @@ project_setup <- function(project_root_dir,
       format = "{format(time, '%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
     )
   )
-  log_info("Logger initialized.")
+  log_info(paste0("Logger initialized. Find log file at: ", log_file))
   
 
   merged_sgRNA_df <- read_library_file(
@@ -421,18 +477,17 @@ project_setup <- function(project_root_dir,
     # Options
     # =========================
     first_time                        = first_time,
+    machine                           = machine,
+    
     output_folder                     = output_folder,
     input_folder                      = input_folder,
     library_path                      = library_path,
-    reference_fasta                   = reference_fasta,
-    reference_fasta_path              = reference_fasta_path,
-    reference_gtf_path                = reference_gtf_path,
+    star_index_folder                 = star_index_folder,
     fastq_name_table_xlsx             = fastq_name_table_xlsx,
     strict_file_match                 = strict_file_match,
     
     bcwithqc_dir                      = bcwithqc_dir,
     bcwithqc_config_path              = bcwithqc_config_path,
-    bcwithqc_rf_folder                = bcwithqc_rf_folder,
     UMI_regex                         = UMI_regex,
     
     skip_list                         = skip_list,
@@ -454,8 +509,6 @@ project_setup <- function(project_root_dir,
     same_controls_in_all_sublibraries = same_controls_in_all_sublibraries,
     
     extra_suffix                      = extra_suffix,
-    simplified_rf_threshold           = simplified_rf_threshold,
-    simplified_cf_threshold           = simplified_cf_threshold,
     upper_lower_percentage            = upper_lower_percentage,
     
     drop_0s                           = drop_0s,
@@ -463,9 +516,14 @@ project_setup <- function(project_root_dir,
     min_guides_per_gene               = min_guides_per_gene,
     auto_combine_replicates           = auto_combine_replicates,
     
-    n_threads                         = n_threads,
-    max_mem_bytes                     = max_mem_bytes,
-    genome_sa_index_n_bases           = genome_sa_index_n_bases,
+    slurm_account                     = slurm_account,
+    slurm_qos                         = slurm_qos,
+    slurm_cpus                        = slurm_cpus,
+    slurm_mem                         = slurm_mem,
+    slurm_wall_time                   = slurm_wall_time,
+    slurm_partition                   = slurm_partition,
+    slurm_array                       = slurm_array,
+    slurm_email                       = slurm_email,
     
     # =========================
     # Derived values and paths
@@ -504,18 +562,19 @@ project_setup <- function(project_root_dir,
   logger::log_info("==========================================================")
   
   logger::log_info("first_time:                        {first_time}")
+  logger::log_info("machine:                           {machine}")
+  logger::log_info("----------------------------------------------------------")
+
   logger::log_info("output_folder:                     {output_folder}")
   logger::log_info("input_folder:                      {input_folder}")
   logger::log_info("library_path:                      {library_path}")
-  logger::log_info("reference_fasta_path:              {reference_fasta_path}")
-  logger::log_info("reference_gtf_path:                {reference_gtf_path}")
+  logger::log_info("star_index_folder:                 {star_index_folder}")
   logger::log_info("fastq_name_table_xlsx:             {fastq_name_table_xlsx}")
   logger::log_info("strict_file_match:                 {strict_file_match}")
   logger::log_info("----------------------------------------------------------")
   
   logger::log_info("bcwithqc_dir:                      {bcwithqc_dir}")
   logger::log_info("bcwithqc_config_path:              {bcwithqc_config_path}")
-  logger::log_info("bcwithqc_rf_folder:                {bcwithqc_rf_folder}")
   logger::log_info("UMI_regex:                         {UMI_regex}")
   logger::log_info("----------------------------------------------------------")
   
@@ -548,8 +607,6 @@ project_setup <- function(project_root_dir,
   logger::log_info("----------------------------------------------------------")
   
   logger::log_info("extra_suffix:                      {extra_suffix}")
-  logger::log_info("simplified_rf_threshold:           {simplified_rf_threshold}")
-  logger::log_info("simplified_cf_threshold:           {simplified_cf_threshold}")
   logger::log_info("upper_lower_percentage:            {upper_lower_percentage}")
   logger::log_info("----------------------------------------------------------")
   
@@ -559,9 +616,14 @@ project_setup <- function(project_root_dir,
   logger::log_info("auto_combine_replicates:           {auto_combine_replicates}")
   logger::log_info("----------------------------------------------------------")
   
-  logger::log_info("n_threads:                         {n_threads}")
-  logger::log_info("max_mem_bytes:                     {max_mem_bytes}")
-  logger::log_info("genome_sa_index_n_bases:           {genome_sa_index_n_bases}")
+  logger::log_info("slurm_account:                     {slurm_account}")
+  logger::log_info("slurm_qos:                         {slurm_qos}")
+  logger::log_info("slurm_cpus:                        {slurm_cpus}")
+  logger::log_info("slurm_mem:                         {slurm_mem}")
+  logger::log_info("slurm_wall_time:                   {slurm_wall_time}")
+  logger::log_info("slurm_partition:                   {slurm_partition}")
+  logger::log_info("slurm_array:                       {slurm_array}")
+  logger::log_info("slurm_email:                       {slurm_email}")
   logger::log_info("----------------------------------------------------------")
   
   logger::log_info("File Suffix: {file_suffix}")

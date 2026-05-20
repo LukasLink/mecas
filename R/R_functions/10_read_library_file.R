@@ -3,18 +3,18 @@
 # ==============================================================================
 
 read_library_file <- function(library_path,
-                              default_sublib = "ICS_1",
+                              default_sublib = "L1",
                               default_count = 1) {
   # ---------------------------------------------------------------------------
   # Dependencies
   # ---------------------------------------------------------------------------
   
   if (!requireNamespace("tools", quietly = TRUE)) {
-    stop("The 'tools' package is required.")
+    stop_log("The 'tools' package is required.")
   }
   
   if (!file.exists(library_path)) {
-    stop("Library file does not exist: ", library_path)
+    stop_log("Library file does not exist: ", library_path)
   }
   
   # ---------------------------------------------------------------------------
@@ -33,11 +33,11 @@ read_library_file <- function(library_path,
     possible_names <- c(canonical_name, alternatives)
     possible_names <- normalize_colnames(possible_names)
     
-    matches <- intersect(possible_names, colnames(df))
+    matches <- base::intersect(possible_names, colnames(df))
     
     if (length(matches) == 0) {
       if (required) {
-        stop(
+        stop_log(
           "Library is missing required column '", canonical_name, "'. ",
           "Accepted names are: ",
           paste(possible_names, collapse = ", ")
@@ -48,11 +48,11 @@ read_library_file <- function(library_path,
     }
     
     if (length(matches) > 1) {
-      warning(
-        "Multiple possible columns found for '", canonical_name, "': ",
-        paste(matches, collapse = ", "),
-        ". Using '", matches[1], "'.",
-        call. = FALSE
+      log_warn(
+        "Multiple possible columns found for '{canonical_name}': {matches}. Using '{selected}'.",
+        canonical_name = canonical_name,
+        matches = paste(matches, collapse = ", "),
+        selected = matches[1]
       )
     }
     
@@ -70,10 +70,8 @@ read_library_file <- function(library_path,
       return(x)
     }
     
-    warning(
-      "Column 'sgrna_id' contains duplicated values. ",
-      "Making them unique by adding '_#' suffixes.",
-      call. = FALSE
+    log_warn(
+      "Column 'sgrna_id' contains duplicated values. Making them unique by adding '_#' suffixes."
     )
     
     out <- x
@@ -104,7 +102,7 @@ read_library_file <- function(library_path,
     missing <- is.na(original) | x == ""
     
     if (!allow_na && any(missing)) {
-      stop("Column '", column_name, "' contains NA or empty values.")
+      stop_log("Column '", column_name, "' contains NA or empty values.")
     }
     
     out <- rep(NA_integer_, length(x))
@@ -115,7 +113,7 @@ read_library_file <- function(library_path,
     
     if (any(!valid)) {
       bad_values <- unique(x[non_missing][!valid])
-      stop(
+      stop_log(
         "Column '", column_name, "' must contain integers or strings with numbers only. ",
         "Invalid value(s): ",
         paste(head(bad_values, 10), collapse = ", ")
@@ -129,7 +127,7 @@ read_library_file <- function(library_path,
   
   validate_no_na <- function(x, column_name) {
     if (any(is_missing_string(x))) {
-      stop("Column '", column_name, "' contains NA or empty values, but none are allowed.")
+      stop_log("Column '", column_name, "' contains NA or empty values, but none are allowed.")
     }
   }
   
@@ -142,7 +140,7 @@ read_library_file <- function(library_path,
     
     if (any(invalid)) {
       bad_values <- unique(x[invalid])
-      stop(
+      stop_log(
         "Column '", column_name, "' must contain nucleotide sequences using A/C/G/T/N. ",
         "Invalid value(s): ",
         paste(head(bad_values, 10), collapse = ", ")
@@ -167,7 +165,7 @@ read_library_file <- function(library_path,
     
     if (any(invalid)) {
       bad_values <- unique(x[invalid])
-      stop(
+      stop_log(
         "Column 'control/type' contains invalid entries. ",
         "Allowed values are: ",
         paste(allowed_types, collapse = ", "),
@@ -201,7 +199,7 @@ read_library_file <- function(library_path,
     )
   } else if (ext %in% c("xlsx", "xls")) {
     if (!requireNamespace("readxl", quietly = TRUE)) {
-      stop(
+      stop_log(
         "Reading Excel files requires the 'readxl' package. ",
         "Install it with: install.packages('readxl')"
       )
@@ -215,19 +213,19 @@ read_library_file <- function(library_path,
     df <- readRDS(library_path)
     
     if (!is.data.frame(df)) {
-      stop("The .rds library file must contain a dataframe.")
+      stop_log("The .rds library file must contain a dataframe.")
     }
     
     df <- as.data.frame(df, stringsAsFactors = FALSE)
   } else {
-    stop(
+    stop_log(
       "Unsupported library file format: .", ext, "\n",
       "Supported formats are: .tsv, .csv, .xlsx, .xls, .rds"
     )
   }
   
   if (nrow(df) == 0) {
-    stop("Library file contains zero rows.")
+    stop_log("Library file contains zero rows.")
   }
   
   colnames(df) <- normalize_colnames(colnames(df))
@@ -271,6 +269,13 @@ read_library_file <- function(library_path,
     required = TRUE
   )
   
+  col_align_seq <- find_column(
+    df,
+    canonical_name = "align_seq",
+    alternatives = c("alignment_sequence", "alignment_seq", "align_sequence"),
+    required = FALSE
+  )
+  
   col_count <- find_column(
     df,
     canonical_name = "count",
@@ -295,6 +300,14 @@ read_library_file <- function(library_path,
   sgrna_id <- make_unique_with_warning(sgrna_id)
   
   seq <- validate_nucleotide_sequence(df[[col_seq]], "sgrna_seq/seq/sgrna_sequence/sequence")
+  
+  if (is.null(col_align_seq)){
+    align_seq <- rep(NA, nrow(df))
+  } else {
+    align_seq <- validate_nucleotide_sequence(df[[col_align_seq]],
+                                              "align_seq/alignment_sequence/alignment_seq/align_sequence")
+    validate_no_na(align_seq, "align_seq/alignment_sequence/alignment_seq/align_sequence")
+  }
   
   entrez <- coerce_integerish(
     df[[col_entrez]],
@@ -335,18 +348,19 @@ read_library_file <- function(library_path,
   
   out <- data.frame(
     sgrna_id = sgrna_id,
-    seq = seq,
     symbol = symbol,
     entrez = entrez,
     sublib = sublib,
     Gene = symbol,
     count = count,
     type = type,
+    seq = seq,
+    align_seq = align_seq,
     stringsAsFactors = FALSE
   )
   
   # Enforce exact column order
-  out <- out[, c("sgrna_id", "seq", "symbol", "entrez", "sublib", "Gene", "count", "type")]
+  out <- out[, c("sgrna_id", "symbol", "entrez", "sublib", "Gene", "count", "type", "seq", "align_seq")]
   
   out
 }

@@ -9,11 +9,7 @@ prepare_fastq_inputs <- function(
   # -----------------------------
   # Helper functions
   # -----------------------------
-  
-  stop_with_message <- function(...) {
-    stop(paste0(...), call. = FALSE)
-  }
-  
+
   normalize_optional_path <- function(x) {
     if (is.null(x)) return(NULL)
     if (length(x) == 0) return(NULL)
@@ -92,18 +88,18 @@ prepare_fastq_inputs <- function(
   )
   
   if (missing(fastq_dir) || is.null(fastq_dir) || !nzchar(fastq_dir)) {
-    stop_with_message("`fastq_dir` must be provided.")
+    stop_log("`fastq_dir` must be provided.")
   }
   
   if (!dir.exists(fastq_dir)) {
-    stop_with_message(
+    stop_log(
       "Input FASTQ directory does not exist:\n  ",
       fastq_dir
     )
   }
   
   if (missing(output_symlink_dir) || is.null(output_symlink_dir) || !nzchar(output_symlink_dir)) {
-    stop_with_message("`output_symlink_dir` must be provided.")
+    stop_log("`output_symlink_dir` must be provided.")
   }
   
   # -----------------------------
@@ -123,7 +119,7 @@ prepare_fastq_inputs <- function(
   input_files <- all_files[!is.na(supported_ext)]
   
   if (length(input_files) == 0) {
-    stop_with_message(
+    stop_log(
       "No supported input files were found in:\n  ",
       fastq_dir,
       "\n\nSupported extensions are:\n",
@@ -145,7 +141,7 @@ prepare_fastq_inputs <- function(
   
   if (anyDuplicated(input_file_basename)) {
     duplicated_files <- unique(input_file_basename[duplicated(input_file_basename)])
-    stop_with_message(
+    stop_log(
       "Duplicate input file names were found. File basenames must be unique:\n",
       make_error_list(duplicated_files)
     )
@@ -157,21 +153,21 @@ prepare_fastq_inputs <- function(
   
   if (!is.null(fastq_name_table_file_path)) {
     if (!file.exists(fastq_name_table_file_path)) {
-      stop_with_message(
+      stop_log(
         "The provided input FASTQ name parser file does not exist:\n  ",
         fastq_name_table_file_path
       )
     }
     
     if (!grepl("\\.xlsx$", fastq_name_table_file_path, ignore.case = TRUE)) {
-      stop_with_message(
+      stop_log(
         "The input FASTQ name parser must be an .xlsx file:\n  ",
         fastq_name_table_file_path
       )
     }
     
     if (!requireNamespace("readxl", quietly = TRUE)) {
-      stop_with_message(
+      stop_log(
         "Package `readxl` is required to read the input FASTQ name parser .xlsx file.\n",
         "Install it with:\n  install.packages(\"readxl\")"
       )
@@ -180,7 +176,7 @@ prepare_fastq_inputs <- function(
     available_sheets <- readxl::excel_sheets(fastq_name_table_file_path)
     
     if (!"fastq_names" %in% available_sheets) {
-      stop_with_message(
+      stop_log(
         "The input FASTQ name parser xlsx must contain a sheet named exactly `fastq_names`.\n\n",
         "Available sheets are:\n",
         make_error_list(available_sheets)
@@ -190,7 +186,7 @@ prepare_fastq_inputs <- function(
     fastq_names_sheet_index <- which(available_sheets == "fastq_names")
     
     if (fastq_names_sheet_index != 2) {
-      stop_with_message(
+      stop_log(
         "The sheet `fastq_names` must be the second sheet in the xlsx file.\n\n",
         "Current sheet order is:\n",
         paste0(seq_along(available_sheets), ". ", available_sheets, collapse = "\n")
@@ -208,7 +204,7 @@ prepare_fastq_inputs <- function(
     missing_cols <- setdiff(required_cols, colnames(parser))
     
     if (length(missing_cols) > 0) {
-      stop_with_message(
+      stop_log(
         "The parser xlsx is missing required columns:\n",
         make_error_list(missing_cols),
         "\n\nRequired columns are:\n",
@@ -224,12 +220,12 @@ prepare_fastq_inputs <- function(
     parser$sample <- trimws(as.character(parser$sample))
     
     if (any(is.na(parser$original_file) | parser$original_file == "")) {
-      stop_with_message("The parser xlsx contains empty values in `original_file`.")
+      stop_log("The parser xlsx contains empty values in `original_file`.")
     }
     
     if (anyDuplicated(parser$original_file)) {
       duplicated_original <- unique(parser$original_file[duplicated(parser$original_file)])
-      stop_with_message(
+      stop_log(
         "The parser xlsx contains duplicate `original_file` entries:\n",
         make_error_list(duplicated_original)
       )
@@ -240,7 +236,7 @@ prepare_fastq_inputs <- function(
     invalid_sample <- parser$original_file[!validate_sample(parser$sample)]
     
     if (length(invalid_bin) > 0) {
-      stop_with_message(
+      stop_log(
         "Invalid `bin` values in parser xlsx.\n\n",
         "Allowed bin values are: I, L, U\n\n",
         "Affected files:\n",
@@ -249,7 +245,7 @@ prepare_fastq_inputs <- function(
     }
     
     if (length(invalid_sublibrary) > 0) {
-      stop_with_message(
+      stop_log(
         "Invalid `sublibrary` values in parser xlsx.\n\n",
         "Allowed sublibrary pattern is: L followed by digits, for example L1, L01, L002.\n\n",
         "Affected files:\n",
@@ -258,7 +254,7 @@ prepare_fastq_inputs <- function(
     }
     
     if (length(invalid_sample) > 0) {
-      stop_with_message(
+      stop_log(
         "Invalid `sample` values in parser xlsx.\n\n",
         "Sample names must be non-empty and must not contain underscores.\n\n",
         "Affected files:\n",
@@ -275,7 +271,7 @@ prepare_fastq_inputs <- function(
     
     if (anyDuplicated(parser$pipeline_name)) {
       duplicated_pipeline_names <- unique(parser$pipeline_name[duplicated(parser$pipeline_name)])
-      stop_with_message(
+      stop_log(
         "The parser xlsx generates duplicate pipeline names:\n",
         make_error_list(duplicated_pipeline_names),
         "\n\nEach combination of bin, sublibrary, and sample must be unique."
@@ -291,14 +287,14 @@ prepare_fastq_inputs <- function(
     missing_from_xlsx <- setdiff(files_in_dir, files_in_xlsx)
     
     if (length(missing_from_dir) > 0) {
-      stop_with_message(
+      stop_log(
         "Some files listed in the parser xlsx were not found in the input directory:\n",
         make_error_list(missing_from_dir)
       )
     }
     
     if (strict_file_match && length(missing_from_xlsx) > 0) {
-      stop_with_message(
+      stop_log(
         "Some supported input files in the directory are missing from the parser xlsx:\n",
         make_error_list(missing_from_xlsx),
         "\n\nBecause `strict_file_match = TRUE`, every supported input file must be listed in the parser xlsx."
@@ -329,7 +325,7 @@ prepare_fastq_inputs <- function(
     if (!all(valid_name)) {
       invalid_files <- input_file_basename[!valid_name]
       
-      stop_with_message(
+      stop_log(
         "Some input files do not match the required naming pattern.\n\n",
         "Required pattern:\n",
         "  BIN_SUBLIBRARY_SAMPLE.fastq.gz\n\n",
@@ -374,7 +370,7 @@ prepare_fastq_inputs <- function(
       manifest$symlink_file_basename[duplicated(manifest$symlink_file_basename)]
     )
     
-    stop_with_message(
+    stop_log(
       "Duplicate symlink names would be created:\n",
       make_error_list(duplicated_symlinks)
     )
@@ -394,7 +390,7 @@ prepare_fastq_inputs <- function(
   }
   
   if (!dir.exists(output_symlink_dir)) {
-    stop_with_message(
+    stop_log(
       "Could not create output symlink directory:\n  ",
       output_symlink_dir
     )
@@ -404,7 +400,7 @@ prepare_fastq_inputs <- function(
   
   if (length(existing_symlinks) > 0) {
     if (!overwrite_symlinks) {
-      stop_with_message(
+      stop_log(
         "Some target symlink files already exist:\n",
         make_error_list(existing_symlinks),
         "\n\nSet `overwrite_symlinks = TRUE` to replace them."
@@ -426,7 +422,7 @@ prepare_fastq_inputs <- function(
   if (!all(symlink_ok)) {
     failed <- manifest$symlink_file[!symlink_ok]
     
-    stop_with_message(
+    stop_log(
       "Failed to create one or more symlinks:\n",
       make_error_list(failed),
       "\n\nThis can happen on some systems if symlink creation is not permitted."

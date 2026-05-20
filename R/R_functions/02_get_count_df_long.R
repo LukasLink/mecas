@@ -4,7 +4,6 @@
 read_file_to_df <- function(file_name,
                             folder_path = dedup_output_folder,
                             suffix_to_rm = "_dedup_idxstats.txt",
-                            threshold_df = NULL,
                             check_alignments = TRUE
 ) {
   
@@ -15,17 +14,10 @@ read_file_to_df <- function(file_name,
   sub_lib <- stringr::str_match(name, "^[A-Za-z]+_(L\\d+)_[^_]+")[, 2]
   exp <- stringr::str_replace(name, "^([^_]+_)", "")
   
-  if (is.null(threshold_df)) {
-    threshold <- 0
-  } else {
-    threshold <- threshold_df$threshold[threshold_df$replicate == name]
-  }
-  
   df <- df %>% 
     dplyr::rename(sgRNA = V1, count = V3, length = V2) %>%
     dplyr::select(-V4) %>%
     dplyr::mutate(
-      count = dplyr::if_else(count <= threshold, 0, count),
       exp = exp
     ) %>%
     dplyr::filter(sgRNA != "*")
@@ -256,7 +248,6 @@ read_file_to_df <- function(file_name,
 }
 
 process_folder_files <- function(folder_path,
-                                 threshold_df = NULL,
                                  skip_list = c(),
                                  check_alignments = TRUE){
   
@@ -330,7 +321,6 @@ process_folder_files <- function(folder_path,
     # Read the file using your existing function
     df <- read_file_to_df(file_name = file_name,
                           folder_path = folder_path,
-                          threshold_df = threshold_df,
                           check_alignments = check_alignments,
                           suffix_to_rm = suffix_to_remove)
     

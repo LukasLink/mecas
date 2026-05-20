@@ -69,3 +69,12 @@ get_file_path <- function(folder_path, file_name) {
 #   full_path <- gsub("//", "/", full_path, fixed = TRUE)
 #   return(full_path)
 # }
+#===============================================================================
+# logging functions
+#===============================================================================
+stop_log <- function(..., call. = FALSE) {
+  msg <- paste0(...)
+  
+  log_error(msg)
+  stop(msg, call. = call.)
+}
