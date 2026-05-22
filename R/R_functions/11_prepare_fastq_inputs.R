@@ -463,3 +463,124 @@ prepare_fastq_inputs <- function(
   
   return(manifest)
 }
+
+prepare_bcwithqc_inputs <- function(manifest,
+                                    output_symlink_dir,
+                                    overwrite_symlinks = TRUE,
+                                    manifest_output_path = NULL) {
+  
+  if (is.null(manifest) || !is.data.frame(manifest)) {
+    stop_log("`manifest` must be a data.frame.")
+  }
+  
+  required_cols <- c(
+    "pipeline_name",
+    "symlink_file_basename",
+    "qc_filtered_paths"
+  )
+  
+  missing_cols <- setdiff(required_cols, colnames(manifest))
+  
+  if (length(missing_cols) > 0) {
+    stop_log(
+      "Manifest is missing required columns for bcwithqc input creation: ",
+      paste(missing_cols, collapse = ", ")
+    )
+  }
+  
+  if (!dir.exists(output_symlink_dir)) {
+    dir.create(output_symlink_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  
+  if (!dir.exists(output_symlink_dir)) {
+    stop_log("Could not create bcwithqc symlink folder: ", output_symlink_dir)
+  }
+  
+  manifest$bcwithqc_input_dir <- file.path(
+    output_symlink_dir,
+    manifest$pipeline_name
+  )
+  
+  manifest$bcwithqc_fastq_path <- file.path(
+    manifest$bcwithqc_input_dir,
+    manifest$symlink_file_basename
+  )
+  
+  for (i in seq_len(nrow(manifest))) {
+    sample_dir <- manifest$bcwithqc_input_dir[i]
+    target_file <- manifest$bcwithqc_fastq_path[i]
+    source_file <- manifest$qc_filtered_paths[i]
+    
+    if (is.na(source_file) || !nzchar(source_file)) {
+      stop_log(
+        "Missing QC-filtered FASTQ path for sample: ",
+        manifest$pipeline_name[i]
+      )
+    }
+    
+    if (!file.exists(source_file)) {
+      stop_log(
+        "QC-filtered FASTQ file does not exist for sample ",
+        manifest$pipeline_name[i],
+        ":\n  ",
+        source_file
+      )
+    }
+    
+    if (!dir.exists(sample_dir)) {
+      dir.create(sample_dir, recursive = TRUE, showWarnings = FALSE)
+    }
+    
+    if (!dir.exists(sample_dir)) {
+      stop_log("Could not create bcwithqc sample directory: ", sample_dir)
+    }
+    
+    target_exists <- file.exists(target_file)
+    target_is_symlink <- !is.na(Sys.readlink(target_file)) && nzchar(Sys.readlink(target_file))
+    
+    if (target_exists || target_is_symlink) {
+      if (!overwrite_symlinks) {
+        stop_log(
+          "bcwithqc symlink already exists: ", target_file,
+          "\nSet overwrite_symlinks = TRUE to replace it."
+        )
+      }
+      
+      unlink(target_file)
+    }
+    
+    ok <- file.symlink(
+      from = normalizePath(source_file, mustWork = TRUE),
+      to = target_file
+    )
+    
+    if (!ok) {
+      stop_log(
+        "Failed to create bcwithqc symlink:\n",
+        "  from: ", source_file, "\n",
+        "  to:   ", target_file
+      )
+    }
+  }
+  # -----------------------------
+  # Write manifest
+  # -----------------------------
+  
+  if (!is.null(manifest_output_path)) {
+    manifest_dir <- dirname(manifest_output_path)
+    
+    if (!dir.exists(manifest_dir)) {
+      dir.create(manifest_dir, recursive = TRUE, showWarnings = FALSE)
+    }
+    
+    write.table(
+      manifest,
+      file = manifest_output_path,
+      sep = "\t",
+      quote = FALSE,
+      row.names = FALSE
+    )
+  }
+  
+  manifest
+}

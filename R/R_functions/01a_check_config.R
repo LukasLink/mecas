@@ -449,7 +449,28 @@
     .validate_logical(option, name)
   },
   
-  # bcwithqc / counting input
+  # Modules
+  use_modules = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  seqtk_module = function(option, name) {
+    .validate_string(option, name, required = FALSE, allow_empty = TRUE)
+  },
+  
+  star_module = function(option, name) {
+    .validate_string(option, name, required = FALSE, allow_empty = TRUE)
+  },
+  
+  samtools_module = function(option, name) {
+    .validate_string(option, name, required = FALSE, allow_empty = TRUE)
+  },
+  
+  umi_tools_module = function(option, name) {
+    .validate_string(option, name, required = FALSE, allow_empty = TRUE)
+  },
+  
+  # bcwithqc options
   bcwithqc_dir = function(option, name) {
     .validate_dir_path(option, name, required = FALSE, must_exist = FALSE, allow_empty = TRUE)
   },
@@ -458,8 +479,26 @@
     .validate_file_path(option, name, required = FALSE, must_exist = FALSE, allow_empty = TRUE)
   },
   
+  # align_UMI_tools options 
   UMI_regex = function(option, name) {
     .validate_regex_string(option, name, required = FALSE, allow_empty = TRUE)
+  },  
+  
+  # QC filtering
+  qc_filtering_run = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  qc_min_qual = function(option, name) {
+    .validate_integer(option, name, required = TRUE, min = 0)
+  },
+  
+  qc_qual_offset = function(option, name) {
+    .validate_integer(option, name, required = TRUE, min = 0)
+  },
+  
+  qc_min_length = function(option, name) {
+    .validate_integer(option, name, required = FALSE, min = 1, allow_na = TRUE)
   },
   
   # Lists
@@ -735,44 +774,102 @@ check_config_dependencies <- function(opt) {
   
   uses_bcwithqc <- identical(read_counting, "bcwithqc")
   
-  .require_if(
-    condition = uses_bcwithqc,
-    option = opt$bcwithqc_config_path,
-    name = "bcwithqc_config_path",
-    reason = "`read_counting` is set to 'bcwithqc'.",
-    validator = function(option, name) {
-      .validate_file_path(option, name, required = TRUE, must_exist = TRUE)
+  if (uses_bcwithqc) {
+    has_bcwithqc_dir <- !.is_null_or_empty(opt$bcwithqc_dir)
+    has_bcwithqc_config <- !.is_null_or_empty(opt$bcwithqc_config_path)
+    
+    if (!has_bcwithqc_dir && !has_bcwithqc_config) {
+      stop(
+        "Missing required bcwithqc configuration.\n",
+        "Reason: `read_counting` is set to 'bcwithqc'.\n",
+        "Provide at least one of:\n",
+        "  - `bcwithqc_dir`\n",
+        "  - `bcwithqc_config_path`",
+        call. = FALSE
+      )
     }
-  )
-  
-  # Depending on your design, bcwithqc_dir may be optional if command is on PATH.
-  # If you want it required, uncomment this:
-  #
-  # .require_if(
-  #   condition = uses_bcwithqc,
-  #   option = opt$bcwithqc_dir,
-  #   name = "bcwithqc_dir",
-  #   reason = "`read_counting` is set to 'bcwithqc'.",
-  #   validator = function(option, name) {
-  #     .validate_dir_path(option, name, required = TRUE, must_exist = TRUE)
-  #   }
-  # )
-  
-  .check_allowed_when(
-    condition = uses_bcwithqc,
-    option = opt$bcwithqc_config_path,
-    name = "bcwithqc_config_path",
-    reason = "`read_counting` is not set to 'bcwithqc'."
-  )
-  
+    
+    if (has_bcwithqc_dir) {
+      .validate_dir_path(
+        opt$bcwithqc_dir,
+        "bcwithqc_dir",
+        required = TRUE,
+        must_exist = TRUE
+      )
+    }
+    
+    if (has_bcwithqc_config) {
+      .validate_file_path(
+        opt$bcwithqc_config_path,
+        "bcwithqc_config_path",
+        required = TRUE,
+        must_exist = TRUE
+      )
+    }
+  }
+
   #-----------------------------------------------------------------------------
-  # UMI-tools / STAR-specific requirements
+  # Module dependencies
   #-----------------------------------------------------------------------------
   
-  uses_umi_tools <- identical(read_counting, "align_UMI_tools")
+  if (isTRUE(opt$use_modules)) {
+    
+    if (isTRUE(opt$qc_filtering_run)) {
+      .require_if(
+        condition = TRUE,
+        option = opt$seqtk_module,
+        name = "seqtk_module",
+        reason = "`modules.use_modules` is true and `qc_filtering.run` is true.",
+        validator = function(option, name) {
+          .validate_string(option, name, required = TRUE, allow_empty = FALSE)
+        }
+      )
+    }
+    
+    if (identical(opt$read_counting, "align_UMI_tools")) {
+      .require_if(
+        condition = TRUE,
+        option = opt$star_module,
+        name = "star_module",
+        reason = "`modules.use_modules` is true and `read_counting` is 'align_UMI_tools'.",
+        validator = function(option, name) {
+          .validate_string(option, name, required = TRUE, allow_empty = FALSE)
+        }
+      )
+      
+      .require_if(
+        condition = TRUE,
+        option = opt$samtools_module,
+        name = "samtools_module",
+        reason = "`modules.use_modules` is true and `read_counting` is 'align_UMI_tools'.",
+        validator = function(option, name) {
+          .validate_string(option, name, required = TRUE, allow_empty = FALSE)
+        }
+      )
+      
+      if (identical(opt$data_type, "umis")) {
+        .require_if(
+          condition = TRUE,
+          option = opt$umi_tools_module,
+          name = "umi_tools_module",
+          reason = "`modules.use_modules` is true, `read_counting` is 'align_UMI_tools', and `data_type` is 'umis'.",
+          validator = function(option, name) {
+            .validate_string(option, name, required = TRUE, allow_empty = FALSE)
+          }
+        )
+      }
+    }
+  }
+
+  #-----------------------------------------------------------------------------
+  # align_UMI_tools requirements
+  #-----------------------------------------------------------------------------
+  
+  uses_umi_tools <- identical(opt$read_counting, "align_UMI_tools")
+  processes_umis <- identical(opt$data_type, "umis")
   
   .require_if(
-    condition = uses_umi_tools,
+    condition = uses_umi_tools & processes_umis,
     option = opt$UMI_regex,
     name = "UMI_regex",
     reason = "`read_counting` is set to 'align_UMI_tools'.",
@@ -780,23 +877,7 @@ check_config_dependencies <- function(opt) {
       .validate_regex_string(option, name, required = TRUE, allow_empty = FALSE)
     }
   )
-  
-  .require_if(
-    condition = uses_umi_tools,
-    option = opt$star_index,
-    name = "star_index",
-    reason = "`read_counting` is set to 'align_UMI_tools'.",
-    validator = function(option, name) {
-      .validate_dir_path(option, name, required = TRUE, must_exist = TRUE)
-    }
-  )
-  
-  .check_allowed_when(
-    condition = uses_umi_tools,
-    option = opt$UMI_regex,
-    name = "UMI_regex",
-    reason = "`read_counting` is not set to 'align_UMI_tools'."
-  )
+
   
   #-----------------------------------------------------------------------------
   # data_type dependency

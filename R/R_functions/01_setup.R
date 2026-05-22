@@ -207,6 +207,19 @@ config_to_user_opts <- function(config) {
     slurm_array = config$slurm$array %||% 1,
     slurm_email = config$slurm$email %||% "",
     
+    # Modules
+    use_modules       = config$modules$use_modules %||% FALSE,
+    seqtk_module      = config$modules$seqtk %||% "",
+    star_module       = config$modules$star %||% "",
+    samtools_module   = config$modules$samtools %||% "",
+    umi_tools_module  = config$modules$umi_tools %||% "",
+    
+    # QC filtering
+    qc_filtering_run  = config$qc_filtering$run %||% TRUE,
+    qc_min_qual       = config$qc_filtering$min_qual %||% 20,
+    qc_qual_offset    = config$qc_filtering$qual_offset %||% 20,
+    qc_min_length     = config$qc_filtering$min_length %||% NA,
+    
     # Replicates / grouping
     method = config$replicates$method %||% "",
     combine_for_guide_stats = config$replicates$combine_for_guide_stats %||% "sample",
@@ -331,6 +344,19 @@ project_setup <- function(project_root_dir,
   combine_for_guide_stats           <- check_input(opt$combine_for_guide_stats, "combine_for_guide_stats")
   combine_for_gene_stats            <- check_input(opt$combine_for_gene_stats, "combine_for_gene_stats")
   
+  # Modules
+  use_modules                      <- check_input(opt$use_modules, "use_modules")
+  seqtk_module                     <- check_input(opt$seqtk_module, "seqtk_module")
+  star_module                      <- check_input(opt$star_module, "star_module")
+  samtools_module                  <- check_input(opt$samtools_module, "samtools_module")
+  umi_tools_module                 <- check_input(opt$umi_tools_module, "umi_tools_module")
+  
+  # QC filtering
+  qc_filtering_run                 <- check_input(opt$qc_filtering_run, "qc_filtering_run")
+  qc_min_qual                      <- check_input(opt$qc_min_qual, "qc_min_qual")
+  qc_qual_offset                   <- check_input(opt$qc_qual_offset, "qc_qual_offset")
+  qc_min_length                    <- check_input(opt$qc_min_length, "qc_min_length")
+  
   recover_input                     <- check_input(opt$recover_input, "recover_input")
   subsample_controls                <- check_input(opt$subsample_controls, "subsample_controls")
   use_custom_bins                   <- check_input(opt$use_custom_bins, "use_custom_bins")
@@ -442,10 +468,10 @@ project_setup <- function(project_root_dir,
   
   # Keep subfolder names relative. Avoid leading slashes here.
   genome_output_folder <- make_clean_dir(output_folder, "ref")
-  grouped_output_folder <- make_clean_dir(output_folder, "/grouped/")
   dedup_output_folder <- make_clean_dir(output_folder, "dedup")
   bcwithqc_output_folder <- make_clean_dir(output_folder, "bcwithqc_output")
   mapped_output_folder <- make_clean_dir(output_folder, "mapped")
+  qc_filtered_folder <- make_clean_dir(output_folder, "QC_filtered")
   rds_output_folder <- make_clean_dir(output_folder, "rds")
   results_output_folder <- make_clean_dir(output_folder, "results")
   
@@ -476,6 +502,8 @@ project_setup <- function(project_root_dir,
     # =========================
     # Options
     # =========================
+    
+    opt                               = opt,
     first_time                        = first_time,
     machine                           = machine,
     
@@ -532,14 +560,17 @@ project_setup <- function(project_root_dir,
     file_suffix       = file_suffix,
     file_info_suffix  = file_info_suffix,
     
-    data_dir               = data_dir,
-    genome_output_folder   = genome_output_folder,
-    dedup_output_folder    = dedup_output_folder,
-    bcwithqc_output_folder = bcwithqc_output_folder,
-    mapped_output_folder   = mapped_output_folder,
-    rds_output_folder      = rds_output_folder,
-    results_output_folder  = results_output_folder,
-    fastq_symlinks_folder  = fastq_symlinks_folder,
+    data_dir                  = data_dir,
+    genome_output_folder      = genome_output_folder,
+    qc_filtered_folder        = qc_filtered_folder,
+    dedup_output_folder       = dedup_output_folder,
+    bcwithqc_output_folder    = bcwithqc_output_folder,
+    mapped_output_folder      = mapped_output_folder,
+    rds_output_folder         = rds_output_folder,
+    results_output_folder     = results_output_folder,
+    fastq_symlinks_folder     = fastq_symlinks_folder,
+    bcwithqc_symlinks_folder  = bcwithqc_symlinks_folder,
+    log_folder                = log_folder, 
     
     log_file = log_file,
     
