@@ -225,6 +225,7 @@ run_shell_step_slurm <- function(step_name,
   
   logger::log_info("Submitting SLURM shell step: {step_name}")
   logger::log_info("SBATCH script: {sbatch_script}")
+  logger::log_info("If slurm job fails please check the log in: {log_folder}")
   
   sbatch_output <- system2(
     command = "sbatch",

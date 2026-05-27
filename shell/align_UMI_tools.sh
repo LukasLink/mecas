@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Modes:
 #   DATA_TYPE=reads
-#     QC-filtered FASTQ -> STAR mapping -> BAM index -> idxstats
+#     QC-filtered FASTQ -> umi_tools extract/cut -> STAR mapping -> BAM index -> idxstats
 #
 #   DATA_TYPE=umis
 #     QC-filtered FASTQ -> umi_tools extract -> STAR mapping -> BAM index
@@ -55,9 +55,7 @@ Required:
   --star-index-folder    Existing STAR genome index folder
   --data-type            reads or umis
   --threads              Threads for STAR
-
-Required for data-type=umis:
-  --umi-regex            UMI-tools regex pattern
+  --umi-regex            Cutting the Read down to just the sgRNA (and finding UMIs)
 
 Module options:
   --use-modules          true or false
@@ -90,6 +88,7 @@ STAR_INDEX_FOLDER=""
 DATA_TYPE=""
 UMI_REGEX=""
 THREADS="1"
+LIMIT_BAM_SORT_RAM=""
 
 USE_MODULES="false"
 STAR_MODULE="STAR/2.7.11b-GCC-13.2.0"
@@ -124,6 +123,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --threads)
       THREADS="${2:-}"
+      shift 2
+      ;;
+    --limit-bam-sort-ram)
+      LIMIT_BAM_SORT_RAM="${2:-}"
       shift 2
       ;;
     --use-modules)
@@ -161,6 +164,8 @@ done
 [[ -n "$STAR_INDEX_FOLDER" ]] || die "--star-index-folder is required"
 [[ -n "$DATA_TYPE" ]] || die "--data-type is required"
 [[ -n "$THREADS" ]] || die "--threads is required"
+[[ -n "$LIMIT_BAM_SORT_RAM" ]] || die "--limit-bam-sort-ram is required"
+[[ "$LIMIT_BAM_SORT_RAM" =~ ^[0-9]+$ ]] || die "--limit-bam-sort-ram must be an integer"
 
 [[ -f "$MANIFEST" ]] || die "Manifest does not exist: $MANIFEST"
 [[ -d "$STAR_INDEX_FOLDER" ]] || die "STAR index folder does not exist: $STAR_INDEX_FOLDER"
@@ -169,8 +174,8 @@ done
 [[ "$THREADS" =~ ^[0-9]+$ ]] || die "--threads must be an integer"
 (( THREADS >= 1 )) || die "--threads must be >= 1"
 
-if [[ "$DATA_TYPE" == "umis" && -z "$UMI_REGEX" ]]; then
-  die "--umi-regex is required when --data-type umis"
+if [[ -z "$UMI_REGEX" ]]; then
+  die "--umi-regex is required because umi_tools extract is always run before STAR"
 fi
 
 if [[ "$USE_MODULES" != "true" && "$USE_MODULES" != "false" ]]; then
@@ -324,6 +329,7 @@ run_star_mapping_one_sample() {
     --readFilesCommand zcat \
     --readFilesIn "$input_fastq" \
     --outFileNamePrefix "$MAPPED/${sample_name}_" \
+    --limitBAMsortRAM "$LIMIT_BAM_SORT_RAM" \
     --outSAMtype BAM SortedByCoordinate
 
   log "Finished STAR mapping for $sample_name"
@@ -386,48 +392,51 @@ for (( sample_index=zero_based_task_index; sample_index<total_samples; sample_in
 
   log "Task $ARRAY_TASK_ID processing manifest index $sample_index: $sample_name"
 
+  # Always run umi_tools extract first.
+  # For DATA_TYPE=reads, this is used to trim/cut reads down to the sgRNA sequence.
+  # For DATA_TYPE=umis, this also extracts UMIs into the read name.
+  purge_modules_if_needed
+  load_module_if_needed "$UMI_TOOLS_MODULE"
+  command -v umi_tools >/dev/null 2>&1 || die "umi_tools not found on PATH"
+  run_umi_extraction_one_sample "$sample_name" "$qc_fastq"
+
+  extracted_fastq="$UMI_EXTRACTED/${sample_name}.fastq.gz"
+
+  if [[ ! -f "$extracted_fastq" ]]; then
+    die "UMI-extracted FASTQ does not exist for $sample_name: $extracted_fastq"
+  fi
+
+  # Map extracted/trimmed reads to STAR reference.
+  purge_modules_if_needed
+  load_module_if_needed "$STAR_MODULE"
+  command -v STAR >/dev/null 2>&1 || die "STAR not found on PATH"
+  run_star_mapping_one_sample "$sample_name" "$extracted_fastq"
+
+  mapped_bam="$MAPPED/${sample_name}_Aligned.sortedByCoord.out.bam"
+
+  if [[ ! -f "$mapped_bam" ]]; then
+    die "Mapped BAM does not exist for $sample_name: $mapped_bam"
+  fi
+
+  purge_modules_if_needed
+  load_module_if_needed "$SAMTOOLS_MODULE"
+  command -v samtools >/dev/null 2>&1 || die "samtools not found on PATH"
+  run_bam_index_one_sample "$mapped_bam"
+
   if [[ "$DATA_TYPE" == "reads" ]]; then
-    mapping_input_fastq="$qc_fastq"
-
-    purge_modules_if_needed
-    load_module_if_needed "$STAR_MODULE"
-    command -v STAR >/dev/null 2>&1 || die "STAR not found on PATH"
-    run_star_mapping_one_sample "$sample_name" "$mapping_input_fastq"
-
-    mapped_bam="$MAPPED/${sample_name}_Aligned.sortedByCoord.out.bam"
-
-    purge_modules_if_needed
-    load_module_if_needed "$SAMTOOLS_MODULE"
-    command -v samtools >/dev/null 2>&1 || die "samtools not found on PATH"
-    run_bam_index_one_sample "$mapped_bam"
     run_idxstats_one_sample "$mapped_bam" "$MAPPED"
 
   elif [[ "$DATA_TYPE" == "umis" ]]; then
     purge_modules_if_needed
     load_module_if_needed "$UMI_TOOLS_MODULE"
     command -v umi_tools >/dev/null 2>&1 || die "umi_tools not found on PATH"
-    run_umi_extraction_one_sample "$sample_name" "$qc_fastq"
-
-    umi_fastq="$UMI_EXTRACTED/${sample_name}.fastq.gz"
-
-    purge_modules_if_needed
-    load_module_if_needed "$STAR_MODULE"
-    command -v STAR >/dev/null 2>&1 || die "STAR not found on PATH"
-    run_star_mapping_one_sample "$sample_name" "$umi_fastq"
-
-    mapped_bam="$MAPPED/${sample_name}_Aligned.sortedByCoord.out.bam"
-
-    purge_modules_if_needed
-    load_module_if_needed "$SAMTOOLS_MODULE"
-    command -v samtools >/dev/null 2>&1 || die "samtools not found on PATH"
-    run_bam_index_one_sample "$mapped_bam"
-
-    purge_modules_if_needed
-    load_module_if_needed "$UMI_TOOLS_MODULE"
-    command -v umi_tools >/dev/null 2>&1 || die "umi_tools not found on PATH"
     run_umi_dedup_one_sample "$sample_name" "$mapped_bam"
 
     dedup_bam="$DEDUP/${sample_name}_dedup.bam"
+
+    if [[ ! -f "$dedup_bam" ]]; then
+      die "Deduplicated BAM does not exist for $sample_name: $dedup_bam"
+    fi
 
     purge_modules_if_needed
     load_module_if_needed "$SAMTOOLS_MODULE"
