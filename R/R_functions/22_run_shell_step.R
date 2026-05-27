@@ -268,7 +268,8 @@ run_shell_step_slurm <- function(step_name,
 
 wait_for_slurm_job <- function(job_id,
                                poll_interval_seconds = 30,
-                               message_interval_minutes = 30) {
+                               message_interval_minutes = 30,
+                               max_squeue_failures = 5) {
   
   if (is.na(job_id) || !nzchar(job_id)) {
     stop_log("Cannot wait for SLURM job because `job_id` is missing.")
@@ -279,6 +280,8 @@ wait_for_slurm_job <- function(job_id,
   seconds_counter <- 0
   logged_message_counter <- 1
   message_interval_seconds <- message_interval_minutes * 60
+  squeue_failures <- 0
+  
   repeat {
     squeue_out <- system2(
       command = "squeue",
@@ -290,25 +293,43 @@ wait_for_slurm_job <- function(job_id,
     squeue_status <- attr(squeue_out, "status")
     
     if (!is.null(squeue_status) && squeue_status != 0) {
-      stop_log(
-        "Failed to query SLURM job with squeue.\n",
-        "Job ID: ", job_id, "\n",
-        "squeue output:\n",
-        paste(squeue_out, collapse = "\n")
+      squeue_failures <- squeue_failures + 1
+      
+      logger::log_warn(
+        "squeue query failed for SLURM job {job_id} ",
+        "({squeue_failures}/{max_squeue_failures}). Output: ",
+        "{paste(squeue_out, collapse = ' ')}"
       )
+      
+      if (squeue_failures >= max_squeue_failures) {
+        stop_log(
+          "Failed to query SLURM job repeatedly with squeue.\n",
+          "Job ID: ", job_id, "\n",
+          "Last squeue output:\n",
+          paste(squeue_out, collapse = "\n")
+        )
+      }
+      
+      Sys.sleep(poll_interval_seconds)
+      next
     }
     
-    # If squeue returns no rows, the job is no longer running/pending.
+    squeue_failures <- 0
+    
     if (length(squeue_out) == 0) {
       break
     }
     
     seconds_counter <- seconds_counter + poll_interval_seconds
-    if (seconds_counter >= (logged_message_counter * message_interval_seconds)){
+    
+    if (seconds_counter >= (logged_message_counter * message_interval_seconds)) {
       elapsed_minutes <- round(seconds_counter / 60, 1)
-      logger::log_info("SLURM job {job_id} still running or pending. Time elapsed {elapsed_minutes} min")
+      logger::log_info(
+        "SLURM job still running or pending after {elapsed_minutes} min: {job_id}"
+      )
       logged_message_counter <- logged_message_counter + 1
     }
+    
     Sys.sleep(poll_interval_seconds)
   }
   
