@@ -398,15 +398,42 @@
     return(invisible(option))
   }
   
-  ok <- tryCatch({
-    grepl(option, "")
-    TRUE
-  }, error = function(e) {
-    FALSE
-  })
+  # umi_tools uses Python-style regex syntax, including:
+  #   (?P<umi_1>...)
+  #   (?P<discard_1>...)
+  #   fuzzy matching such as {e<=1}
+  #
+  # These are not valid base R/TRE regex patterns, so do NOT validate
+  # with grepl().
   
-  if (!ok) {
-    .fail_input(name, option, "Expected a valid regular expression.")
+  if (!grepl("\\(\\?P<", option, fixed = FALSE)) {
+    .fail_input(
+      name,
+      option,
+      "Expected a umi_tools-style regex with named groups such as (?P<umi_1>...) or (?P<discard_1>...)."
+    )
+  }
+  
+  if (!grepl("\\(\\?P<umi_[0-9]+>", option, fixed = FALSE)) {
+    .fail_input(
+      name,
+      option,
+      "Expected at least one umi_tools UMI group, e.g. (?P<umi_1>...)."
+    )
+  }
+  
+  open_parens <- gregexpr("\\(", option)[[1]]
+  close_parens <- gregexpr("\\)", option)[[1]]
+  
+  n_open <- if (identical(open_parens, -1L)) 0L else length(open_parens)
+  n_close <- if (identical(close_parens, -1L)) 0L else length(close_parens)
+  
+  if (n_open != n_close) {
+    .fail_input(
+      name,
+      option,
+      "Regex appears to have unbalanced parentheses."
+    )
   }
   
   invisible(option)
@@ -866,10 +893,9 @@ check_config_dependencies <- function(opt) {
   #-----------------------------------------------------------------------------
   
   uses_umi_tools <- identical(opt$read_counting, "align_UMI_tools")
-  processes_umis <- identical(opt$data_type, "umis")
   
   .require_if(
-    condition = uses_umi_tools & processes_umis,
+    condition = uses_umi_tools,
     option = opt$UMI_regex,
     name = "UMI_regex",
     reason = "`read_counting` is set to 'align_UMI_tools'.",

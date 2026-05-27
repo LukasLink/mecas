@@ -265,12 +265,19 @@ project_setup <- function(project_root_dir,
                           config_or_user_opts = NULL,
                           config_path = NULL,
                           params = NULL,
+                          setup_mode = "count",
                           overrides = list(),
                           envir = .GlobalEnv,
                           use_old_suffix_construction = FALSE) {
   stopifnot(is.character(project_root_dir), length(project_root_dir) == 1)
   
-
+  if (!(setup_mode %in% c("count","make_reference"))){
+    stop(paste0(
+      "unsupported setup_mode: ",
+      setup_mode,
+      "this is a programm error, user can do nothing to fix this."),
+      call. = FALSE)
+  }
   
   # ---- accept either config object, config path, or legacy user_opts ----
   # If config_path was not supplied explicitly, allow params$config to provide it.
@@ -311,6 +318,7 @@ project_setup <- function(project_root_dir,
     stop("`output_folder` must be provided in config$paths$output_folder or user_opts$output_folder.", call. = FALSE)
   }
   
+  # add if (setup_mode == ) check here. 
   # Use the fully resolved options from YAML + params + overrides.
   opt <- user_opts
   
@@ -482,7 +490,7 @@ project_setup <- function(project_root_dir,
   log_folder <- make_clean_dir(output_folder, "logs")
   log_file <- file.path(
     log_folder,
-    paste0("log_", file_info_suffix, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".log")
+    paste0("log_", file_info_suffix, "_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".log")
   )
   log_appender(appender_tee(log_file))
   logger::log_layout(
