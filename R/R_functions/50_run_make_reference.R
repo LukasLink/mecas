@@ -106,10 +106,11 @@ run_make_reference <- function(config_path, project_root_dir, cli_args) {
   n_refs <- nrow(ref_input_df)
   max_ref_length <- max(nchar(ref_input_df$full_oligo))
   
-  genome_sa_index_n_bases <- round(
-    min(14, log2(total_ref_length) / 2 - 1),
-    0
+  genome_sa_index_n_bases <- floor(
+    min(14, log2(total_ref_length) / 2 - 1)
   )
+  
+  genome_sa_index_n_bases <- max(1, genome_sa_index_n_bases)
   
   genome_chr_bin_n_bits <- floor(
     min(18, log2(max(total_ref_length / n_refs, max_ref_length)))

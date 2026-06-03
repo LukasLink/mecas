@@ -453,14 +453,9 @@ prepare_fastq_inputs <- function(
   # Return manifest invisibly/visibly
   # -----------------------------
   
-  message(
-    "Prepared ",
-    nrow(manifest),
-    " input files.\n",
-    "Standardized symlinks written to:\n  ",
-    output_symlink_dir
-  )
-  
+  log_info(paste("Using standardized FASTQ folder: ", output_symlink_dir))
+  log_info(paste("FASTQ manifest written to: ", manifest_output_path))
+
   return(manifest)
 }
 
