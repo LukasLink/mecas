@@ -29,6 +29,10 @@ STAR_MODULE="STAR/2.7.11b-GCC-13.2.0"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --bcwithqc-bin)
+      BCWITHQC_BIN="${2:-}"
+      shift 2
+      ;;
     --manifest)
       MANIFEST="${2:-}"
       shift 2
@@ -216,6 +220,52 @@ log "Zero-based task index: $zero_based_task_index"
 log "Total array/local tasks: $total_array_tasks"
 
 ################################################################################
+# Read manifest
+################################################################################
+
+declare -a sample_names=()
+declare -a input_dirs=()
+
+header="$(head -n 1 "$MANIFEST")"
+IFS=$'\t' read -r -a header_cols <<< "$header"
+
+sample_col=-1
+input_dir_col=-1
+
+for idx in "${!header_cols[@]}"; do
+  case "${header_cols[$idx]}" in
+    pipeline_name|sample_name)
+      sample_col="$idx"
+      ;;
+    bcwithqc_input_dir|input_dir)
+      input_dir_col="$idx"
+      ;;
+  esac
+done
+
+if (( sample_col < 0 )); then
+  die "Manifest is missing required column: pipeline_name or sample_name"
+fi
+
+if (( input_dir_col < 0 )); then
+  die "Manifest is missing required column: bcwithqc_input_dir or input_dir"
+fi
+
+while IFS=$'\t' read -r -a fields; do
+  [[ -z "${fields[$sample_col]:-}" ]] && continue
+
+  sample_names+=("${fields[$sample_col]}")
+  input_dirs+=("${fields[$input_dir_col]}")
+done < <(tail -n +2 "$MANIFEST")
+
+total_samples="${#sample_names[@]}"
+
+if [[ "$total_samples" -eq 0 ]]; then
+  die "Manifest contains no samples: $MANIFEST"
+fi
+
+log "Total prepared samples: $total_samples"
+################################################################################
 # One bcwithqc run
 ################################################################################
 
@@ -343,53 +393,6 @@ run_bcwithqc_one_input_dir() {
   log "[$run_name] Finished bcwithqc count"
   log "[$run_name] Completed run"
 }
-
-################################################################################
-# Read manifest
-################################################################################
-
-declare -a sample_names=()
-declare -a input_dirs=()
-
-header="$(head -n 1 "$MANIFEST")"
-IFS=$'\t' read -r -a header_cols <<< "$header"
-
-sample_col=-1
-input_dir_col=-1
-
-for idx in "${!header_cols[@]}"; do
-  case "${header_cols[$idx]}" in
-    sample_name)
-      sample_col="$idx"
-      ;;
-    bcwithqc_input_dir|input_dir)
-      input_dir_col="$idx"
-      ;;
-  esac
-done
-
-if (( sample_col < 0 )); then
-  die "Manifest is missing required column: sample_name"
-fi
-
-if (( input_dir_col < 0 )); then
-  die "Manifest is missing required column: bcwithqc_input_dir or input_dir"
-fi
-
-while IFS=$'\t' read -r -a fields; do
-  [[ -z "${fields[$sample_col]:-}" ]] && continue
-
-  sample_names+=("${fields[$sample_col]}")
-  input_dirs+=("${fields[$input_dir_col]}")
-done < <(tail -n +2 "$MANIFEST")
-
-total_samples="${#sample_names[@]}"
-
-if [[ "$total_samples" -eq 0 ]]; then
-  die "Manifest contains no samples: $MANIFEST"
-fi
-
-log "Total prepared samples: $total_samples"
 
 ################################################################################
 # Main execution
