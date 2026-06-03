@@ -78,3 +78,40 @@ stop_log <- function(..., call. = FALSE) {
   log_error(msg)
   stop(msg, call. = call.)
 }
+#===============================================================================
+# Helpers for deciding if count command should run a specific part of the pipeline
+#===============================================================================
+
+should_run_stage <- function(start_with, stage) {
+  stage_order <- c("beginning", "read_counting", "MAUDE_analysis", "generate_plots")
+  
+  if (!start_with %in% stage_order) {
+    stop_log(
+      "Invalid `start_with`: ", start_with,
+      "\nAllowed values are: ",
+      paste(stage_order, collapse = ", ")
+    )
+  }
+  
+  if (!stage %in% stage_order) {
+    stop_log(
+      "Invalid pipeline stage: ", stage,
+      "\nAllowed values are: ",
+      paste(stage_order, collapse = ", ")
+    )
+  }
+  
+  match(stage, stage_order) >= match(start_with, stage_order)
+}
+
+load_existing_tsv_or_stop <- function(path, label) {
+  if (!file.exists(path)) {
+    stop_log(
+      "Cannot resume pipeline: missing ", label, ".\n",
+      "Expected file:\n  ", path,
+      "\n\nEither run with an earlier `start_with` value or check your output folder/suffix settings."
+    )
+  }
+  
+  read.delim(path, stringsAsFactors = FALSE, check.names = FALSE)
+}
