@@ -161,6 +161,7 @@ config_to_user_opts <- function(config) {
   list(
     # Run behavior
     first_time = config$run$first_time %||% FALSE,
+    start_with = config$run$start_with %||% "beginning",
     machine = config$run$machine %||% "local",
     
     # Directories / paths
@@ -175,6 +176,7 @@ config_to_user_opts <- function(config) {
     strict_file_match = config$paths$strict_file_match %||% TRUE,
     
     # Optional bcwithqc paths
+    bcwithqc_bin = config$bcwithqc$bcwithqc_bin %||% "bcwithqc",
     bcwithqc_dir = config$bcwithqc$bcwithqc_dir %||% "",
     bcwithqc_config_path = config$bcwithqc$bcwithqc_config_path %||% "",
     
@@ -236,6 +238,40 @@ config_to_user_opts <- function(config) {
     drop_0s = config$filtering$drop_0s %||% FALSE,
     strict_mode = config$filtering$strict_mode %||% FALSE,
     min_guides_per_gene = config$filtering$min_guides_per_gene %||% 0,
+    
+    # Consensus calling
+    consensus_run = config$consensus$run %||% TRUE,
+    consensus_n_reps = config$consensus$n_reps %||% 19,
+    
+    consensus_high_confidence_FDR_threshold =
+      config$consensus$high_confidence$FDR_threshold %||% 0.05,
+    
+    consensus_high_confidence_hits_in_X_reps =
+      config$consensus$high_confidence$hits_in_X_reps %||% 16,
+    
+    consensus_high_confidence_correlation_heatmap =
+      config$consensus$high_confidence$correlation_heatmap %||% FALSE,
+    
+    consensus_high_confidence_overlap =
+      config$consensus$high_confidence$overlap %||% FALSE,
+    
+    consensus_high_confidence_venn_diagram =
+      config$consensus$high_confidence$venn_diagram %||% FALSE,
+    
+    consensus_explorative_FDR_threshold =
+      config$consensus$explorative$FDR_threshold %||% 0.05,
+    
+    consensus_explorative_hits_in_X_reps =
+      config$consensus$explorative$hits_in_X_reps %||% 10,
+    
+    consensus_explorative_correlation_heatmap =
+      config$consensus$explorative$correlation_heatmap %||% TRUE,
+    
+    consensus_explorative_overlap =
+      config$consensus$explorative$overlap %||% FALSE,
+    
+    consensus_explorative_venn_diagram =
+      config$consensus$explorative$venn_diagram %||% FALSE,
     
     # Output naming
     extra_suffix = config$output$extra_suffix %||% ""
@@ -326,6 +362,7 @@ project_setup <- function(project_root_dir,
   # Normalize resolved options and comma-separated/vector list fields
   #=============================================================================
   first_time                        <- check_input(opt$first_time, "first_time")
+  start_with                        <- check_input(opt$start_with, "start_with")
   machine                           <- check_input(opt$machine, "machine")
   
   output_folder                     <- check_input(opt$output_folder, "output_folder")
@@ -335,6 +372,7 @@ project_setup <- function(project_root_dir,
   fastq_name_table_xlsx             <- check_input(opt$fastq_name_table_xlsx, "fastq_name_table_xlsx")
   strict_file_match                 <- check_input(opt$strict_file_match, "strict_file_match")
   
+  bcwithqc_bin                      <- check_input(opt$bcwithqc_bin, "bcwithqc_bin")
   bcwithqc_dir                      <- check_input(opt$bcwithqc_dir, "bcwithqc_dir")
   bcwithqc_config_path              <- check_input(opt$bcwithqc_config_path, "bcwithqc_config_path")
   UMI_regex                         <- check_input(opt$UMI_regex, "UMI_regex")
@@ -386,6 +424,50 @@ project_setup <- function(project_root_dir,
   slurm_partition                   <- check_input(opt$slurm_partition, "slurm_partition")
   slurm_array                       <- check_input(opt$slurm_array, "slurm_array")
   slurm_email                       <- check_input(opt$slurm_email, "slurm_email")
+  
+  # Consensus calling
+  consensus_run <- check_input(opt$consensus_run, "consensus_run")
+  consensus_n_reps <- check_input(opt$consensus_n_reps, "consensus_n_reps")
+  
+  consensus_high_confidence_FDR_threshold <-
+    check_input(opt$consensus_high_confidence_FDR_threshold,
+                "consensus_high_confidence_FDR_threshold")
+  
+  consensus_high_confidence_hits_in_X_reps <-
+    check_input(opt$consensus_high_confidence_hits_in_X_reps,
+                "consensus_high_confidence_hits_in_X_reps")
+  
+  consensus_high_confidence_correlation_heatmap <-
+    check_input(opt$consensus_high_confidence_correlation_heatmap,
+                "consensus_high_confidence_correlation_heatmap")
+  
+  consensus_high_confidence_overlap <-
+    check_input(opt$consensus_high_confidence_overlap,
+                "consensus_high_confidence_overlap")
+  
+  consensus_high_confidence_venn_diagram <-
+    check_input(opt$consensus_high_confidence_venn_diagram,
+                "consensus_high_confidence_venn_diagram")
+  
+  consensus_explorative_FDR_threshold <-
+    check_input(opt$consensus_explorative_FDR_threshold,
+                "consensus_explorative_FDR_threshold")
+  
+  consensus_explorative_hits_in_X_reps <-
+    check_input(opt$consensus_explorative_hits_in_X_reps,
+                "consensus_explorative_hits_in_X_reps")
+  
+  consensus_explorative_correlation_heatmap <-
+    check_input(opt$consensus_explorative_correlation_heatmap,
+                "consensus_explorative_correlation_heatmap")
+  
+  consensus_explorative_overlap <-
+    check_input(opt$consensus_explorative_overlap,
+                "consensus_explorative_overlap")
+  
+  consensus_explorative_venn_diagram <-
+    check_input(opt$consensus_explorative_venn_diagram,
+                "consensus_explorative_venn_diagram")
   
   check_config_dependencies(opt)
   #=============================================================================
@@ -482,6 +564,8 @@ project_setup <- function(project_root_dir,
   qc_filtered_folder <- make_clean_dir(output_folder, "QC_filtered")
   rds_output_folder <- make_clean_dir(output_folder, "rds")
   results_output_folder <- make_clean_dir(output_folder, "results")
+  plots_output_folder <- make_clean_dir(output_folder, "plots")
+  plots_output_folder <- make_clean_dir(plots_output_folder, file_info_suffix)
   
   symlinks_folder <- get_file_path(output_folder, "symlinks")
   fastq_symlinks_folder <- make_clean_dir(output_folder, "fastq_symlinks")
@@ -576,6 +660,7 @@ project_setup <- function(project_root_dir,
     mapped_output_folder      = mapped_output_folder,
     rds_output_folder         = rds_output_folder,
     results_output_folder     = results_output_folder,
+    plots_output_folder       = plots_output_folder,
     fastq_symlinks_folder     = fastq_symlinks_folder,
     bcwithqc_symlinks_folder  = bcwithqc_symlinks_folder,
     log_folder                = log_folder, 
@@ -601,6 +686,7 @@ project_setup <- function(project_root_dir,
   logger::log_info("==========================================================")
   
   logger::log_info("first_time:                        {first_time}")
+  logger::log_info("start_with:                        {start_with}")
   logger::log_info("machine:                           {machine}")
   logger::log_info("----------------------------------------------------------")
 

@@ -439,6 +439,54 @@
   invisible(option)
 }
 
+.validate_executable <- function(option,
+                                 name,
+                                 required = FALSE,
+                                 allow_empty = TRUE) {
+  if (!required && .is_missing(option)) {
+    return(invisible(option))
+  }
+  
+  .validate_string(
+    option = option,
+    name = name,
+    required = required,
+    allow_empty = allow_empty
+  )
+  
+  if (allow_empty && .is_empty_string(option)) {
+    return(invisible(option))
+  }
+  
+  # If option contains a slash, treat as file path.
+  if (grepl("/", option, fixed = TRUE)) {
+    if (!file.exists(option)) {
+      .fail_input(name, option, "Executable path does not exist.")
+    }
+    
+    if (file.access(option, mode = 1) != 0) {
+      .fail_input(name, option, "File exists but is not executable.")
+    }
+    
+    return(invisible(option))
+  }
+  
+  # Otherwise treat as command name on PATH.
+  found <- nzchar(Sys.which(option))
+  
+  if (!found) {
+    .fail_input(
+      name,
+      option,
+      paste0(
+        "Executable was not found on PATH. ",
+        "Provide an absolute path or make sure the command is available on PATH."
+      )
+    )
+  }
+  
+  invisible(option)
+}
 #-------------------------------------------------------------------------------
 # Option-specific validator map
 #-------------------------------------------------------------------------------
@@ -448,6 +496,8 @@
   first_time = function(option, name) {
     .validate_logical(option, name)
   },
+  
+  start_with = .validate_choice(c("beginning", "read_counting", "MAUDE_analysis", "generate_plots")),
   
   machine = .validate_choice(c("local", "slurm")),
   
@@ -498,6 +548,14 @@
   },
   
   # bcwithqc options
+  bcwithqc_bin = function(option, name) {
+    .validate_executable(
+      option,
+      name,
+      required = FALSE,
+      allow_empty = TRUE
+    )
+  },
   bcwithqc_dir = function(option, name) {
     .validate_dir_path(option, name, required = FALSE, must_exist = FALSE, allow_empty = TRUE)
   },
@@ -644,6 +702,55 @@
   
   slurm_email = function(option, name) {
     .validate_email(option, name, required = FALSE, allow_empty = TRUE)
+  },
+  
+  # Consensus calling
+  consensus_run = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  consensus_n_reps = function(option, name) {
+    .validate_integer(option, name, required = TRUE, min = 1)
+  },
+  
+  consensus_high_confidence_FDR_threshold = function(option, name) {
+    .validate_percentage(option, name, required = TRUE, min = 0, max = 1)
+  },
+  
+  consensus_high_confidence_hits_in_X_reps = function(option, name) {
+    .validate_integer(option, name, required = TRUE, min = 1)
+  },
+  
+  consensus_high_confidence_correlation_heatmap = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  consensus_high_confidence_overlap = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  consensus_high_confidence_venn_diagram = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  consensus_explorative_FDR_threshold = function(option, name) {
+    .validate_percentage(option, name, required = TRUE, min = 0, max = 1)
+  },
+  
+  consensus_explorative_hits_in_X_reps = function(option, name) {
+    .validate_integer(option, name, required = TRUE, min = 1)
+  },
+  
+  consensus_explorative_correlation_heatmap = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  consensus_explorative_overlap = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  consensus_explorative_venn_diagram = function(option, name) {
+    .validate_logical(option, name)
   }
 )
 #-------------------------------------------------------------------------------
@@ -816,6 +923,21 @@ check_config_dependencies <- function(opt) {
       )
     }
     
+    .require_if(
+      condition = TRUE,
+      option = opt$bcwithqc_bin,
+      name = "bcwithqc_bin",
+      reason = "`read_counting` is set to 'bcwithqc'.",
+      validator = function(option, name) {
+        .validate_executable(
+          option,
+          name,
+          required = TRUE,
+          allow_empty = FALSE
+        )
+      }
+    )
+    
     if (has_bcwithqc_dir) {
       .validate_dir_path(
         opt$bcwithqc_dir,
@@ -919,6 +1041,37 @@ check_config_dependencies <- function(opt) {
     )
   }
   
+  #-----------------------------------------------------------------------------
+  # consensus_call dependency
+  #-----------------------------------------------------------------------------
+  if (isTRUE(opt$consensus_run)) {
+    
+    if (opt$consensus_high_confidence_hits_in_X_reps >
+        opt$consensus_n_reps + 1) {
+      stop_log(
+        "`consensus_high_confidence_hits_in_X_reps` cannot be larger than ",
+        "`consensus_n_reps + 1`.\n",
+        "Current values:\n",
+        "  consensus_n_reps: ",
+        opt$consensus_n_reps,
+        "\n  consensus_high_confidence_hits_in_X_reps: ",
+        opt$consensus_high_confidence_hits_in_X_reps
+      )
+    }
+    
+    if (opt$consensus_explorative_hits_in_X_reps >
+        opt$consensus_n_reps + 1) {
+      stop_log(
+        "`consensus_explorative_hits_in_X_reps` cannot be larger than ",
+        "`consensus_n_reps + 1`.\n",
+        "Current values:\n",
+        "  consensus_n_reps: ",
+        opt$consensus_n_reps,
+        "\n  consensus_explorative_hits_in_X_reps: ",
+        opt$consensus_explorative_hits_in_X_reps
+      )
+    }
+  }
   invisible(TRUE)
 }
 #-------------------------------------------------------------------------------
