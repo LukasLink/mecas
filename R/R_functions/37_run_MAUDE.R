@@ -5,29 +5,29 @@ run_MAUDE <- function(maude_counts_df, opt, file_suffix,
                       run_maude_stage,
                       run_plots_stage){
   
+  maude_gene_stats_fpath <- file.path(rds_output_folder,
+                                      paste0("MAUDE_gene_stats", file_suffix))
+  maude_guide_stats_fpath <- file.path(rds_output_folder,
+                                       paste0("MAUDE_guide_stats", file_suffix))
+  
+  unique_exp <- unique(maude_counts_df$exp)
+  
+  # Define bin stats
+  lower_bin_end = upper_lower_percentage
+  upper_bin_start = 1 - upper_lower_percentage
+  
+  maude_bins <- tibble(Bin = rep(c('upper', 'lower'), length(unique_exp)),  # Repeat 'upper' and 'lower' for each exp
+                       exp = rep(unique_exp, each = 2),  # Repeat each exp value twice for 'upper' and 'lower'
+                       binStartQ = ifelse(rep(c('upper', 'lower'), length(unique_exp)) == 'lower', 0.001, upper_bin_start),
+                       binEndQ = ifelse(rep(c('upper', 'lower'), length(unique_exp)) == 'lower', lower_bin_end, 0.999),
+                       fraction = binEndQ - binStartQ,
+                       binStartZ = qnorm(binStartQ),
+                       binEndZ = qnorm(binEndQ)) %>%
+    select(Bin, binStartQ, binEndQ, fraction, binStartZ, binEndZ, exp) %>%
+    as.data.frame()
+  
   if (isTRUE(run_maude_stage)) {
-    
-    unique_exp <- unique(maude_counts_df$exp)
-    maude_gene_stats_fpath <- file.path(rds_output_folder,
-                                        paste0("MAUDE_gene_stats", file_suffix))
-    maude_guide_stats_fpath <- file.path(rds_output_folder,
-                                         paste0("MAUDE_guide_stats", file_suffix))
-    # Define bin stats with 10% for lower/upper each
-    lower_bin_end = upper_lower_percentage
-    upper_bin_start = 1 - upper_lower_percentage
-    
-    maude_bins <- tibble(Bin = rep(c('upper', 'lower'), length(unique_exp)),  # Repeat 'upper' and 'lower' for each exp
-                         exp = rep(unique_exp, each = 2),  # Repeat each exp value twice for 'upper' and 'lower'
-                         binStartQ = ifelse(rep(c('upper', 'lower'), length(unique_exp)) == 'lower', 0.001, upper_bin_start),
-                         binEndQ = ifelse(rep(c('upper', 'lower'), length(unique_exp)) == 'lower', lower_bin_end, 0.999),
-                         fraction = binEndQ - binStartQ,
-                         binStartZ = qnorm(binStartQ),
-                         binEndZ = qnorm(binEndQ)) %>%
-      select(Bin, binStartQ, binEndQ, fraction, binStartZ, binEndZ, exp) %>%
-      as.data.frame()
-  
-  
-  
+
 
     maude_guide_stats <- findGuideHitsAllScreens(
       experiments = unique(maude_counts_df["exp"]),

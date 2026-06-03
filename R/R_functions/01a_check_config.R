@@ -77,8 +77,13 @@
 .validate_string <- function(option,
                              name,
                              required = TRUE,
-                             allow_empty = FALSE) {
+                             allow_empty = FALSE,
+                             allow_null = FALSE) {
   if (!required && .is_missing(option)) {
+    return(invisible(option))
+  }
+  
+  if (allow_null && is.null(option)) {
     return(invisible(option))
   }
   
@@ -487,6 +492,68 @@
   
   invisible(option)
 }
+
+.validate_numeric <- function(option,
+                              name,
+                              required = FALSE,
+                              min = -Inf,
+                              max = Inf,
+                              allow_na = FALSE) {
+  if (!required && .is_missing(option)) {
+    return(invisible(option))
+  }
+  
+  if (allow_na && length(option) == 1 && is.na(option)) {
+    return(invisible(option))
+  }
+  
+  if (!is.numeric(option) || length(option) != 1 || is.na(option)) {
+    .fail_input(name, option, "Expected a single numeric value.")
+  }
+  
+  if (option < min || option > max) {
+    .fail_input(
+      name,
+      option,
+      paste0("Expected a numeric value between ", min, " and ", max, ".")
+    )
+  }
+  
+  invisible(option)
+}
+
+.validate_numeric_vector <- function(option,
+                                     name,
+                                     required = FALSE,
+                                     min = -Inf,
+                                     max = Inf,
+                                     allow_empty = TRUE) {
+  if (!required && .is_missing(option)) {
+    return(invisible(option))
+  }
+  
+  if (allow_empty && length(option) == 0) {
+    return(invisible(option))
+  }
+  
+  if (!is.numeric(option)) {
+    .fail_input(name, option, "Expected a numeric vector.")
+  }
+  
+  if (any(is.na(option))) {
+    .fail_input(name, option, "Numeric vector must not contain NA values.")
+  }
+  
+  if (any(option < min | option > max)) {
+    .fail_input(
+      name,
+      option,
+      paste0("Expected all values to be between ", min, " and ", max, ".")
+    )
+  }
+  
+  invisible(option)
+}
 #-------------------------------------------------------------------------------
 # Option-specific validator map
 #-------------------------------------------------------------------------------
@@ -751,7 +818,58 @@
   
   consensus_explorative_venn_diagram = function(option, name) {
     .validate_logical(option, name)
-  }
+  },
+  
+  # Waterfall plot
+  plots_waterfall_mark_cntrl = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  plots_waterfall_mark_special = function(option, name) {
+    .validate_list_or_character(option, name, required = FALSE)
+  },
+  
+  plots_waterfall_mark_N_top_hits = function(option, name) {
+    .validate_integer(option, name, required = TRUE, min = 0)
+  },
+  
+  plots_waterfall_box_padding = function(option, name) {
+    .validate_numeric(option, name, required = TRUE, min = 0)
+  },
+  
+  plots_waterfall_no_text = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  plots_waterfall_signif_lines = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  plots_waterfall_mark_all_signif_level = function(option, name) {
+    .validate_numeric(option, name, required = FALSE, min = 0, max = 1, allow_na = TRUE)
+  },
+  
+  plots_waterfall_break_in_plot = function(option, name) {
+    .validate_numeric_vector(option, name, required = FALSE, min = 0)
+  },
+  
+  plots_waterfall_top_padding = function(option, name) {
+    .validate_numeric(option, name, required = TRUE, min = 0)
+  },
+  
+  plots_waterfall_custom_title = function(option, name) {
+    .validate_string(option, name, required = FALSE, allow_empty = TRUE, allow_null = TRUE)
+  },
+  
+  plots_waterfall_width = function(option, name) {
+    .validate_numeric(option, name, required = TRUE, min = 1)
+  },
+  
+  plots_waterfall_height = function(option, name) {
+    .validate_numeric(option, name, required = TRUE, min = 1)
+  },
+  
+  plots_waterfall_file_format = .validate_choice(c("png", "pdf", "svg"))
 )
 #-------------------------------------------------------------------------------
 # Cross-option / dependency validation
@@ -1031,12 +1149,12 @@ check_config_dependencies <- function(opt) {
   # data_type dependency
   #-----------------------------------------------------------------------------
   
-  if (identical(read_counting, "align_UMI_tools") &&
-      identical(opt$data_type, "reads")) {
+  if (isTRUE(opt$consensus_run) && identical(opt$start_with, "generate_plots")) {
     warning(
-      "`read_counting` is 'align_UMI_tools' but `data_type` is 'reads'. ",
-      "This may be valid if you intentionally want read-level output, but ",
-      "usually UMI-tools workflows are expected to produce UMI counts.",
+      "For `consensus` `run` is set to 'true' but `start_with` is 'generate_plots'. ",
+      "Consensus calling requires the pipeline to start with at least the MAUDE run.\n",
+      " -> Consesus Calling will be skipped! \nSet `start_with` to `MAUDE_analysis`",
+      " or earlier to actually run Consensus Calling.",
       call. = FALSE
     )
   }

@@ -75,75 +75,70 @@ run_count <- function(config_path, project_root_dir, cli_args){
     partition  = slurm_partition,
     array      = slurm_array,
     email      = slurm_email)
+
   #-----------------------------------------------------------------------------
   # Run Read Counting
-  #-----------------------------------------------------------------------------
-  count_df_long <- run_read_counting(
-    manifest = manifest,
-    manifest_output_path = manifest_output_path,
-    run_read_counting_stage = run_read_counting_stage,
-    slurm_settings = slurm_settings,
-    opt = opt,
-    project_root_dir = project_root_dir,
-    log_folder = log_folder
-  )
-  #-----------------------------------------------------------------------------
-  # Optional Violin Plots
-  #-----------------------------------------------------------------------------
-  #-----------------------------------------------------------------------------
-  # Prepare Data for MAUDE
-  #-----------------------------------------------------------------------------
+  #-----------------------------------------------------------------------------  
+  if (isTRUE(run_read_counting_stage) || isTRUE(run_maude_stage)){
+    count_df_long <- run_read_counting(
+      manifest = manifest,
+      manifest_output_path = manifest_output_path,
+      run_read_counting_stage = run_read_counting_stage,
+      slurm_settings = slurm_settings,
+      opt = opt,
+      project_root_dir = project_root_dir,
+      log_folder = log_folder
+    )
+  }
 
-  maude_counts_df <- run_prepare_data_for_MAUDE(
-    count_df_long = count_df_long,
-    opt = opt)
-  
-  #-----------------------------------------------------------------------------
-  # pre MAUDE plots
-  #-----------------------------------------------------------------------------
   #-----------------------------------------------------------------------------
   # Run MAUDE
   #-----------------------------------------------------------------------------
-  if (isTRUE(run_maude_stage)){log_info("Starting initial MAUDE run ...")}
-  
-  maude_results <- run_MAUDE(maude_counts_df = maude_counts_df,
-                             opt = opt,
-                             file_suffix = file_suffix,
-                             run_maude_stage = run_maude_stage,
-                             run_plots_stage = run_plots_stage)
-  #-----------------------------------------------------------------------------
-  # post MAUDE plots (Waterfall)
-  #-----------------------------------------------------------------------------
-  
-  #-----------------------------------------------------------------------------
-  # Exporting MAUDE results + Combine Replicates
-  #-----------------------------------------------------------------------------
   if (isTRUE(run_maude_stage)){
-  export_df <- handle_auto_combine_replicates_and_export(
-    file_info_suffix = file_info_suffix,
-    opt = opt
+    
+    # Prepare Data for MAUDE
+    maude_counts_df <- run_prepare_data_for_MAUDE(
+      count_df_long = count_df_long,
+      opt = opt)
+    
+    log_info("Starting initial MAUDE run ...")
+    
+    maude_results <- run_MAUDE(maude_counts_df = maude_counts_df,
+                               opt = opt,
+                               file_suffix = file_suffix,
+                               run_maude_stage = run_maude_stage,
+                               run_plots_stage = run_plots_stage)
+    
+    # Exporting MAUDE results + Combine Replicates
+    export_df <- handle_auto_combine_replicates_and_export(
+      file_info_suffix = file_info_suffix,
+      opt = opt
     )
-  }
-  #-----------------------------------------------------------------------------
-  # Finding Consensus Hits: MAUDE
-  #-----------------------------------------------------------------------------
-  if (isTRUE(opt$consensus_run)) {
-    consensus_results <- run_consensus_call(
-      maude_counts_df = maude_counts_df,
-      opt = opt,
-      run_maude_stage = run_maude_stage,
-      run_plots_stage = run_plots_stage,
-      n_reps = opt$consensus_n_reps,
-      high_confidence_fdr = opt$consensus_high_confidence_FDR_threshold,
-      high_confidence_hits_in_reps = opt$consensus_high_confidence_hits_in_X_reps,
-      explorative_fdr = opt$consensus_explorative_FDR_threshold,
-      explorative_hits_in_reps = opt$consensus_explorative_hits_in_X_reps
-    )
+    #-----------------------------------------------------------------------------
+    # Finding Consensus Hits: MAUDE
+    #-----------------------------------------------------------------------------
+    if (isTRUE(opt$consensus_run)) {
+      consensus_results <- run_consensus_call(
+        maude_counts_df = maude_counts_df,
+        opt = opt,
+        run_maude_stage = run_maude_stage,
+        run_plots_stage = run_plots_stage,
+        n_reps = opt$consensus_n_reps,
+        high_confidence_fdr = opt$consensus_high_confidence_FDR_threshold,
+        high_confidence_hits_in_reps = opt$consensus_high_confidence_hits_in_X_reps,
+        explorative_fdr = opt$consensus_explorative_FDR_threshold,
+        explorative_hits_in_reps = opt$consensus_explorative_hits_in_X_reps
+      )
+    }
   }
   
+  if(run_plots_stage){
+    log_info("Entering plotting stage...")
+    run_create_plots(opt = opt, file_info_suffix = file_info_suffix)
+    log_info("Finished plotting stage...")
+  }
     
-    
-    
+  log_info("DONE!")  
 }
 
 

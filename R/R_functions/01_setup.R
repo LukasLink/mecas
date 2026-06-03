@@ -274,7 +274,47 @@ config_to_user_opts <- function(config) {
       config$consensus$explorative$venn_diagram %||% FALSE,
     
     # Output naming
-    extra_suffix = config$output$extra_suffix %||% ""
+    extra_suffix = config$output$extra_suffix %||% "",
+    
+    # Waterfall plot
+    plots_waterfall_mark_cntrl =
+      config$plots$waterfall$mark_cntrl %||% TRUE,
+    
+    plots_waterfall_mark_special =
+      config$plots$waterfall$mark_special %||% NULL,
+    
+    plots_waterfall_mark_N_top_hits =
+      config$plots$waterfall$mark_N_top_hits %||% 3,
+    
+    plots_waterfall_box_padding =
+      config$plots$waterfall$box_padding %||% 0.8,
+    
+    plots_waterfall_no_text =
+      config$plots$waterfall$no_text %||% FALSE,
+    
+    plots_waterfall_signif_lines =
+      config$plots$waterfall$signif_lines %||% TRUE,
+    
+    plots_waterfall_mark_all_signif_level =
+      config$plots$waterfall$mark_all_signif_level %||% 0.05,
+    
+    plots_waterfall_break_in_plot =
+      config$plots$waterfall$break_in_plot %||% c(),
+    
+    plots_waterfall_top_padding =
+      config$plots$waterfall$top_padding %||% 0,
+    
+    plots_waterfall_custom_title =
+      config$plots$waterfall$custom_title %||% NULL,
+    
+    plots_waterfall_width =
+      config$plots$waterfall$width %||% 8,
+    
+    plots_waterfall_height =
+      config$plots$waterfall$height %||% 6,
+    
+    plots_waterfall_file_format =
+      config$plots$waterfall$file_format %||% "png"
   )
 }
 
@@ -468,6 +508,72 @@ project_setup <- function(project_root_dir,
   consensus_explorative_venn_diagram <-
     check_input(opt$consensus_explorative_venn_diagram,
                 "consensus_explorative_venn_diagram")
+
+  # Waterfall plot
+  plots_waterfall_mark_cntrl <- check_input(
+    opt$plots_waterfall_mark_cntrl,
+    "plots_waterfall_mark_cntrl"
+  )
+  
+  plots_waterfall_mark_special <- check_input(
+    opt$plots_waterfall_mark_special,
+    "plots_waterfall_mark_special"
+  )
+  
+  plots_waterfall_mark_N_top_hits <- check_input(
+    opt$plots_waterfall_mark_N_top_hits,
+    "plots_waterfall_mark_N_top_hits"
+  )
+  
+  plots_waterfall_box_padding <- check_input(
+    opt$plots_waterfall_box_padding,
+    "plots_waterfall_box_padding"
+  )
+  
+  plots_waterfall_no_text <- check_input(
+    opt$plots_waterfall_no_text,
+    "plots_waterfall_no_text"
+  )
+  
+  plots_waterfall_signif_lines <- check_input(
+    opt$plots_waterfall_signif_lines,
+    "plots_waterfall_signif_lines"
+  )
+  
+  plots_waterfall_mark_all_signif_level <- check_input(
+    opt$plots_waterfall_mark_all_signif_level,
+    "plots_waterfall_mark_all_signif_level"
+  )
+  
+  plots_waterfall_break_in_plot <- check_input(
+    opt$plots_waterfall_break_in_plot,
+    "plots_waterfall_break_in_plot"
+  )
+  
+  plots_waterfall_top_padding <- check_input(
+    opt$plots_waterfall_top_padding,
+    "plots_waterfall_top_padding"
+  )
+  
+  plots_waterfall_custom_title <- check_input(
+    opt$plots_waterfall_custom_title,
+    "plots_waterfall_custom_title"
+  )
+  
+  plots_waterfall_width <- check_input(
+    opt$plots_waterfall_width,
+    "plots_waterfall_width"
+  )
+  
+  plots_waterfall_height <- check_input(
+    opt$plots_waterfall_height,
+    "plots_waterfall_height"
+  )
+  
+  plots_waterfall_file_format <- check_input(
+    opt$plots_waterfall_file_format,
+    "plots_waterfall_file_format"
+  )
   
   check_config_dependencies(opt)
   #=============================================================================

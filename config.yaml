@@ -20,7 +20,7 @@ run:
   #   - "read_counting"         : start with the read counting step
   #   - "MAUDE_analysis"        : start with running MAUDE 
   #   - "generate_plots"        : start with creating the plots (see plots options further below)
-  start_with: "beginning"
+  start_with: "generate_plots"
   
   # Decides if we are running on a local machine or a slurm cluster
   # When running on a slurm cluster the the slurm section of this yaml (further below)
@@ -33,8 +33,8 @@ run:
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/cli_count_test_align"
-  output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align"
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/cli_count_test_align"
+  # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align"
   
   # Mandatory input directory for fastq files
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/bcwithqc_test_fastqs_1"
@@ -85,7 +85,7 @@ slurm:
   qos: "normal"
   cpus: 10              # cpus per task
   mem: "80g"            # memory allocated to each Job
-  wall_time: "72:00:00" # Time-out limit before process is killed. hours:minutes:seconds
+  wall_time: "4:00:00" # Time-out limit before process is killed. hours:minutes:seconds
   partition: null       # Specific partition
   array: 12             # Resources consumed = Base_Resources * array 
                         # Runtime = Base_runtime / array 
@@ -294,3 +294,24 @@ output:
   # Optional suffix added to output files/folders.
   # Useful for distinguishing different parameter runs.
   extra_suffix: ""
+# ------------------------------------------------------------------------------
+# Plotting options
+# ------------------------------------------------------------------------------  
+plots:
+
+  waterfall:
+  
+    mark_cntrl: true
+    mark_special: null       # or ["AHSA1", "AGO2"]
+    mark_N_top_hits: 3
+    box_padding: 0.8
+    no_text: false
+    signif_lines: true
+    mark_all_signif_level: 0.05 # FDR that is marked as significant e.g. 0.05
+    break_in_plot: []        # e.g. [22, 70]
+    top_padding: 0
+    custom_title: null
+
+    width: 8
+    height: 6
+    file_format: "png"
