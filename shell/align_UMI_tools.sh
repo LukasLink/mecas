@@ -315,18 +315,39 @@ run_umi_extraction_one_sample() {
 
   log "Finished UMI extraction for $sample_name"
 }
+check_fastq_nonempty_and_readable() {
+  local fastq="$1"
+  local sample_name="$2"
 
+  [[ -s "$fastq" ]] || die "FASTQ is empty for $sample_name: $fastq"
+
+  if ! /bin/gzip -t "$fastq"; then
+    die "FASTQ gzip integrity check failed for $sample_name: $fastq"
+  fi
+
+  local n_lines
+  n_lines=$(/bin/gzip -cd "$fastq" | head -n 4000 | wc -l)
+
+  if (( n_lines == 0 )); then
+    die "FASTQ decompresses to zero lines for $sample_name: $fastq"
+  fi
+}
 run_star_mapping_one_sample() {
   local sample_name="$1"
   local input_fastq="$2"
 
+  local gzip_path
+  gzip_path="$(command -v gzip)" || die "gzip not found on PATH"
+
   log "Starting STAR mapping for $sample_name"
   log "  input: $input_fastq"
+  log "  gzip: $gzip_path"
+  log "  zcat: $(command -v zcat || true)"
 
   STAR \
     --runThreadN "$THREADS" \
     --genomeDir "$STAR_INDEX_FOLDER" \
-    --readFilesCommand zcat \
+    --readFilesCommand "$gzip_path" -cd \
     --readFilesIn "$input_fastq" \
     --outFileNamePrefix "$MAPPED/${sample_name}_" \
     --limitBAMsortRAM "$LIMIT_BAM_SORT_RAM" \
@@ -334,7 +355,23 @@ run_star_mapping_one_sample() {
 
   log "Finished STAR mapping for $sample_name"
 }
+check_star_input_reads() {
+  local sample_name="$1"
+  local log_file="$MAPPED/${sample_name}_Log.final.out"
 
+  [[ -f "$log_file" ]] || die "STAR final log missing for $sample_name: $log_file"
+
+  local input_reads
+  input_reads="$(awk -F'|' '/Number of input reads/ {gsub(/[ \t]/, "", $2); print $2}' "$log_file")"
+
+  if [[ -z "$input_reads" ]]; then
+    die "Could not parse STAR input reads for $sample_name from $log_file"
+  fi
+
+  if (( input_reads == 0 )); then
+    die "STAR processed 0 input reads for $sample_name. Likely decompression/readFilesCommand failure."
+  fi
+}
 run_bam_index_one_sample() {
   local bam_file="$1"
 
@@ -401,16 +438,19 @@ for (( sample_index=zero_based_task_index; sample_index<total_samples; sample_in
   run_umi_extraction_one_sample "$sample_name" "$qc_fastq"
 
   extracted_fastq="$UMI_EXTRACTED/${sample_name}.fastq.gz"
-
+  
   if [[ ! -f "$extracted_fastq" ]]; then
     die "UMI-extracted FASTQ does not exist for $sample_name: $extracted_fastq"
   fi
+  
+  check_fastq_nonempty_and_readable "$extracted_fastq" "$sample_name"
 
   # Map extracted/trimmed reads to STAR reference.
   purge_modules_if_needed
   load_module_if_needed "$STAR_MODULE"
   command -v STAR >/dev/null 2>&1 || die "STAR not found on PATH"
   run_star_mapping_one_sample "$sample_name" "$extracted_fastq"
+  check_star_input_reads "$sample_name"
 
   mapped_bam="$MAPPED/${sample_name}_Aligned.sortedByCoord.out.bam"
 
