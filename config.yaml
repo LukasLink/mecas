@@ -13,6 +13,14 @@ run:
   # If true, all results will be recomputed and saved.
   # If false, the pipeline will try to load existing results where possible.
   first_time: false
+  # Defines at which Stage the Pipeline begins, only relevant for count command.
+  # Assumes that there are results from previous pipeline runs. 
+  # Allowed values:
+  #   - "beginning"             : run entire pipeline start to finish
+  #   - "read_counting"         : start with the read counting step
+  #   - "MAUDE_analysis"        : start with running MAUDE 
+  #   - "generate_plots"        : start with creating the plots (see plots options further below)
+  start_with: "beginning"
   
   # Decides if we are running on a local machine or a slurm cluster
   # When running on a slurm cluster the the slurm section of this yaml (further below)
@@ -25,12 +33,12 @@ run:
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/cli_count_test"
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/library_making_test"
+  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/cli_count_test_align"
+  output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align"
   
   # Mandatory input directory for fastq files
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/bcwithqc_test_fastqs_1"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/1/HepG2_dual_rep_PA_subsample/subsample_10/QC_filtered/bcwithqc_test"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
@@ -43,7 +51,7 @@ paths:
   # Optional but recommended input_fastq_name_parser.xlsx
   # For matching file names to pipeline specific names. 
   # fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/input_fastq_name_table_template.xlsx"
-  fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/input_fastq_name_table_template.xlsx"
+  fastq_name_table_xlsx: ""
   # strict_file_match: true
   #   -> Every file in fastq_name_table_xlsx needs a match in input_folder 
   # strict_file_match: false
@@ -75,11 +83,11 @@ counting:
 slurm:
   account: "lsteinme"   # Name of the Slurm cluster account
   qos: "normal"
-  cpus: 1              # cpus per task
+  cpus: 10              # cpus per task
   mem: "80g"            # memory allocated to each Job
-  wall_time: "01:00:00" # Time-out limit before process is killed. hours:minutes:seconds
+  wall_time: "72:00:00" # Time-out limit before process is killed. hours:minutes:seconds
   partition: null       # Specific partition
-  array: 3             # Resources consumed = Base_Resources * array 
+  array: 12             # Resources consumed = Base_Resources * array 
                         # Runtime = Base_runtime / array 
                         # must be at least 1
   email: null           # E-Mail is sent to user when job starts, completes, or fails
@@ -90,7 +98,8 @@ slurm:
 # ------------------------------------------------------------------------------
 align_UMI_tools:
   # Regular expression used to extract UMIs from reads (see UMI tools documentation).
-  # Required only when UMI-based processing with align_UMI_tools read counting.
+  # Required only when read counting with align_UMI_tools.
+  # I recommend putting everything except your guide sequence and umi in discard blocks, and build the star_index accordingly.
   umi_regex: "^(?P<discard_1>.{0,5})(?P<umi_1>.{1})(?P<discard_2>(?:CTTGTGGAAAGGACGAAACACCG){e<=1})(?:[ACGTN]+?)(?P<discard_3>(?:GTTTAAGAGCTATGCTGGA){e<=1}.*)"
   # Example pattern for extracting UMIs from our HepG2 screen
   # "^(?P<discard_1>.{0,5})(?P<umi_1>.{10})(?P<discard_2>[AGC]{2})(?P<discard_3>GTGGAAAGGACGAAACACCG){e<=1}"
@@ -102,6 +111,9 @@ align_UMI_tools:
 # bcwithqc Options
 # ------------------------------------------------------------------------------
 bcwithqc:
+  # Path to bcwithqc, only necessary when bcwithqc is not on PATH. 
+  # Absolut path to executable is still recommended on clusters. run which bcwithqc on your cluster to find the path. 
+  bcwithqc_bin: "/home/link/.conda/envs/py313/bin/bcwithqc"
   # Path to a bcwithqc config.json file.
   # Required only when using bcwithqc for read counting.
   bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
@@ -129,7 +141,7 @@ modules:
 qc_filtering:
   # If true, FASTQ files are quality-filtered before read counting.
   # If false, the pipeline skips QC filtering.
-  run: true
+  run: false
 
   # Minimum base quality passed to `seqtk seq -q`.
   # Default: 20
@@ -255,8 +267,26 @@ filtering:
   # Minimum number of guides required per gene and replicate.
   # Use 0 to disable this filter.
   min_guides_per_gene: 0
+# ------------------------------------------------------------------------------
+# MAUDE consensus calling
+# ------------------------------------------------------------------------------
+# Due to subsampeling MAUDE has a small amount of internal randomness. 
+# This can be handled by consensus calling -> running MAUDE multiple times. 
+consensus:
+  run: true
+  n_reps: 19 # repetitions IN ADDITION to the inital MAUDE run
 
+  high_confidence:
+    FDR_threshold: 0.05
+    hits_in_X_reps: 16
+    correlation_heatmap: false # not currently implemented
+    venn_diagram: false # not currently implemented
 
+  explorative:
+    FDR_threshold: 0.05
+    hits_in_X_reps: 10
+    correlation_heatmap: false # not currently implemented
+    venn_diagram: false # not currently implemented
 # ------------------------------------------------------------------------------
 # Output naming
 # ------------------------------------------------------------------------------
