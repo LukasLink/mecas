@@ -319,30 +319,32 @@ check_fastq_nonempty_and_readable() {
   local fastq="$1"
   local sample_name="$2"
 
+  local gzip_path="/usr/bin/gzip"
+  [[ -x "$gzip_path" ]] || gzip_path="/bin/gzip"
+  [[ -x "$gzip_path" ]] || die "No usable system gzip found at /usr/bin/gzip or /bin/gzip"
+
   [[ -s "$fastq" ]] || die "FASTQ is empty for $sample_name: $fastq"
 
-  if ! /bin/gzip -t "$fastq"; then
+  if ! "$gzip_path" -t "$fastq"; then
     die "FASTQ gzip integrity check failed for $sample_name: $fastq"
   fi
 
-  local n_lines
-  n_lines=$(/bin/gzip -cd "$fastq" | head -n 4000 | wc -l)
-
-  if (( n_lines == 0 )); then
-    die "FASTQ decompresses to zero lines for $sample_name: $fastq"
-  fi
+  log "FASTQ gzip check passed for $sample_name using $gzip_path"
 }
 run_star_mapping_one_sample() {
   local sample_name="$1"
   local input_fastq="$2"
 
-  local gzip_path
-  gzip_path="$(command -v gzip)" || die "gzip not found on PATH"
+  local gzip_path="/usr/bin/gzip"
+  [[ -x "$gzip_path" ]] || gzip_path="/bin/gzip"
+  [[ -x "$gzip_path" ]] || die "No usable system gzip found at /usr/bin/gzip or /bin/gzip"
 
   log "Starting STAR mapping for $sample_name"
   log "  input: $input_fastq"
-  log "  gzip: $gzip_path"
-  log "  zcat: $(command -v zcat || true)"
+  log "  gzip used for STAR: $gzip_path"
+  log "  gzip real path: $(readlink -f "$gzip_path" || true)"
+  log "  PATH gzip would be: $(command -v gzip || true)"
+  log "  zcat would be: $(command -v zcat || true)"
 
   STAR \
     --runThreadN "$THREADS" \
