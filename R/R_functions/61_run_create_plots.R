@@ -12,8 +12,8 @@ run_create_plots <- function(opt, file_info_suffix) {
 
   run_count_violin_plots(
     count_df_long = loaded_results$count_df_long,
-    opt = opt
-    # y_limit = opt$plots_count_violin_y_limit
+    opt = opt,
+    y_limit = opt$plots_violin_y_limit
   )
 
   run_maude_qc_plots(
@@ -23,13 +23,9 @@ run_create_plots <- function(opt, file_info_suffix) {
     input_recovery = isTRUE(opt$recover_input)
   )
   
-  # if (isTRUE(opt$plots_qc_run)) {
-  #   create_qc_plots(
-  #     count_df_long = count_df_long,
-  #     opt = opt
-  #   )
-  # }
-  # 
+  run_waterfall_plot(
+    opt = opt
+  )
   logger::log_info("Finished plot generation.")
   
   invisible(TRUE)

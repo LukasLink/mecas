@@ -820,6 +820,11 @@
     .validate_logical(option, name)
   },
   
+  # Violin plot
+  plots_violin_y_limit = function(option, name){
+    .validate_integer(option, name, min = 1)
+  },
+  
   # Waterfall plot
   plots_waterfall_mark_cntrl = function(option, name) {
     .validate_logical(option, name)

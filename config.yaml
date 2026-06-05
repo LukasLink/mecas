@@ -20,7 +20,7 @@ run:
   #   - "read_counting"         : start with the read counting step
   #   - "MAUDE_analysis"        : start with running MAUDE 
   #   - "generate_plots"        : start with creating the plots (see plots options further below)
-  start_with: "generate_plots"
+  start_with: "beginning"
   
   # Decides if we are running on a local machine or a slurm cluster
   # When running on a slurm cluster the the slurm section of this yaml (further below)
@@ -33,12 +33,12 @@ run:
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/cli_count_test_align"
-  # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align"
+  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align"
+  output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
   
   # Mandatory input directory for fastq files
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/bcwithqc_test_fastqs_1"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
@@ -68,7 +68,7 @@ counting:
   #   - "align_UMI_tools" (This will use simple STAR alignment to count reads,
   #                        and UMI-tools to identify UMIs (requires regex expression)
   #                       )
-  read_counting: "align_UMI_tools"
+  read_counting: "bcwithqc"
 
   # Type of count data used downstream.
   # Allowed values:
@@ -85,7 +85,7 @@ slurm:
   qos: "normal"
   cpus: 10              # cpus per task
   mem: "80g"            # memory allocated to each Job
-  wall_time: "4:00:00" # Time-out limit before process is killed. hours:minutes:seconds
+  wall_time: "60:00:00" # Time-out limit before process is killed. hours:minutes:seconds
   partition: null       # Specific partition
   array: 12             # Resources consumed = Base_Resources * array 
                         # Runtime = Base_runtime / array 
@@ -299,6 +299,10 @@ output:
 # ------------------------------------------------------------------------------  
 plots:
 
+  read_count_violin:
+    
+    violin_y_limit: 8000 # limit for the Y axis: Number of reads per sgRNA
+    
   waterfall:
   
     mark_cntrl: true

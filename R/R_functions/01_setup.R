@@ -277,6 +277,10 @@ config_to_user_opts <- function(config) {
     extra_suffix = config$output$extra_suffix %||% "",
     
     # Waterfall plot
+    plots_violin_y_limit =
+      config$plots$read_count_violin$violin_y_limit %||% 8000,
+    
+    # Waterfall plot
     plots_waterfall_mark_cntrl =
       config$plots$waterfall$mark_cntrl %||% TRUE,
     
@@ -508,7 +512,12 @@ project_setup <- function(project_root_dir,
   consensus_explorative_venn_diagram <-
     check_input(opt$consensus_explorative_venn_diagram,
                 "consensus_explorative_venn_diagram")
-
+  # Waterfall plot
+  plots_violin_y_limit <- check_input(
+    opt$plots_violin_y_limit,
+    "plots_violin_y_limit"
+    )
+  
   # Waterfall plot
   plots_waterfall_mark_cntrl <- check_input(
     opt$plots_waterfall_mark_cntrl,
