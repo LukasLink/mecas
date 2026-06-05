@@ -3,83 +3,22 @@ title: "comparing_results"
 author: "Lukas"
 date: "2025-12-04"
 output: html_document
+params:
+  config: null
 ---
 
 ```{r setup, include=FALSE}
-#===============================================================================
-# User Options (can be overrided via CLI)
-#===============================================================================
- 
-user_opts <- list(
-  # first_time will save all results, if FALSE will try to load them
-  first_time = FALSE,
 
-  # Directories
-  # Mandatory output_folder
-  output_folder  = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA",
-  # optional folders for results from bcwithqcs bcwithqc
-  bcwithqc_rf_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/NB_EXP030/bcwithqc_read_filt",
-  bcwithqc_dir    = "",
-
-  # If any files are to be skipped list their names here
-  skip_list        = c(),  # individual files, example: c("I_L3_5", "U_L1_2")
-  skip_list_sublib = c(),  # entire sublibraries, example: c("L4","L5")
-  skip_list_sample = c(),  # entire sample numbers, example c("1", "24")
-
-  # Extra target list
-  include_controls_list = c("EGFP","AAVS1_9","AAVS1_13","AAVS1_18","AAVS1_19","AAVS1_25","AAVS1_35"),
-
-  # Only Specific controls (optional; only used if you set the IF to TRUE in your Rmd)
-  # use_only_these_controls_list = use_only_these_controls_list,
-
-  # Set Options for read_counting function
-  read_counting                = "align_UMI_tools",          # can be "bcwithqc", "bcwithqc_rf" or "align_UMI_tools"
-  data_type               = "reads",          # can be "reads" or "umis"
-  method                  = "",               # can be "rep", "rep_sample", "rep_sublib", or ""
-  # Method decides what should be treated as replicates in this experiment. 
-  norm_method             = "control_median", # can be "control_median" or ""
-  combine_for_guide_stats = "sample",         # can be "", "sample", or "sublib".
-  combine_for_gene_stats  = "none",           # can be "none", "all", "sample", or "sublib"
-  recover_input           = TRUE,             # boolean estimates missing input data
-  subsample_controls      = FALSE,            # boolean keeps 10% of control sgRNAs (introduces randomness)
-  use_custom_bins         = FALSE,            # boolean to use custom bin fractions
-
-  # Set Fractions for the upper and lower bins
-  upper_lower_percentage = 0.10,
-
-  # Custom suffix and optional simplified read filtering
-  # When extra suffix is set to rf or cf perfomrs simplified read filtering 
-  # for the targeting and control guides respecitvely. 
-  # I don't think this is useful in any scenario, and will most likely remove this. 
-  extra_suffix             = "",
-  simplified_rf_threshold  = 2000,
-  simplified_cf_threshold  = 2000,
-
-  # Are all the non-targeting control sgRNAs the same in all sublibraries/replicates?
-  same_controls_in_all_sublibraries = TRUE,
-
-  # Remove rows without any data
-  drop_0s                 = FALSE,  # boolean removes all guides with no UMIs/reads
-  strict_mode             = FALSE,  # boolean removes guides with a count of 0 in any bin
-  min_guides_per_gene     = 0,      # minimum guides required per gene (per replicate)
-  auto_combine_replicates = FALSE   # automatically combines replicas
-)
-
-if (FALSE){
-  user_opts$include_controls_list <- c()
-  use_only_these_controls_path <- "/g/steinmetz/link/Amplicon_barcode_analysis/Liangfu_iBeer_2/Liangfu_Non_targeting_sgRNA_list_Genomewide_Daniel Lib.csv"
-  use_only_these_controls_list <- read.csv(use_only_these_controls_path, header = FALSE, stringsAsFactors = FALSE)$V1
-} else {
-  if (exists("use_only_these_controls_list")) {
-    rm(use_only_these_controls_list)
-  }
-}  
 #===============================================================================
 # Run setup 
 #===============================================================================
-print(.libPaths()) # This is here for debugging purposes, can be commented out. 
 
+print(.libPaths()) # Debugging; can be commented out.
+
+#-------------------------------------------------------------------------------
 # Find a specific file by walking up parent directories
+#-------------------------------------------------------------------------------
+
 find_up_file <- function(start_dir, filename, max_up = 15) {
   d <- normalizePath(start_dir, mustWork = TRUE)
 
@@ -95,33 +34,199 @@ find_up_file <- function(start_dir, filename, max_up = 15) {
   stop("Could not find '", filename, "' searching upward from: ", start_dir)
 }
 
-# Now we find the location of the RMD file we are running
-# (Either data_analysis_with_MAUDE.rmd or compare_results.rmd)
+#-------------------------------------------------------------------------------
+# Determine project root
+#-------------------------------------------------------------------------------
+
+# Now we find the location of the Rmd file we are running.
+# This can be set externally via SOURCE_RMD.
 rmd_path <- Sys.getenv("SOURCE_RMD", unset = "")
+
 start_dir <- if (nzchar(rmd_path) && file.exists(rmd_path)) {
   dirname(normalizePath(rmd_path, mustWork = TRUE))
 } else {
   getwd()
 }
 
-# 1) If we are running from compare_results.rmd, we need to find the root_dir
+# Anchor file used to identify project root.
+# compare_results.Rmd should live next to, or below, data_analysis_with_MAUDE.Rmd.
 anchor_rmd <- find_up_file(start_dir, "data_analysis_with_MAUDE.Rmd", max_up = 1)
 
-# 2) The anchor's directory is the project root that contains the functions and
-# data subdirectory
+# The anchor's directory is the project root that contains functions/, config.yaml, etc.
 project_root_dir <- dirname(anchor_rmd)
 
-# 3) Source functions from there
+#-------------------------------------------------------------------------------
+# Load config.yaml
+#-------------------------------------------------------------------------------
+
+if (!requireNamespace("yaml", quietly = TRUE)) {
+  stop(
+    "The R package 'yaml' is required to read config.yaml.\n",
+    "Install it with: install.packages('yaml')"
+  )
+}
+
+# If params$config is provided, use it.
+# Otherwise, use config.yaml in project_root_dir and send a warning.
+if (!is.null(params$config) && !is.na(params$config) && nzchar(params$config)) {
+  config_path <- normalizePath(params$config, mustWork = TRUE)
+} else {
+  config_path <- file.path(project_root_dir, "config.yaml")
+
+  if (!file.exists(config_path)) {
+    stop(
+      "No config file was provided via params$config, and no default config.yaml ",
+      "was found in project_root_dir:\n",
+      config_path
+    )
+  }
+
+  warning(
+    "No config file was provided via params$config. ",
+    "Using default config.yaml from project_root_dir:\n",
+    config_path,
+    call. = FALSE
+  )
+
+  config_path <- normalizePath(config_path, mustWork = TRUE)
+}
+
+message("Using config file: ", config_path)
+
+config <- yaml::read_yaml(config_path)
+
+#-------------------------------------------------------------------------------
+# Helper for optional YAML fields
+#-------------------------------------------------------------------------------
+
+`%||%` <- function(x, y) {
+  if (is.null(x)) y else x
+}
+
+#-------------------------------------------------------------------------------
+# Convert config.yaml into legacy user_opts object
+#-------------------------------------------------------------------------------
+# This keeps the rest of the existing Rmd compatible with the previous setup.
+
+user_opts <- list(
+  # Run behavior
+  first_time = config$run$first_time %||% FALSE,
+
+  # Directories / paths
+  output_folder = config$paths$output_folder,
+  input_folder = config$paths$input_folder %||% "",
+  header_path = config$paths$header_path %||% "",
+  library_path = config$paths$library_path %||% "",
+
+  reference_fasta = config$paths$reference_fasta_path %||% "",
+  reference_fasta_path = config$paths$reference_fasta_path %||% "",
+  reference_gtf_path = config$paths$reference_gtf_path %||% "",
+
+  # Optional bcwithqc paths
+  bcwithqc_dir = config$bcwithqc$bcwithqc_dir %||% "",
+  bcwithqc_config_path = config$bcwithqc$bcwithqc_config_path %||% "",
+  bcwithqc_rf_folder = config$bcwithqc$bcwithqc_rf_folder %||% "",
+
+  # align_UMI_tools options
+  UMI_regex = config$align_UMI_tools$umi_regex %||% "",
+
+  # Skip lists
+  skip_list = config$skip$files %||% c(),
+  skip_list_sublib = config$skip$sublibraries %||% c(),
+  skip_list_sample = config$skip$samples %||% c(),
+
+  # Controls
+  include_controls_list = config$controls$include_controls %||% c(),
+  use_only_these_controls_list = config$controls$use_only_these_controls %||% c(),
+  same_controls_in_all_sublibraries =
+    config$controls$same_controls_in_all_sublibraries %||% TRUE,
+  subsample_controls = config$controls$subsample_controls %||% FALSE,
+
+  # Counting options
+  read_counting = config$counting$read_counting %||% "align_UMI_tools",
+  data_type = config$counting$data_type %||% "reads",
+
+  # Resources
+  n_threads = config$resources$n_threads %||% 1,
+  max_mem_bytes = config$resources$max_mem_bytes %||% NA,
+  genome_sa_index_n_bases = config$resources$genome_sa_index_n_bases %||% "",
+
+  # Replicates / grouping
+  method = config$replicates$method %||% "",
+  combine_for_guide_stats = config$replicates$combine_for_guide_stats %||% "sample",
+  combine_for_gene_stats = config$replicates$combine_for_gene_stats %||% "none",
+  auto_combine_replicates = config$replicates$auto_combine_replicates %||% FALSE,
+
+  # Normalization / bins
+  norm_method = config$normalization$norm_method %||% "control_median",
+  recover_input = config$normalization$recover_input %||% TRUE,
+  use_custom_bins = config$normalization$use_custom_bins %||% FALSE,
+  upper_lower_percentage = config$normalization$upper_lower_percentage %||% 0.10,
+
+  # Filtering
+  drop_0s = config$filtering$drop_0s %||% FALSE,
+  strict_mode = config$filtering$strict_mode %||% FALSE,
+  min_guides_per_gene = config$filtering$min_guides_per_gene %||% 0,
+
+  # Output naming
+  extra_suffix = config$output$extra_suffix %||% ""
+)
+
+#-------------------------------------------------------------------------------
+# Optional: handle use_only_these_controls
+#-------------------------------------------------------------------------------
+# If config$controls$use_only_these_controls contains entries, use them.
+# Otherwise, remove the object to preserve old downstream behavior.
+
+if (length(user_opts$use_only_these_controls_list) > 0) {
+  use_only_these_controls_list <- user_opts$use_only_these_controls_list
+} else {
+  if (exists("use_only_these_controls_list")) {
+    rm(use_only_these_controls_list)
+  }
+}
+
+#-------------------------------------------------------------------------------
+# Optional: save the config that was actually used
+#-------------------------------------------------------------------------------
+
+if (!is.null(user_opts$output_folder) && nzchar(user_opts$output_folder)) {
+  dir.create(user_opts$output_folder, recursive = TRUE, showWarnings = FALSE)
+
+  used_config_name <- if (nzchar(user_opts$extra_suffix)) {
+    paste0("used_config_compare_", user_opts$extra_suffix, ".yaml")
+  } else {
+    "used_config_compare.yaml"
+  }
+
+  used_config_path <- file.path(user_opts$output_folder, used_config_name)
+  file.copy(config_path, used_config_path, overwrite = TRUE)
+}
+
+#-------------------------------------------------------------------------------
+# Source pipeline functions
+#-------------------------------------------------------------------------------
+
 source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
 
-project_setup(project_root_dir,
-              user_opts,
-              use_old_suffix_construction = TRUE)
-# The old_suffix is here so I don't run into compatibility issues with my
-# already analysed data. Should be removed in the future. 
+#-------------------------------------------------------------------------------
+# Run setup
+#-------------------------------------------------------------------------------
+
+project_setup(
+  project_root_dir,
+  user_opts,
+  use_old_suffix_construction = TRUE,
+  parse_cli = FALSE
+)
+
+# The old_suffix is here so I don't run into compatibility issues with already
+# analysed data. Should be removed in the future.
 
 ################################################################################
-############# LOAD COMPARISION SPECIFIC LIBS ###################################
+############# LOAD COMPARISON SPECIFIC LIBS #####################################
+################################################################################
+
 library(VennDiagram)
 library(grid)
 library(gridExtra)
@@ -1149,6 +1254,174 @@ ggplot(plot_df, aes(x = group, y = wrong_perc, fill = group)) +
   theme_bw() +
   theme(legend.position = "none")
 ``` 
+
+``` {r compare_bcwithqc_vs_align_UMI_tools, eval=FALSE}
+plot_mapping_qc_boxes <- function(xlsx_paths, sample_names, output_dir = NULL) {
+  
+  stopifnot(length(xlsx_paths) == length(sample_names))
+
+  cols_to_plot <- c(
+    "correct_reads",
+    "correct_perc",
+    "wrong_reads",
+    "wrong_perc",
+    "coverage"
+  )
+
+  # Colours are assigned in pairs:
+  # xlsx 1/2 = light/dark blue
+  # xlsx 3/4 = light/dark red
+  # xlsx 5/6 = light/dark green
+  # etc.
+  paired_colours <- c(
+    "#9ecae1", "#08519c",  # light blue, dark blue
+    "#fcae91", "#a50f15",  # light red, dark red
+    "#a1d99b", "#006d2c",  # light green, dark green
+    "#dadaeb", "#54278f",  # light purple, dark purple
+    "#fdd0a2", "#a63603",  # light orange, dark orange
+    "#bdbdbd", "#252525"   # light grey, dark grey
+  )
+
+  if (length(xlsx_paths) > length(paired_colours)) {
+    stop(
+      "Not enough predefined colours for ",
+      length(xlsx_paths),
+      " input files. Please add more colours to paired_colours."
+    )
+  }
+
+  colour_df <- data.frame(
+    dataset = sample_names,
+    pair_colour = paired_colours[seq_along(sample_names)],
+    stringsAsFactors = FALSE
+  )
+
+  read_one_file <- function(path, name) {
+    df <- readxl::read_excel(path)
+
+    colnames(df) <- colnames(df) %>%
+      stringr::str_trim() %>%
+      stringr::str_replace_all("\\s+", "_") %>%
+      stringr::str_replace_all("-", "_") %>%
+      tolower()
+
+    missing_cols <- base::setdiff(cols_to_plot, colnames(df))
+    
+    if (length(missing_cols) > 0) {
+      stop(
+        "File ", path, " is missing columns: ",
+        paste(missing_cols, collapse = ", ")
+      )
+    }
+
+    df %>%
+      dplyr::select(dplyr::all_of(cols_to_plot)) %>%
+      dplyr::mutate(
+        dplyr::across(
+          c(correct_perc, wrong_perc, coverage),
+          ~ as.numeric(stringr::str_replace(as.character(.x), "%", ""))
+        ),
+        dplyr::across(
+          c(correct_reads, wrong_reads),
+          ~ as.numeric(.x)
+        )
+      ) %>%
+      dplyr::mutate(dataset = name)
+  }
+
+  all_data <- purrr::map2_dfr(xlsx_paths, sample_names, read_one_file) %>%
+    dplyr::left_join(colour_df, by = "dataset") %>%
+    dplyr::mutate(dataset = factor(dataset, levels = sample_names))
+
+  plot_data <- all_data %>%
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(cols_to_plot),
+      names_to = "metric",
+      values_to = "value"
+    )
+
+  pretty_names <- c(
+    correct_reads = "Correct reads",
+    correct_perc  = "Correct reads [%]",
+    wrong_reads   = "Wrong reads",
+    wrong_perc    = "Wrong reads [%]",
+    coverage      = "sgRNA Coverage [%]"
+  )
+
+  plots <- list()
+
+  for (metric_name in cols_to_plot) {
+    p <- plot_data %>%
+      dplyr::filter(metric == metric_name) %>%
+      ggplot2::ggplot(
+        ggplot2::aes(
+          x = dataset,
+          y = value,
+          fill = pair_colour
+        )
+      ) +
+      ggplot2::geom_boxplot(outlier.shape = NA) +
+      ggplot2::geom_jitter(
+        ggplot2::aes(color = pair_colour),
+        width = 0.15,
+        alpha = 0.5,
+        size = 1
+      ) +
+      ggplot2::scale_fill_identity() +
+      ggplot2::scale_color_identity() +
+      ggplot2::labs(
+        x = NULL,
+        y = pretty_names[[metric_name]],
+        title = paste("align_UMI_tools vs. bcwithqc -", pretty_names[[metric_name]])
+      ) +
+      ggplot2::theme_bw() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        plot.title = ggplot2::element_text(hjust = 0.5)
+      )
+
+    plots[[metric_name]] <- p
+
+    if (!is.null(output_dir)) {
+      dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+      ggplot2::ggsave(
+        filename = file.path(output_dir, paste0(metric_name, "_boxplot.pdf")),
+        plot = p,
+        width = 6,
+        height = 4
+      )
+    }
+  }
+
+  for (p in plots) {
+    print(p)
+  }
+
+  return(plots)
+}
+
+xlsx_files <- c(
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx"
+)
+
+names <- c(
+  "DCA align",
+  "DCA bcwithqc",
+  "PA align",  
+  "PA bcwithqc"
+)
+
+plots <- plot_mapping_qc_boxes(
+  xlsx_paths = xlsx_files,
+  sample_names = names,
+  output_dir = "qc_boxplots"
+)
+
+```
 
 ``` {r compare_helper_functions, eval=TRUE}
 # Helper function to apply FDR filter
