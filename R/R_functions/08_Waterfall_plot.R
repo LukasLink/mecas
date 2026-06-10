@@ -65,7 +65,7 @@ plot_significance_by_rank <- function(Hits_df,
                xmax = x_max_box,
                ymin = y_center2 - box_height / 2,
                ymax = y_center2 + box_height / 2,
-               fill = "white", color = "black", size = 0.3) +
+               fill = "white", color = "black", linewidth = 0.3) +
       annotate("point",
                x = x_min_box + 200,
                y = y_center2,
@@ -95,7 +95,7 @@ plot_significance_by_rank <- function(Hits_df,
                  xmax = x_max_box,
                  ymin = y_center1 - box_height / 2,
                  ymax = y_center1 + box_height / 2,
-                 fill = "white", color = "black", size = 0.3) +
+                 fill = "white", color = "black", linewidth = 0.3) +
         annotate("point",
                  x = x_min_box + 200,
                  y = y_center1,
