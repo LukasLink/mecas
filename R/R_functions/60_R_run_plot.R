@@ -1,29 +1,23 @@
 # run_plot.R
 
-run_plot <- function(config_path, project_root_dir, cli_args){
-  #-----------------------------------------------------------------------------
-  # Run setup
-  #-----------------------------------------------------------------------------
-  message("Begining Project setup...")
+run_plot <- function(config_path, project_root_dir, cli_args) {
+  message("Beginning Project setup...")
   
-  config <- yaml::read_yaml(config_path)
-  # Priority explicit overrides > Rmd params > config.yaml
-  project_setup(
+  cfg <- project_setup(
     project_root_dir = project_root_dir,
     config_path = config_path,
-    setup_mode = "count",
+    setup_mode = "plot",
     use_old_suffix_construction = FALSE
   )
-  run_prepare_inputs_stage <- should_run_stage(opt$start_with, "beginning")
-  run_read_counting_stage  <- should_run_stage(opt$start_with, "read_counting")
-  run_maude_stage          <- should_run_stage(opt$start_with, "MAUDE_analysis")
-  run_plots_stage          <- should_run_stage(opt$start_with, "generate_plots")
   
   logger::log_info("Finished Project setup.")
-  #-----------------------------------------------------------------------------
-  # Run plot
-  #-----------------------------------------------------------------------------
-  run_create_plots(opt = opt, file_info_suffix = file_info_suffix)
-
-  log_info("DONE!")  
+  
+  run_create_plots(
+    cfg = cfg,
+    file_info_suffix = cfg$suffix$file_info_suffix
+  )
+  
+  logger::log_info("DONE!")
+  
+  invisible(cfg)
 }

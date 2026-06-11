@@ -256,3 +256,19 @@ plot_significance_by_rank <- function(Hits_df,
   }
   return(p)
 }
+
+plot_significance_by_rank_from_cfg <- function(Hits_df, cfg) {
+  plot_significance_by_rank(
+    Hits_df = Hits_df,
+    mark_cntrl = cfg$plots$waterfall$mark_cntrl,
+    mark_special = cfg$plots$waterfall$mark_special,
+    mark_N_top_hits = cfg$plots$waterfall$mark_N_top_hits,
+    box_padding = cfg$plots$waterfall$box_padding,
+    no_text = cfg$plots$waterfall$no_text,
+    signif_lines = cfg$plots$waterfall$signif_lines,
+    mark_all_signif_level = cfg$plots$waterfall$mark_all_signif_level,
+    break_in_plot = cfg$plots$waterfall$break_in_plot,
+    top_padding = cfg$plots$waterfall$top_padding,
+    custom_title = cfg$plots$waterfall$custom_title
+  )
+}

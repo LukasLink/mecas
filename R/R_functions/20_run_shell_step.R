@@ -5,12 +5,10 @@
 
 run_shell_step <- function(step_name,
                            script_path,
-                           slurm_settings,
+                           cfg,
                            args = character(),
-                           machine = "local",
-                           log_dir = NULL,
-                           extra_slurm_sbatch_lines = character()
-                           ) {
+                           log_dir = cfg$paths$logs_folder,
+                           extra_slurm_sbatch_lines = character()) {
   
   if (!is.character(step_name) || length(step_name) != 1 || !nzchar(step_name)) {
     stop_log("`step_name` must be a single non-empty string.")
@@ -19,9 +17,12 @@ run_shell_step <- function(step_name,
   if (!file.exists(script_path)) {
     stop_log("Shell script does not exist: ", script_path)
   }
+  
+  machine <- cfg$run$machine
+  
   if (!machine %in% c("local", "slurm")) {
     stop_log(
-      "`machine` must be either 'local' or 'slurm'. Current value: ",
+      "`cfg$run$machine` must be either 'local' or 'slurm'. Current value: ",
       machine
     )
   }
@@ -47,11 +48,12 @@ run_shell_step <- function(step_name,
       script_path = script_path,
       args = args,
       log_dir = log_dir,
-      slurm_settings = slurm_settings,
+      cfg = cfg,
       extra_slurm_sbatch_lines = extra_slurm_sbatch_lines
     ))
   }
 }
+
 run_shell_step_local <- function(step_name,
                                  script_path,
                                  args = character(),
@@ -121,7 +123,7 @@ run_shell_step_slurm <- function(step_name,
                                  script_path,
                                  args = character(),
                                  log_dir,
-                                 slurm_settings,
+                                 cfg,
                                  extra_slurm_sbatch_lines) {
   
   args <- as.character(args)
@@ -129,14 +131,14 @@ run_shell_step_slurm <- function(step_name,
   
   dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
   
-  account   <- slurm_settings$account
-  qos       <- slurm_settings$qos
-  cpus      <- slurm_settings$cpus
-  mem       <- slurm_settings$mem
-  wall_time <- slurm_settings$wall_time
-  partition <- slurm_settings$partition
-  array     <- slurm_settings$array
-  email     <- slurm_settings$email
+  account   <- cfg$slurm$account
+  qos       <- cfg$slurm$qos
+  cpus      <- cfg$slurm$cpus
+  mem       <- cfg$slurm$mem
+  wall_time <- cfg$slurm$wall_time
+  partition <- cfg$slurm$partition
+  array     <- cfg$slurm$array
+  email     <- cfg$slurm$email
   
   stdout_log <- file.path(log_dir, paste0(step_name, "_slurm_%x_%A_%a.out.log"))
   stderr_log <- file.path(log_dir, paste0(step_name, "_slurm_%x_%A_%a.err.log"))
@@ -225,7 +227,7 @@ run_shell_step_slurm <- function(step_name,
   
   logger::log_info("Submitting SLURM shell step: {step_name}")
   logger::log_info("SBATCH script: {sbatch_script}")
-  logger::log_info("If slurm job fails please check the log in: {log_folder}")
+  logger::log_info("If SLURM job fails, please check the logs in: {log_dir}")
   
   sbatch_output <- system2(
     command = "sbatch",

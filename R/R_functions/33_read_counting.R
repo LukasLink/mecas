@@ -1,10 +1,11 @@
 run_read_counting <- function(manifest,
                               manifest_output_path,
                               run_read_counting_stage,
-                              opt,
-                              slurm_settings,
-                              project_root_dir,
-                              log_folder) {
+                              cfg,
+                              project_root_dir) {
+  
+  log_dir <- cfg$paths$log_folder %||% cfg$paths$logs_folder
+  # This is hopefully now a Chesterton’s fence, if I correctly renamed everything. 
   
   if (isTRUE(run_read_counting_stage)) {
     
@@ -12,11 +13,11 @@ run_read_counting <- function(manifest,
     # Run QC filtering
     #-----------------------------------------------------------------------------
     
-    if (opt$qc_filtering_run) {
+    if (isTRUE(cfg$qc_filtering$run)) {
       logger::log_info("Beginning QC filtering of reads...")
       
-      if (is.na(opt$qc_min_length) || is.null(opt$qc_min_length)) {
-        opt$qc_min_length <- infer_qc_min_length(
+      if (is.na(cfg$qc_filtering$min_length) || is.null(cfg$qc_filtering$min_length)) {
+        cfg$qc_filtering$min_length <- infer_qc_min_length(
           manifest = manifest,
           fastq_col = "symlink_file",
           n_lines = 10000
@@ -24,9 +25,9 @@ run_read_counting <- function(manifest,
       }
       
       manifest <- manifest %>%
-        mutate(
+        dplyr::mutate(
           qc_filtered_paths = file.path(
-            qc_filtered_folder,
+            cfg$paths$qc_filtered_folder,
             ensure_gz_suffix(symlink_file_basename)
           )
         )
@@ -42,18 +43,17 @@ run_read_counting <- function(manifest,
       run_shell_step(
         step_name = "QC_filtering",
         script_path = file.path(project_root_dir, "shell", "QC_filtering.sh"),
+        cfg = cfg,
         args = c(
           "--manifest", manifest_output_path,
-          "--output-dir", qc_filtered_folder,
-          "--min-qual", as.character(opt$qc_min_qual),
-          "--qual-offset", as.character(opt$qc_qual_offset),
-          "--min-length", as.character(opt$qc_min_length),
-          "--use-modules", if (opt$use_modules) "true" else "false",
-          "--seqtk-module", opt$seqtk_module
+          "--output-dir", cfg$paths$qc_filtered_folder,
+          "--min-qual", as.character(cfg$qc_filtering$min_qual),
+          "--qual-offset", as.character(cfg$qc_filtering$qual_offset),
+          "--min-length", as.character(cfg$qc_filtering$min_length),
+          "--use-modules", if (isTRUE(cfg$modules$use_modules)) "true" else "false",
+          "--seqtk-module", cfg$modules$seqtk
         ),
-        slurm_settings = slurm_settings,
-        machine = opt$machine,
-        log_dir = log_folder
+        log_dir = log_dir
       )
       
       logger::log_info("Finished QC filtering of reads.")
@@ -62,7 +62,7 @@ run_read_counting <- function(manifest,
       logger::log_info("Skipping QC filtering of reads.")
       
       manifest <- manifest %>%
-        mutate(qc_filtered_paths = symlink_file)
+        dplyr::mutate(qc_filtered_paths = symlink_file)
       
       write.table(
         manifest,
@@ -77,18 +77,20 @@ run_read_counting <- function(manifest,
     # Optional bcwithqc symlink creation
     #-----------------------------------------------------------------------------
     
-    if (identical(opt$read_counting, "bcwithqc")) {
+    if (identical(cfg$counting$read_counting, "bcwithqc")) {
       manifest <- prepare_bcwithqc_inputs(
         manifest = manifest,
-        output_symlink_dir = bcwithqc_symlinks_folder,
+        output_symlink_dir = cfg$paths$bcwithqc_symlinks_folder,
         overwrite_symlinks = TRUE,
         manifest_output_path = file.path(
-          bcwithqc_symlinks_folder,
+          cfg$paths$bcwithqc_symlinks_folder,
           "bcwithqc_symlink_manifest.tsv"
         )
       )
       
-      logger::log_info("Using bcwithqc FASTQ folder: {bcwithqc_symlinks_folder}")
+      logger::log_info(
+        "Using bcwithqc FASTQ folder: {cfg$paths$bcwithqc_symlinks_folder}"
+      )
     }
     
     #-----------------------------------------------------------------------------
@@ -103,55 +105,53 @@ run_read_counting <- function(manifest,
       row.names = FALSE
     )
     
-    limit_bam_sort_ram <- floor(slurm_mem_to_bytes(opt$slurm_mem) * 0.90)
+    limit_bam_sort_ram <- floor(slurm_mem_to_bytes(cfg$slurm$mem) * 0.90)
     
-    if (identical(opt$read_counting, "align_UMI_tools")) {
+    if (identical(cfg$counting$read_counting, "align_UMI_tools")) {
       logger::log_info("Launching read counting for align_UMI_tools...")
       
       run_shell_step(
         step_name = "align_UMI_tools",
         script_path = file.path(project_root_dir, "shell", "align_UMI_tools.sh"),
+        cfg = cfg,
         args = c(
           "--manifest", manifest_output_path,
-          "--output-dir", opt$output_folder,
-          "--star-index-folder", opt$star_index_folder,
-          "--data-type", opt$data_type,
-          "--umi-regex", opt$UMI_regex,
-          "--threads", as.character(opt$slurm_cpus),
+          "--output-dir", cfg$paths$output_folder,
+          "--star-index-folder", cfg$paths$star_index_folder,
+          "--data-type", cfg$counting$data_type,
+          "--umi-regex", cfg$align_UMI_tools$UMI_regex,
+          "--threads", as.character(cfg$slurm$cpus),
           "--limit-bam-sort-ram", as.character(limit_bam_sort_ram),
-          "--use-modules", if (isTRUE(opt$use_modules)) "true" else "false",
-          "--star-module", opt$star_module,
-          "--samtools-module", opt$samtools_module,
-          "--umi-tools-module", opt$umi_tools_module
+          "--use-modules", if (isTRUE(cfg$modules$use_modules)) "true" else "false",
+          "--star-module", cfg$modules$star,
+          "--samtools-module", cfg$modules$samtools,
+          "--umi-tools-module", cfg$modules$umi_tools
         ),
-        slurm_settings = slurm_settings,
-        machine = opt$machine,
-        log_dir = log_folder
+        log_dir = log_dir
       )
     }
     
-    if (identical(opt$read_counting, "bcwithqc")) {
+    if (identical(cfg$counting$read_counting, "bcwithqc")) {
       logger::log_info("Launching read counting for bcwithqc...")
       
       run_shell_step(
         step_name = "bcwithqc",
         script_path = file.path(project_root_dir, "shell", "run_bcwithqc.sh"),
+        cfg = cfg,
         args = c(
-          "--bcwithqc-bin", opt$bcwithqc_bin,
+          "--bcwithqc-bin", cfg$bcwithqc$bcwithqc_bin,
           "--manifest", manifest_output_path,
-          "--output-dir", opt$output_folder,
-          "--bcwithqc-config", opt$bcwithqc_config_path,
-          "--star-index-folder", opt$star_index_folder,
-          "--threads", as.character(opt$slurm_cpus),
+          "--output-dir", cfg$paths$output_folder,
+          "--bcwithqc-config", cfg$bcwithqc$bcwithqc_config_path,
+          "--star-index-folder", cfg$paths$star_index_folder,
+          "--threads", as.character(cfg$slurm$cpus),
           "--keep-intermediary", "false",
           "--existing-results-mode", "override",
           "--verbosity", "-vv",
-          "--use-modules", if (isTRUE(opt$use_modules)) "true" else "false",
-          "--star-module", opt$star_module
+          "--use-modules", if (isTRUE(cfg$modules$use_modules)) "true" else "false",
+          "--star-module", cfg$modules$star
         ),
-        slurm_settings = slurm_settings,
-        machine = opt$machine,
-        log_dir = log_folder,
+        log_dir = log_dir,
         extra_slurm_sbatch_lines = c("#SBATCH --constraint=avx512")
       )
     }
@@ -161,136 +161,178 @@ run_read_counting <- function(manifest,
   } else {
     
     logger::log_info(
-      "Skipping QC/read-counting stage because start_with is: {opt$start_with}"
+      "Skipping QC/read-counting stage because start_with is: {cfg$run$start_with}"
     )
   }
+  
+  #-----------------------------------------------------------------------------
+  # Read counts back into R
+  #-----------------------------------------------------------------------------
+  
   logger::log_info("Reading in read/UMI counts...")
   
-  if (identical(opt$read_counting, "bcwithqc")){
+  if (identical(cfg$counting$read_counting, "bcwithqc")) {
+    
     count_df_long <- process_bcwithqc_data(
-      data_type = data_type,
-      skip_list = skip_list)
-  } else if (identical(opt$read_counting, "align_UMI_tools")) {
-    if (identical(opt$data_type, "umis")){
-      count_df_long <- process_folder_files(dedup_output_folder,
-                                            skip_list = skip_list) #Add threshold df if thresholds should be applied 
+      cfg = cfg,
+      data_type = cfg$counting$data_type,
+      skip_list = cfg$skip$files
+    )
+    
+  } else if (identical(cfg$counting$read_counting, "align_UMI_tools")) {
+    
+    if (identical(cfg$counting$data_type, "umis")) {
+      count_df_long <- process_folder_files(
+        cfg = cfg,
+        folder_path = cfg$paths$dedup_output_folder,
+        skip_list = cfg$skip$files
+      )
     }
-    if (identical(opt$data_type, "reads")){
-      count_df_long <- process_folder_files(mapped_output_folder,
-                                            skip_list = skip_list) #Add threshold df if thresholds should be applied 
+    
+    if (identical(cfg$counting$data_type, "reads")) {
+      count_df_long <- process_folder_files(
+        cfg = cfg,
+        folder_path = cfg$paths$mapped_output_folder,
+        skip_list = cfg$skip$files
+      )
     }
+    
   } else {
-    stop(opt$read_counting, " is not a valid read_counting value. Exiting. read_counting must be 'bcwithqc' or 'align_UMI_tools'.")
+    stop(
+      cfg$counting$read_counting,
+      " is not a valid read_counting value. ",
+      "read_counting must be 'bcwithqc' or 'align_UMI_tools'.",
+      call. = FALSE
+    )
   }
-  logger::log_info("Finished Reading in read/UMI counts.")
+  
+  logger::log_info("Finished reading in read/UMI counts.")
   logger::log_info("sgRNAs aligned to the wrong sublibrary were excluded from the analysis.")
   
   #-----------------------------------------------------------------------------
-  # Optional count_df_long include_controls_list if use_only_these_controls_list is given
+  # Optional: use_only_these_controls / include_controls
   #-----------------------------------------------------------------------------
-  if (exists("use_only_these_controls_list")) {
-    if (length(use_only_these_controls_list) > 0){
-      # list of sgRNAs that were not targeting (before) and not in allowed controls
-      excluded_controls <- count_df_long %>%
-        filter(group_category != "targeting", !sgRNA %in% use_only_these_controls_list) %>%
-        distinct(sgRNA) %>%
-        pull(sgRNA)
-      
-      include_controls_list <- c(include_controls_list, excluded_controls)
-    }
+  
+  use_only_these_controls_list <- cfg$controls$use_only_these_controls %||% character()
+  include_controls_list <- cfg$controls$include_controls %||% character()
+  
+  if (length(use_only_these_controls_list) > 0) {
+    excluded_controls <- count_df_long %>%
+      dplyr::filter(
+        group_category != "targeting",
+        !sgRNA %in% use_only_these_controls_list
+      ) %>%
+      dplyr::distinct(sgRNA) %>%
+      dplyr::pull(sgRNA)
+    
+    include_controls_list <- c(include_controls_list, excluded_controls)
   }
-  if (length(include_controls_list) > 0){
-    for (control_gene in include_controls_list){
-      count_df_long$group_category[grepl(control_gene, count_df_long$sgRNA)] <- "targeting"
+  
+  if (length(include_controls_list) > 0) {
+    for (control_gene in include_controls_list) {
+      count_df_long$group_category[
+        grepl(control_gene, count_df_long$sgRNA)
+      ] <- "targeting"
     }
   }
   
   #-----------------------------------------------------------------------------
-  # Optional Combine either samples or sublibraries of the same condition. 
+  # Optional: combine samples or sublibraries of the same condition
   #-----------------------------------------------------------------------------
   
-  if (combine_for_guide_stats != ""){
-    if (combine_for_guide_stats == "sample"){
+  combine_for_guide_stats <- cfg$counting$combine_for_guide_stats %||% ""
+  
+  if (!identical(combine_for_guide_stats, "")) {
+    
+    if (identical(combine_for_guide_stats, "sample")) {
       count_df_long <- count_df_long %>%
-        group_by(sgRNA, sublib, condition) %>%
-        summarise(
-          # set sample name for the combined rows
+        dplyr::group_by(sgRNA, sublib, condition) %>%
+        dplyr::summarise(
           sample = "sample_1",
           count = sum(count, na.rm = TRUE),
           exp = dplyr::first(exp),
           group_category = dplyr::first(group_category),
-          
-          # keep one sublib/sgRNA (also fine even though they're grouping keys)
           .groups = "drop"
         )
     }
-    if (combine_for_guide_stats == "sublib"){
+    
+    if (identical(combine_for_guide_stats, "sublib")) {
       count_df_long <- count_df_long %>%
-        group_by(sgRNA, sample, condition) %>%
-        summarise(
+        dplyr::group_by(sgRNA, sample, condition) %>%
+        dplyr::summarise(
           sublib = "sublib_1",
           count = sum(count, na.rm = TRUE),
           exp = dplyr::first(exp),
           group_category = dplyr::first(group_category),
-          
-          # keep one sublib/sgRNA (also fine even though they're grouping keys)
           .groups = "drop"
-        )    
+        )
     }
   }
+  
   #-----------------------------------------------------------------------------
   # Make coverage file
   #-----------------------------------------------------------------------------
-  logger::log_info("Creating Coverage file for Read/UMI counts...")
-  df_cov <- parse_coverage_file(log_file)
   
-  mapping_results_df <- add_star_log_stats(df_cov)
+  logger::log_info("Creating coverage file for read/UMI counts...")
+  
+  df_cov <- parse_coverage_file(cfg$paths$log_file)
+  
+  mapping_results_df <- add_star_log_stats(
+    df = df_cov,
+    cfg = cfg
+  )
   
   rm(df_cov)
   
   overall_targeting <- count_df_long %>%
-    summarise(
-      total_counts     = sum(count, na.rm = TRUE),
+    dplyr::summarise(
+      total_counts = sum(count, na.rm = TRUE),
       targeting_counts = sum(count[group_category == "targeting"], na.rm = TRUE),
-      targeting_perc   = 100 * targeting_counts / total_counts
+      targeting_perc = 100 * targeting_counts / total_counts
     ) %>%
-    mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
+    dplyr::mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
   
   targeting_by_group <- count_df_long %>%
-    group_by(condition, sublib, sample) %>%
-    summarise(
-      total_counts     = sum(count, na.rm = TRUE),
+    dplyr::group_by(condition, sublib, sample) %>%
+    dplyr::summarise(
+      total_counts = sum(count, na.rm = TRUE),
       targeting_counts = sum(count[group_category == "targeting"], na.rm = TRUE),
-      targeting_perc   = 100 * targeting_counts / total_counts,
+      targeting_perc = 100 * targeting_counts / total_counts,
       .groups = "drop"
     ) %>%
-    mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
+    dplyr::mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
   
-  overall_targeting_merged <- merged_sgRNA_df %>%
-    summarise(
-      total_counts     = sum(count, na.rm = TRUE),
+  overall_targeting_merged <- cfg$merged_sgRNA_df %>%
+    dplyr::summarise(
+      total_counts = sum(count, na.rm = TRUE),
       targeting_counts = sum(count[!is.na(entrez)], na.rm = TRUE),
-      targeting_perc   = 100 * targeting_counts / total_counts
+      targeting_perc = 100 * targeting_counts / total_counts
     ) %>%
-    mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
+    dplyr::mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
   
-  
-  # ---- Write everything into ONE excel file as separate sheets ----
-  write_xlsx(
+  writexl::write_xlsx(
     list(
-      mapping_results          = mapping_results_df,
-      overall_targeting        = overall_targeting,
-      targeting_by_group       = targeting_by_group,
+      mapping_results = mapping_results_df,
+      overall_targeting = overall_targeting,
+      targeting_by_group = targeting_by_group,
       overall_targeting_reference = overall_targeting_merged
     ),
-    get_file_path(results_output_folder,
-                  paste0(file_info_suffix, "_mapping_results.xlsx"))
+    get_file_path(
+      cfg$paths$results_output_folder,
+      paste0(cfg$suffix$file_info_suffix, "_mapping_results.xlsx")
+    )
   )
   
-  logger::log_info("Finished Creating Coverage file for Read/UMI counts.")
-  logger::log_info(paste("The coverage file is:",
-                         get_file_path(results_output_folder,
-                                       paste0(file_info_suffix, "_mapping_results.xlsx"))))
+  logger::log_info("Finished creating coverage file for read/UMI counts.")
+  logger::log_info(
+    paste(
+      "The coverage file is:",
+      get_file_path(
+        cfg$paths$results_output_folder,
+        paste0(cfg$suffix$file_info_suffix, "_mapping_results.xlsx")
+      )
+    )
+  )
   
   return(count_df_long)
 }

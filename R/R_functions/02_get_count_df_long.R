@@ -2,10 +2,10 @@
 # get_count_df_long
 #===============================================================================
 read_file_to_df <- function(file_name,
-                            folder_path = dedup_output_folder,
+                            cfg,
+                            folder_path = cfg$paths$dedup_output_folder,
                             suffix_to_rm = "_dedup_idxstats.txt",
-                            check_alignments = TRUE
-) {
+                            check_alignments = TRUE) {
   
   file_path <- file.path(folder_path, file_name)
   df <- read.table(file_path, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
@@ -17,31 +17,15 @@ read_file_to_df <- function(file_name,
   df <- df %>% 
     dplyr::rename(sgRNA = V1, count = V3, length = V2) %>%
     dplyr::select(-V4) %>%
-    dplyr::mutate(
-      exp = exp
-    ) %>%
+    dplyr::mutate(exp = exp) %>%
     dplyr::filter(sgRNA != "*")
   
-  # ---------------------------------------------------------------------------
-  # Prepare library annotation table
-  # ---------------------------------------------------------------------------
-  # New expected behavior:
-  # merged_sgRNA_df should contain a `type` column with values:
-  #   - non_targeting_control
-  #   - targeting_control
-  #   - targeting
-  #
-  # Backward-compatible fallback:
-  # If `type` is missing, infer controls from sgRNA names using the old grep logic.
-  # ---------------------------------------------------------------------------
+  merged_sgRNA_df <- cfg$merged_sgRNA_df
   
   if ("type" %in% colnames(merged_sgRNA_df)) {
-    
     check_df <- merged_sgRNA_df %>%
       dplyr::select(sgrna_id, sublib, type)
-    
   } else {
-    
     logger::log_warn(
       paste0(
         "`merged_sgRNA_df` does not contain a `type` column. ",
@@ -62,7 +46,6 @@ read_file_to_df <- function(file_name,
       )
   }
   
-  # Optional but recommended: validate allowed type values
   allowed_types <- c(
     "non_targeting_control",
     "targeting_control",
@@ -81,16 +64,10 @@ read_file_to_df <- function(file_name,
     )
   }
   
-  # ---------------------------------------------------------------------------
-  # Join counts to library annotation
-  # ---------------------------------------------------------------------------
-  
   joined_df <- df %>%
     dplyr::left_join(check_df, by = c("sgRNA" = "sgrna_id"))
   
-  # Check for non-unique sgRNA in the result
   if (any(duplicated(joined_df$sgRNA))) {
-    
     logger::log_warn(
       "Non-unique `sgRNA` after join; redoing join with 1:1 pairing by order."
     )
@@ -105,29 +82,19 @@ read_file_to_df <- function(file_name,
       dplyr::mutate(.pair_id = dplyr::row_number()) %>%
       dplyr::ungroup()
     
-    joined_df <- df_idx %>%
+    df <- df_idx %>%
       dplyr::left_join(
         check_idx,
         by = c("sgRNA" = "sgrna_id", ".pair_id")
       ) %>%
       dplyr::select(-.pair_id)
-    
-    df <- joined_df
-    
   } else {
-    
     df <- joined_df
   }
   
-  # ---------------------------------------------------------------------------
-  # Alignment sanity checks
-  # ---------------------------------------------------------------------------
-  
   if (check_alignments == TRUE) {
-    
     logger::log_info("Checking wrong alignments for: {name}")
     
-    # Filter non-control rows with count > 0
     non_control_df <- df %>%
       dplyr::filter(type == "targeting", count > 0)
     
@@ -175,37 +142,28 @@ read_file_to_df <- function(file_name,
           )
         )
       }
-      
     } else {
       logger::log_info("  Correct aligned to sgRNAs in sublibrary:     0")
       logger::log_info("  Wrong aligned to sgRNAs not in sublibrary:   0")
     }
   }
   
-  # ---------------------------------------------------------------------------
-  # Filter to current sublibrary
-  # ---------------------------------------------------------------------------
-  
-  same_controls_in_all_sublibraries <- get(
-    "same_controls_in_all_sublibraries",
-    envir = .GlobalEnv
-  )
+  same_controls_in_all_sublibraries <-
+    cfg$controls$same_controls_in_all_sublibraries
   
   if (same_controls_in_all_sublibraries == TRUE) {
-    
     df <- df %>%
       dplyr::filter(
         sublib == sub_lib |
           type %in% c("non_targeting_control", "targeting_control")
       ) %>%
       dplyr::select(-sublib)
-    
   } else {
-    
     df <- df %>%
       dplyr::filter(sublib == sub_lib) %>%
       dplyr::select(-sublib)
   }
+  
   n_non_targeting_controls <- df %>%
     dplyr::filter(type == "non_targeting_control") %>%
     dplyr::pull(sgRNA) %>%
@@ -229,16 +187,13 @@ read_file_to_df <- function(file_name,
       )
     )
   }
+  
   if (check_alignments == TRUE) {
     logger::log_info(
       "sgRNA coverage: {round(sum(df$count > 0) / nrow(df) * 100, 2)}%"
     )
     logger::log_info("--------------------------------------------")
   }
-  
-  # ---------------------------------------------------------------------------
-  # group_category now comes from library type
-  # ---------------------------------------------------------------------------
   
   df <- df %>%
     dplyr::mutate(group_category = type) %>%
@@ -247,51 +202,50 @@ read_file_to_df <- function(file_name,
   return(df)
 }
 
-process_folder_files <- function(folder_path,
-                                 skip_list = c(),
-                                 check_alignments = TRUE){
+process_folder_files <- function(cfg,
+                                 folder_path = cfg$paths$dedup_output_folder,
+                                 skip_list = cfg$skip$files,
+                                 check_alignments = TRUE) {
   
-  data_type <- get("data_type", envir = .GlobalEnv)
+  data_type <- cfg$counting$data_type
   
-  # List all matching files in the folder
   if (data_type == "umis") {
     files <- list.files(
       folder_path,
       pattern = "^[ILU]_L\\d+_[^_]+_dedup_idxstats\\.txt$",
       full.names = TRUE
     )
-    
   } else if (data_type == "reads") {
     files <- list.files(
       folder_path,
       pattern = "^[ILU]_L\\d+_[^_]+_Aligned\\.sortedByCoord\\.out_idxstats\\.txt$",
       full.names = TRUE
     )
-    
   } else {
-    stop("Invalid data_type. data_type must be 'reads' or 'umis'")
+    stop("Invalid data_type. data_type must be 'reads' or 'umis'", call. = FALSE)
   }
   
-  
-  
-  # Read each file and combine them
-  combined_df <- bind_rows(lapply(files, function(file) {
-    # Extract the filename
+  combined_df <- dplyr::bind_rows(lapply(files, function(file) {
     file_name <- basename(file)
-    if (data_type == "umis"){
-      name <- sub("_dedup_idxstats.txt","",file_name)
-      # Extract condition (X), sublib (L#), and sample (#) using regex
-      matches <- str_match(file_name, "^([ILU])_L(\\d+)_([^_]+)_dedup_idxstats\\.txt$")
+    
+    if (data_type == "umis") {
+      name <- sub("_dedup_idxstats.txt", "", file_name)
+      matches <- stringr::str_match(
+        file_name,
+        "^([ILU])_L(\\d+)_([^_]+)_dedup_idxstats\\.txt$"
+      )
       suffix_to_remove <- "_dedup_idxstats.txt"
     }
-    if (data_type == "reads"){
-      name <- sub("_Aligned.sortedByCoord.out_idxstats.txt","",file_name)
-      # Extract condition (X), sublib (L#), and sample (#) using regex
-      matches <- str_match(file_name, "^([ILU])_L(\\d+)_([^_]+)_Aligned\\.sortedByCoord\\.out_idxstats\\.txt$")
+    
+    if (data_type == "reads") {
+      name <- sub("_Aligned.sortedByCoord.out_idxstats.txt", "", file_name)
+      matches <- stringr::str_match(
+        file_name,
+        "^([ILU])_L(\\d+)_([^_]+)_Aligned\\.sortedByCoord\\.out_idxstats\\.txt$"
+      )
       suffix_to_remove <- "_Aligned.sortedByCoord.out_idxstats.txt"
     }
     
-    # Skip entries from skip list
     skip_this_file <- any(vapply(skip_list, function(x) {
       if (startsWith(x, "re:")) {
         grepl(sub("^re:", "", x), name, perl = TRUE)
@@ -300,16 +254,16 @@ process_folder_files <- function(folder_path,
       }
     }, logical(1)))
     
-    if (skip_this_file){
-      print(paste(name, "skipped due to skip list"))
+    if (skip_this_file) {
+      logger::log_info("{name} skipped due to skip list")
       return(NULL)
     }
     
     if (is.na(matches[1])) {
-      stop(paste("Filename does not match expected pattern:", file_name))
+      stop("Filename does not match expected pattern: ", file_name, call. = FALSE)
     }
     
-    condition <- case_when(
+    condition <- dplyr::case_when(
       matches[2] == "I" ~ "input",
       matches[2] == "L" ~ "lower",
       matches[2] == "U" ~ "upper"
@@ -318,16 +272,21 @@ process_folder_files <- function(folder_path,
     sublib <- paste0("sublib_", matches[3])
     sample <- paste0("sample_", matches[4])
     
-    # Read the file using your existing function
-    df <- read_file_to_df(file_name = file_name,
-                          folder_path = folder_path,
-                          check_alignments = check_alignments,
-                          suffix_to_rm = suffix_to_remove)
+    df <- read_file_to_df(
+      file_name = file_name,
+      cfg = cfg,
+      folder_path = folder_path,
+      check_alignments = check_alignments,
+      suffix_to_rm = suffix_to_remove
+    )
     
-    # Add the new columns
     df <- df %>%
-      mutate(condition = condition, sublib = sublib, sample = sample) %>% 
-      select(-length)
+      dplyr::mutate(
+        condition = condition,
+        sublib = sublib,
+        sample = sample
+      ) %>%
+      dplyr::select(-length)
     
     return(df)
   }))
@@ -409,6 +368,7 @@ process_folder_files <- function(folder_path,
 .apply_bcwithqc_alignment_checks_and_filter <- function(df,
                                                         sub_lib,
                                                         name,
+                                                        cfg,
                                                         check_alignments = TRUE) {
   if (check_alignments == TRUE) {
     logger::log_info("Checking wrong alignments for: {name}")
@@ -460,17 +420,14 @@ process_folder_files <- function(folder_path,
           )
         )
       }
-      
     } else {
       logger::log_info("  Correct aligned to sgRNAs in sublibrary:     0")
       logger::log_info("  Wrong aligned to sgRNAs not in sublibrary:   0")
     }
   }
   
-  same_controls_in_all_sublibraries <- get(
-    "same_controls_in_all_sublibraries",
-    envir = .GlobalEnv
-  )
+  same_controls_in_all_sublibraries <-
+    cfg$controls$same_controls_in_all_sublibraries
   
   if (same_controls_in_all_sublibraries == TRUE) {
     df <- df %>%
@@ -520,7 +477,8 @@ process_folder_files <- function(folder_path,
 }
 
 read_bcwithqc_data <- function(dir_path,
-                               sgRNA_df = get("merged_sgRNA_df", envir = .GlobalEnv),
+                               cfg,
+                               sgRNA_df = cfg$merged_sgRNA_df,
                                sub_lib = NULL,
                                name = NULL,
                                check_alignments = TRUE) {
@@ -553,7 +511,6 @@ read_bcwithqc_data <- function(dir_path,
     stop("Missing bcwithqc matrix file: ", matrix_path, call. = FALSE)
   }
   
-  # Read the barcode sequences 
   barcode_seqs <- readr::read_tsv(
     barcodes_path,
     col_names = FALSE,
@@ -562,13 +519,12 @@ read_bcwithqc_data <- function(dir_path,
     dplyr::pull(1) %>%
     basename()
   
-  # Read the sparse feature x barcode matrix
   mat <- Matrix::readMM(matrix_path)
   
-  # Optional: convert to column-compressed sparse format, efficient for colSums()
   if (!inherits(mat, "CsparseMatrix")) {
     mat <- as(mat, "CsparseMatrix")
   }
+  
   barcode_counts <- Matrix::colSums(mat)
   
   if (length(barcode_counts) != length(barcode_seqs)) {
@@ -607,14 +563,16 @@ read_bcwithqc_data <- function(dir_path,
     df = df,
     sub_lib = sub_lib,
     name = name,
+    cfg = cfg,
     check_alignments = check_alignments
   )
 }
 
-process_bcwithqc_data <- function(parent_dir = get("bcwithqc_output_folder", envir = .GlobalEnv),
-                                  merged_sgRNA_df = get("merged_sgRNA_df", envir = .GlobalEnv),
-                                  data_type = get("data_type", envir = .GlobalEnv),
-                                  skip_list = c(),
+process_bcwithqc_data <- function(cfg,
+                                  parent_dir = cfg$paths$bcwithqc_output_folder,
+                                  merged_sgRNA_df = cfg$merged_sgRNA_df,
+                                  data_type = cfg$counting$data_type,
+                                  skip_list = cfg$skip$files,
                                   check_alignments = TRUE) {
   if (!(data_type %in% c("reads", "umis"))) {
     stop("Invalid data_type. data_type must be 'reads' or 'umis'", call. = FALSE)
@@ -640,7 +598,7 @@ process_bcwithqc_data <- function(parent_dir = get("bcwithqc_output_folder", env
     
     if (any(is.na(matches))) {
       logger::log_warn(
-        "Skipping bcwithqc folder with unexpected name: {folder_name}. Expected pattern exaamples:  I_L1_1, L_L2_R1, or U_L10_5."
+        "Skipping bcwithqc folder with unexpected name: {folder_name}. Expected pattern examples: I_L1_1, L_L2_R1, or U_L10_5."
       )
       next
     }
@@ -691,6 +649,7 @@ process_bcwithqc_data <- function(parent_dir = get("bcwithqc_output_folder", env
     df <- tryCatch({
       read_bcwithqc_data(
         dir_path = matrix_dir,
+        cfg = cfg,
         sgRNA_df = merged_sgRNA_df,
         sub_lib = sub_lib,
         name = name,
@@ -719,23 +678,32 @@ process_bcwithqc_data <- function(parent_dir = get("bcwithqc_output_folder", env
   
   dplyr::bind_rows(results)
 }
-normalize_count_df_long <- function(count_df_long, norm_method = "control_median"){
+
+
+normalize_count_df_long <- function(count_df_long,
+                                    norm_method = "control_median",
+                                    return_info = FALSE) {
   allowed_norm_methods <- c("control_median")
-  if (!(norm_method %in% allowed_norm_methods)){
+  
+  if (!(norm_method %in% allowed_norm_methods)) {
     cat("ERROR: ", norm_method, "is not an allowed normalization method.\n")
-    cat("Implemented normalization methods: ", allowed_norm_methods,"\n")
+    cat("Implemented normalization methods: ", allowed_norm_methods, "\n")
     stop()
   }
   
-  if (norm_method == "control_median"){
+  pseudocount_added <- FALSE
+  
+  if (norm_method == "control_median") {
     
-    # 1. Determine normalization factors based on control categories
     norm_fac <- count_df_long %>%
-      filter(group_category %in% c("targeting_control", "non_targeting_control", "kept_control")) %>%
-      group_by(condition, sublib, sample) %>%
-      summarise(norm_factor = median(count), .groups = "drop")
+      dplyr::filter(group_category %in% c(
+        "targeting_control",
+        "non_targeting_control",
+        "kept_control"
+      )) %>%
+      dplyr::group_by(condition, sublib, sample) %>%
+      dplyr::summarise(norm_factor = median(count), .groups = "drop")
     
-    # 2. Global median across all counts (entire dataset)
     med_count <- median(count_df_long$count)
     
     count_df_long_continue <- count_df_long
@@ -744,22 +712,28 @@ normalize_count_df_long <- function(count_df_long, norm_method = "control_median
       cat("WARNING: at least one normalization factor is 0\n")
       cat("Median of all counts:", med_count, "\n")
       
-      zero_nf <- norm_fac %>% 
-        filter(norm_factor == 0)
+      zero_nf <- norm_fac %>%
+        dplyr::filter(norm_factor == 0)
       
       if (!(nrow(zero_nf) == 0)) {
         cat("Groups with norm_factor == 0:\n")
-        print(norm_fac)# shows condition | sublib | sample | norm_factor
+        print(norm_fac)
         cat("Adding global pseudocount (+1).\n")
-        pseudocount_added <<- TRUE
         
-        count_df_long_plus_one <- count_df_long %>% mutate(count = count + 1)
+        pseudocount_added <- TRUE
+        
+        count_df_long_plus_one <- count_df_long %>%
+          dplyr::mutate(count = count + 1)
+        
         norm_fac <- count_df_long_plus_one %>%
-          filter(group_category %in% c("targeting_control", "non_targeting_control", "kept_control")) %>%
-          group_by(condition, sublib, sample) %>%
-          summarise(norm_factor = median(count), .groups = "drop")
+          dplyr::filter(group_category %in% c(
+            "targeting_control",
+            "non_targeting_control",
+            "kept_control"
+          )) %>%
+          dplyr::group_by(condition, sublib, sample) %>%
+          dplyr::summarise(norm_factor = median(count), .groups = "drop")
         
-        # 2. Global median across all counts (entire dataset) #
         med_count <- median(count_df_long_plus_one$count)
         
         count_df_long_continue <- count_df_long_plus_one
@@ -768,13 +742,22 @@ normalize_count_df_long <- function(count_df_long, norm_method = "control_median
       cat("--------------------------------------------\n")
     }
     
-    # 3. Normalize counts using (count * med_count / norm_factor)
     return_df <- count_df_long_continue %>%
-      inner_join(norm_fac, by = c("condition", "sublib", "sample")) %>%
-      mutate(norm_count = (count * med_count) / norm_factor) %>% 
-      mutate(count = round(norm_count,2)) %>%
-      select(-c(norm_factor,norm_count))
+      dplyr::inner_join(norm_fac, by = c("condition", "sublib", "sample")) %>%
+      dplyr::mutate(norm_count = (count * med_count) / norm_factor) %>%
+      dplyr::mutate(count = round(norm_count, 2)) %>%
+      dplyr::select(-c(norm_factor, norm_count))
   }
-  return_df <- return_df %>% mutate(count = round(count))
+  
+  return_df <- return_df %>%
+    dplyr::mutate(count = round(count))
+  
+  if (isTRUE(return_info)) {
+    return(list(
+      count_df_long = return_df,
+      pseudocount_added = pseudocount_added
+    ))
+  }
+  
   return(return_df)
 }

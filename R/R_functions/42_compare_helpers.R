@@ -356,7 +356,6 @@ compare_df_list <- function(df_list,
   sig_down_hits_df <- make_compare_df(df_list, name_list, FDR_threshold, significance_filter = -1)
   results_list <- list(all_hits_df, sig_up_hits_df, sig_down_hits_df)
   names(results_list) <- c("All_Hits", "Up_Hits" ,"Down_Hits")
-  names(results_list) <- c("All_Hits", "Up_Hits" ,"Down_Hits")
   signif_map <- list(
     All_Hits  = NULL,
     Up_Hits   = 1,

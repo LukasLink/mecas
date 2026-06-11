@@ -21,7 +21,7 @@ project_root_dir <- normalizePath(file.path(script_dir, ".."))
 cli_args <- commandArgs(trailingOnly = TRUE)
 
 if (length(cli_args) < 1) {
-  stop("plot requires a config file to be provided: Rscript R/cli_count.R <config.yaml>", call. = FALSE)
+  stop("plot requires a config file to be provided: Rscript R/cli_plot.R <config.yaml>", call. = FALSE)
 }
 if (!requireNamespace("yaml", quietly = TRUE)) {
   stop(

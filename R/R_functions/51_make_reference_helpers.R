@@ -89,11 +89,15 @@ slurm_mem_to_bytes <- function(mem) {
   parts <- regmatches(mem, match)[[1]]
   
   if (length(parts) == 0) {
-    stop("Could not parse slurm_mem: ", mem)
+    stop("Could not parse slurm_mem: ", mem, call. = FALSE)
   }
   
-  value <- as.numeric(parts[2])
+  value <- suppressWarnings(as.numeric(parts[2]))
   unit <- toupper(parts[3])
+  
+  if (is.na(value)) {
+    stop("Could not parse numeric value from slurm_mem: ", mem, call. = FALSE)
+  }
   
   multiplier <- if (unit == "") {
     1
@@ -105,7 +109,7 @@ slurm_mem_to_bytes <- function(mem) {
       G = 1024^3,
       T = 1024^4,
       P = 1024^5,
-      stop("Unsupported memory unit in slurm_mem: ", mem)
+      stop("Unsupported memory unit in slurm_mem: ", mem, call. = FALSE)
     )
   }
   

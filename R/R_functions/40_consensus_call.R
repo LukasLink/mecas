@@ -1,16 +1,18 @@
 run_consensus_call <- function(maude_counts_df,
-                               opt,
+                               cfg,
                                run_maude_stage,
-                               run_plots_stage,
-                               n_reps = 20,
-                               high_confidence_fdr = 0.05,
-                               high_confidence_hits_in_reps = 16,
-                               explorative_fdr = 0.05,
-                               explorative_hits_in_reps = 10) {
+                               run_plots_stage) {
+
+  
+  n_reps <- cfg$consensus$n_reps
+  high_confidence_fdr <- cfg$consensus$high_confidence$FDR_threshold
+  high_confidence_hits_in_reps <- cfg$consensus$high_confidence$hits_in_X_reps
+  explorative_fdr <- cfg$consensus$explorative$FDR_threshold
+  explorative_hits_in_reps <- cfg$consensus$explorative$hits_in_X_reps
   
   logger::log_info("Starting consensus MAUDE calling with {n_reps} replicate runs.")
   
-  base_file_suffix <- file_suffix
+  base_file_suffix <- cfg$suffix$file_suffix
   
   for (rep_i in seq_len(n_reps)) {
     
@@ -24,7 +26,7 @@ run_consensus_call <- function(maude_counts_df,
     
     run_MAUDE(
       maude_counts_df = maude_counts_df,
-      opt = opt,
+      cfg = cfg,
       file_suffix = rep_suffix,
       run_maude_stage = run_maude_stage,
       run_plots_stage = run_plots_stage
@@ -34,6 +36,7 @@ run_consensus_call <- function(maude_counts_df,
   logger::log_info("Finished MAUDE replicate runs. Starting high-confidence consensus call.")
   
   high_confidence_hits <- automate_calc_replicate_comparison(
+    cfg = cfg,
     FDR_threshold = high_confidence_fdr,
     hits_in_X_reps = high_confidence_hits_in_reps,
     correlation_heatmap = FALSE,
@@ -43,6 +46,7 @@ run_consensus_call <- function(maude_counts_df,
   logger::log_info("Starting explorative consensus call.")
   
   explorative_hits <- automate_calc_replicate_comparison(
+    cfg = cfg,
     FDR_threshold = explorative_fdr,
     hits_in_X_reps = explorative_hits_in_reps,
     correlation_heatmap = FALSE,
@@ -50,23 +54,23 @@ run_consensus_call <- function(maude_counts_df,
   )
   
   high_confidence_xlsx <- get_file_path(
-    results_output_folder,
-    paste0("Hits_high_confidence_", file_info_suffix, ".xlsx")
+    cfg$paths$results_output_folder,
+    paste0("Hits_high_confidence_", cfg$suffix$file_info_suffix, ".xlsx")
   )
   
   high_confidence_rds <- get_file_path(
-    rds_output_folder,
-    paste0("high_confidence_hits_", file_info_suffix, ".rds")
+    cfg$paths$rds_output_folder,
+    paste0("high_confidence_hits_", cfg$suffix$file_info_suffix, ".rds")
   )
   
   explorative_xlsx <- get_file_path(
-    results_output_folder,
-    paste0("Hits_explorative_", file_info_suffix, ".xlsx")
+    cfg$paths$results_output_folder,
+    paste0("Hits_explorative_", cfg$suffix$file_info_suffix, ".xlsx")
   )
   
   explorative_rds <- get_file_path(
-    rds_output_folder,
-    paste0("explorative_hits_", file_info_suffix, ".rds")
+    cfg$paths$rds_output_folder,
+    paste0("explorative_hits_", cfg$suffix$file_info_suffix, ".rds")
   )
   
   writexl::write_xlsx(high_confidence_hits$Hits_in_X_df, high_confidence_xlsx)
@@ -80,9 +84,7 @@ run_consensus_call <- function(maude_counts_df,
   
   logger::log_info("Calculating replicate means.")
   
-  replicate_means <- automate_calc_replicate_means(
-    rds_output_folder = rds_output_folder
-  )
+  replicate_means <- automate_calc_replicate_means(cfg = cfg)
   
   logger::log_info("Finished consensus calling.")
   

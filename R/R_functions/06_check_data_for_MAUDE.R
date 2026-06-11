@@ -145,15 +145,15 @@ control_sanity_check <- function(maude_counts_df, print = TRUE) {
 
 create_maude_qc_plot_objects <- function(count_df_long,
                                          maude_counts_df,
-                                         opt,
+                                         cfg,
                                          input_recovery = FALSE) {
   
-  if (identical(opt$data_type, "umis")) {
+  if (identical(cfg$counting$data_type, "umis")) {
     data_name <- "UMIs"
-  } else if (identical(opt$data_type, "reads")) {
+  } else if (identical(cfg$counting$data_type, "reads")) {
     data_name <- "reads"
   } else {
-    stop_log("`data_type` must be either 'umis' or 'reads'.")
+    stop_log("`counting.data_type` must be either 'umis' or 'reads'.")
   }
   
   if (isTRUE(input_recovery)) {
@@ -165,112 +165,131 @@ create_maude_qc_plot_objects <- function(count_df_long,
   }
   
   sample_sum_df <- count_df_long %>%
-    group_by(condition, exp) %>%
-    summarise(total_count = sum(count), .groups = "drop") %>%
-    mutate(Sample = interaction(condition, exp, drop = TRUE),
-           Bin = condition)
+    dplyr::group_by(condition, exp) %>%
+    dplyr::summarise(total_count = sum(count), .groups = "drop") %>%
+    dplyr::mutate(
+      Sample = interaction(condition, exp, drop = TRUE),
+      Bin = condition
+    )
   
-  p_sum_per_sample <- ggplot(sample_sum_df, aes(x = Sample, y = total_count, fill = Bin)) +
-    geom_col() +
-    labs(
+  p_sum_per_sample <- ggplot2::ggplot(
+    sample_sum_df,
+    ggplot2::aes(x = Sample, y = total_count, fill = Bin)
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::labs(
       title = paste("Sum of", data_name, "per sample"),
       x = "Sample",
       y = paste("Sum of", data_name)
     ) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-      axis.text.y = element_text(face = "bold"),
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, face = "bold"),
+      axis.text.y = ggplot2::element_text(face = "bold"),
       legend.position = "none"
     )
   
   sample_n_df <- count_df_long %>%
-    group_by(condition, exp) %>%
-    summarise(num_sgRNAs = n(), .groups = "drop") %>%
-    mutate(Sample = interaction(condition, exp, drop = TRUE),
-           Bin = condition)
+    dplyr::group_by(condition, exp) %>%
+    dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
+    dplyr::mutate(
+      Sample = interaction(condition, exp, drop = TRUE),
+      Bin = condition
+    )
   
-  p_n_per_sample <- ggplot(sample_n_df, aes(x = Sample, y = num_sgRNAs, fill = Bin)) +
-    geom_col() +
-    labs(
+  p_n_per_sample <- ggplot2::ggplot(
+    sample_n_df,
+    ggplot2::aes(x = Sample, y = num_sgRNAs, fill = Bin)
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::labs(
       title = paste("Number of sgRNA entries per sample", title_suffix_1),
       x = "Sample",
       y = "Number of sgRNA entries"
     ) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-      axis.text.y = element_text(face = "bold"),
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, face = "bold"),
+      axis.text.y = ggplot2::element_text(face = "bold"),
       legend.position = "none"
     )
   
   bin_n_before_df <- count_df_long %>%
-    group_by(condition) %>%
-    summarise(num_sgRNAs = n(), .groups = "drop") %>%
-    mutate(Bin = condition)
+    dplyr::group_by(condition) %>%
+    dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
+    dplyr::mutate(Bin = condition)
   
-  p_n_per_bin_before <- ggplot(bin_n_before_df, aes(x = Bin, y = num_sgRNAs, fill = Bin)) +
-    geom_col() +
-    labs(
+  p_n_per_bin_before <- ggplot2::ggplot(
+    bin_n_before_df,
+    ggplot2::aes(x = Bin, y = num_sgRNAs, fill = Bin)
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::labs(
       title = paste("Number of sgRNA entries per bin", title_suffix_1),
       x = "Bin",
       y = "sgRNA entries"
     ) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-      axis.text.y = element_text(face = "bold"),
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, face = "bold"),
+      axis.text.y = ggplot2::element_text(face = "bold"),
       legend.position = "none"
     )
   
   bin_n_after_df <- maude_counts_df %>%
-    summarise(
+    dplyr::summarise(
       input = sum(!is.na(input)),
       upper = sum(!is.na(upper)),
       lower = sum(!is.na(lower))
     ) %>%
-    pivot_longer(
-      cols = everything(),
+    tidyr::pivot_longer(
+      cols = dplyr::everything(),
       names_to = "Bin",
       values_to = "count_non_na"
     )
   
-  p_n_per_bin_after <- ggplot(bin_n_after_df, aes(x = Bin, y = count_non_na, fill = Bin)) +
-    geom_col() +
-    labs(
+  p_n_per_bin_after <- ggplot2::ggplot(
+    bin_n_after_df,
+    ggplot2::aes(x = Bin, y = count_non_na, fill = Bin)
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::labs(
       title = paste("Number of sgRNA entries per bin", title_suffix_2),
       x = "Bin",
       y = "Number of sgRNA entries"
     ) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-      axis.text.y = element_text(face = "bold"),
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, face = "bold"),
+      axis.text.y = ggplot2::element_text(face = "bold"),
       legend.position = "none"
     )
   
   bin_sum_after_df <- maude_counts_df %>%
-    summarise(
+    dplyr::summarise(
       input = sum(input, na.rm = TRUE),
       upper = sum(upper, na.rm = TRUE),
       lower = sum(lower, na.rm = TRUE)
     ) %>%
-    pivot_longer(
-      cols = everything(),
+    tidyr::pivot_longer(
+      cols = dplyr::everything(),
       names_to = "Bin",
       values_to = "total_count"
     )
   
-  p_sum_per_bin_after <- ggplot(bin_sum_after_df, aes(x = Bin, y = total_count, fill = Bin)) +
-    geom_col() +
-    labs(
+  p_sum_per_bin_after <- ggplot2::ggplot(
+    bin_sum_after_df,
+    ggplot2::aes(x = Bin, y = total_count, fill = Bin)
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::labs(
       title = paste("Sum of", data_name, "per bin"),
       x = "Bin",
       y = "Total counts"
     ) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
       legend.position = "none"
     )
   

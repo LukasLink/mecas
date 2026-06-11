@@ -1,11 +1,9 @@
 #===============================================================================
 # make coverage file
 #===============================================================================
+
 parse_coverage_file <- function(path) {
   lines <- readLines(path, warn = FALSE)
-
-  mapped_output_folder <- get("mapped_output_folder", envir = .GlobalEnv)
-  rds_output_folder <- get("rds_output_folder", envir = .GlobalEnv)
   
   block_start_pattern <- "Checking wrong alignments for:"
   
@@ -13,7 +11,10 @@ parse_coverage_file <- function(path) {
   start_idx <- grep(block_start_pattern, lines, fixed = TRUE)
   
   if (length(start_idx) == 0) {
-    stop("No sample blocks found. Expected lines containing: 'Checking wrong allignments for:'")
+    stop(
+      "No sample blocks found. Expected lines containing: 'Checking wrong alignments for:'",
+      call. = FALSE
+    )
   }
   
   # define block ends
@@ -60,7 +61,7 @@ parse_coverage_file <- function(path) {
       coverage      = paste0(sprintf("%.2f", coverage), "%"),
       stringsAsFactors = FALSE
     ) %>%
-      mutate(
+      dplyr::mutate(
         sample_name = sub(" ", "", sample_name)
       )
   })
@@ -68,13 +69,12 @@ parse_coverage_file <- function(path) {
   do.call(rbind, out)
 }
 
-add_star_log_stats <- function(df) {
+add_star_log_stats <- function(df, cfg) {
   
-  read_counting <- get("read_counting", envir = .GlobalEnv)
+  read_counting <- cfg$counting$read_counting
   
-  mapped_output_folder <- get("mapped_output_folder", envir = .GlobalEnv)
-  rds_output_folder <- get("rds_output_folder", envir = .GlobalEnv)
-  bcwithqc_output_folder <- get("bcwithqc_output_folder", envir = .GlobalEnv)
+  mapped_output_folder <- cfg$paths$mapped_output_folder
+  bcwithqc_output_folder <- cfg$paths$bcwithqc_output_folder
   
   # Map STAR log "labels" -> dataframe column names
   metrics_map <- c(
@@ -143,7 +143,6 @@ add_star_log_stats <- function(df) {
       }
       
     } else {
-      
       warning("Unknown read_counting mode: ", read_counting)
       log_path <- NA_character_
     }

@@ -1,4 +1,5 @@
 run_consensus_gsea <- function(file_info_suffix,
+                               cfg,
                                runs = 20,
                                consensus_threshold = 10,
                                go_enrichment = "BP") {
@@ -7,20 +8,26 @@ run_consensus_gsea <- function(file_info_suffix,
   
   for (i in seq_len(runs)) {
     
-    if (i == 1){
-      results_df <- add_info_wrapper(file_info_suffix)
+    if (i == 1) {
+      results_df <- add_info_wrapper(
+        suffix = file_info_suffix,
+        cfg = cfg
+      )
     } else {
-      file_info_suffix_rep <- paste0(file_info_suffix,"_rep",i-1)
-      results_df <- add_info_wrapper(file_info_suffix_rep)
+      file_info_suffix_rep <- paste0(file_info_suffix, "_rep", i - 1)
+      results_df <- add_info_wrapper(
+        suffix = file_info_suffix_rep,
+        cfg = cfg
+      )
     }
     
     geneList_Z <- results_df %>%
-      filter(!is.na(significanceZ), !is.na(entrez)) %>%
-      mutate(entrez = as.character(entrez)) %>%
-      group_by(entrez) %>%
-      mutate(score = significanceZ) %>%
-      arrange(desc(score)) %>%
-      { setNames(.$score, .$entrez) }
+      dplyr::filter(!is.na(significanceZ), !is.na(entrez)) %>%
+      dplyr::mutate(entrez = as.character(entrez)) %>%
+      dplyr::group_by(entrez) %>%
+      dplyr::mutate(score = significanceZ) %>%
+      dplyr::arrange(dplyr::desc(score)) %>%
+      { stats::setNames(.$score, .$entrez) }
     
     gsea <- clusterProfiler::gseGO(
       geneList      = geneList_Z,
@@ -37,30 +44,29 @@ run_consensus_gsea <- function(file_info_suffix,
       df$run <- i
       results_list[[i]] <- df
     }
+    
     cat(paste0(
       "Completed run ",
       i,
       " of ",
       runs,
-      " for consensus calling.\n"))
+      " for consensus calling.\n"
+    ))
   }
   
   all_results <- dplyr::bind_rows(results_list)
   
-  # Count occurrences
   counts <- all_results %>%
     dplyr::count(ID, name = "appearance_count")
   
-  # Keep first instance per GO term
   representatives <- all_results %>%
     dplyr::group_by(ID) %>%
     dplyr::slice(1) %>%
     dplyr::ungroup()
   
-  # Add counts
   all_terms <- representatives %>%
     dplyr::left_join(counts, by = "ID") %>%
-    dplyr::arrange(desc(appearance_count))
+    dplyr::arrange(dplyr::desc(appearance_count))
   
   consensus_terms <- all_terms %>%
     dplyr::filter(appearance_count >= consensus_threshold)
@@ -72,6 +78,7 @@ run_consensus_gsea <- function(file_info_suffix,
 }
 
 perform_pathway_analysis <- function(file_info_suffix,
+                                     cfg,
                                      FDR_threshold = 0.05,
                                      go_enrichment = "BP",
                                      method = "gseGO",
@@ -79,30 +86,27 @@ perform_pathway_analysis <- function(file_info_suffix,
                                      consensus = TRUE,
                                      runs = 20, 
                                      consensus_threshold = 10,
-                                     enrichGO_consensus_df = NULL){
-  # This function identifies enriched pathways, either
-  # using a hit list vs. the "universe" of all checked genes. 
-  # This is the enrichGO method
-  # OR it uses significanceZ to compare the entire screen and find enriched pathways. 
-  # This is called gseGO. 
-  # For consensus = FALSE; both methods simply load the results from file_info_suffix
-  # For consensus = TRUE; enrichGO needs to be provided with a specific list of hits, 
-  # while gseGO loads replicates named 'rep1' etc.
+                                     enrichGO_consensus_df = NULL) {
   
-  results_df <- add_info_wrapper(file_info_suffix)
+  results_df <- add_info_wrapper(
+    suffix = file_info_suffix,
+    cfg = cfg
+  )
   
-  if (!(go_enrichment %in% c("BP","MF","CC", "ALL"))){
-    stop("go_enrichment must be 'BP', 'MF', 'ALL' or 'CC'")
-  }
-  if (!(method %in% c("enrichGO","gseGO"))){
-    stop("method must be 'enrichGO' or 'gseGO'")
+  if (!(go_enrichment %in% c("BP", "MF", "CC", "ALL"))) {
+    stop("go_enrichment must be 'BP', 'MF', 'ALL' or 'CC'", call. = FALSE)
   }
   
-  if (consensus){
-    if (method == "gseGO"){
+  if (!(method %in% c("enrichGO", "gseGO"))) {
+    stop("method must be 'enrichGO' or 'gseGO'", call. = FALSE)
+  }
+  
+  if (consensus) {
+    if (method == "gseGO") {
       
       consensus_results <- run_consensus_gsea(
-        file_info_suffix,
+        file_info_suffix = file_info_suffix,
+        cfg = cfg,
         go_enrichment = go_enrichment,
         runs = runs,
         consensus_threshold = consensus_threshold
@@ -116,15 +120,22 @@ perform_pathway_analysis <- function(file_info_suffix,
         gsea_all = all_df
       ))
     }
-    if (method == "enrichGO"){
+    
+    if (method == "enrichGO") {
       if (is.null(enrichGO_consensus_df)) {
-        stop("Consensus calling for enrichGO requires the hit list 'enrichGO_consensus_df' to not be NULL") 
+        stop(
+          "Consensus calling for enrichGO requires `enrichGO_consensus_df` to not be NULL.",
+          call. = FALSE
+        ) 
       }
+      
       universe_genes <- results_df %>%
-        pull(entrez) %>% as.character() %>% unique()
+        dplyr::pull(entrez) %>%
+        as.character() %>%
+        unique()
       
       sig_genes <- enrichGO_consensus_df %>%
-        pull(entrez) %>%
+        dplyr::pull(entrez) %>%
         as.character() %>%
         unique()
       
@@ -138,22 +149,24 @@ perform_pathway_analysis <- function(file_info_suffix,
         qvalueCutoff  = go_terms_qvalueCutoff,
         readable      = TRUE
       )
-      return(as.data.frame(ego))
       
+      return(as.data.frame(ego))
     }
   } else {
     
-    if (method == "enrichGO"){
+    if (method == "enrichGO") {
       
       sig_genes <- results_df %>%
-        filter(!is.na(FDR)) %>%
-        filter(FDR < FDR_threshold) %>%
-        pull(entrez) %>%
+        dplyr::filter(!is.na(FDR)) %>%
+        dplyr::filter(FDR < FDR_threshold) %>%
+        dplyr::pull(entrez) %>%
         as.character() %>%
         unique()
       
       universe_genes <- results_df %>%
-        pull(entrez) %>% as.character() %>% unique()
+        dplyr::pull(entrez) %>%
+        as.character() %>%
+        unique()
       
       ego <- clusterProfiler::enrichGO(
         gene          = sig_genes,
@@ -165,52 +178,57 @@ perform_pathway_analysis <- function(file_info_suffix,
         qvalueCutoff  = go_terms_qvalueCutoff,
         readable      = TRUE
       )
+      
       return(as.data.frame(ego))
     }
-    if (method == "gseGO"){
+    
+    if (method == "gseGO") {
       geneList_Z <- results_df %>%
-        filter(!is.na(significanceZ), !is.na(entrez)) %>%
-        mutate(entrez = as.character(entrez)) %>%
-        group_by(entrez) %>%
-        mutate(score = significanceZ) %>%
-        arrange(desc(score)) %>%
-        { setNames(.$score, .$entrez) }
+        dplyr::filter(!is.na(significanceZ), !is.na(entrez)) %>%
+        dplyr::mutate(entrez = as.character(entrez)) %>%
+        dplyr::group_by(entrez) %>%
+        dplyr::mutate(score = significanceZ) %>%
+        dplyr::arrange(dplyr::desc(score)) %>%
+        { stats::setNames(.$score, .$entrez) }
       
       gsea <- clusterProfiler::gseGO(
         geneList = geneList_Z,
         OrgDb = org.Hs.eg.db,
         keyType = "ENTREZID",
         ont = go_enrichment,
-        pAdjustMethod= "BH",
+        pAdjustMethod = "BH",
         verbose = FALSE,
-        eps = 0 )
+        eps = 0
+      )
+      
       return(as.data.frame(gsea))
     }
-
   }
 }
-
-add_STRING_id <- function(hits_df, use_local = FALSE){
+add_STRING_id <- function(hits_df,
+                          cfg,
+                          use_local = FALSE) {
   hits_df$entrez <- as.character(hits_df$entrez)
   
-  string_db_path <- if (use_local) data_dir else ""
-
-  # Create our string object
+  string_db_path <- if (use_local) cfg$paths$data_dir else ""
+  
   string_db <- STRINGdb$new(
     version = "12.0",
     species = 9606,
     score_threshold = 400,
     input_directory = string_db_path
   )
-  # get the string IDs for all our hits
+  
   string_mapped <- string_db$map(
     hits_df,
     "entrez",
     removeUnmappedRows = TRUE
   ) 
   
-  return(list(string_mapped = string_mapped,
-              string_db = string_db))
+  return(list(
+    string_mapped = string_mapped,
+    string_db = string_db
+  ))
 }
 
 get_gene_centrality_one_GO_term <- function(go_term, go_genes_df, string_db) {
@@ -264,25 +282,34 @@ get_gene_centrality_one_GO_term <- function(go_term, go_genes_df, string_db) {
 
 
 get_gene_centrality <- function(file_info_suffix,
-                           consensus_pathways,
-                           use_local= FALSE) {
+                                consensus_pathways,
+                                cfg,
+                                use_local = FALSE) {
   
-  full_hits <- add_info_wrapper(file_info_suffix)
-
+  full_hits <- add_info_wrapper(
+    suffix = file_info_suffix,
+    cfg = cfg
+  )
+  
   enriched_go_terms <- consensus_pathways$ID
-
-  # add STRING_id to hits
-  add_STRING_id_return_list <- add_STRING_id(full_hits, use_local = use_local)
+  
+  add_STRING_id_return_list <- add_STRING_id(
+    hits_df = full_hits,
+    cfg = cfg,
+    use_local = use_local
+  )
+  
   full_hits <- add_STRING_id_return_list$string_mapped
   string_db <- add_STRING_id_return_list$string_db
   
-  # Filter for only those genes with enriched go terms
   go_genes_df <- full_hits %>%
-    mutate(GO_term = GO_terms) %>% 
-    separate_rows(GO_term, sep = ";") %>% 
-    filter(GO_term %in% enriched_go_terms)
+    dplyr::mutate(GO_term = GO_terms) %>% 
+    tidyr::separate_rows(GO_term, sep = ";") %>% 
+    dplyr::filter(GO_term %in% enriched_go_terms)
   
-  if (nrow(go_genes_df) < 3) stop("Less than 3 enriched go terms in hits_df")
+  if (nrow(go_genes_df) < 3) {
+    stop("Less than 3 enriched go terms in hits_df", call. = FALSE)
+  }
   
   core_genes <- lapply(
     enriched_go_terms,
@@ -296,14 +323,13 @@ get_gene_centrality <- function(file_info_suffix,
   return(core_genes)
 }
 
-plot_string_from_saved_hits <- function(
-    dual_rep_dir,
-    species = 9606,
-    score_threshold = 400,
-    min_genes = 4,
-    max_clusters_to_plot = 4,
-    use_local = FALSE
-) {
+plot_string_from_saved_hits <- function(dual_rep_dir,
+                                        cfg,
+                                        species = 9606,
+                                        score_threshold = 400,
+                                        min_genes = 4,
+                                        max_clusters_to_plot = 4,
+                                        use_local = FALSE) {
   
   hit_files <- list.files(
     dual_rep_dir,
@@ -312,7 +338,7 @@ plot_string_from_saved_hits <- function(
     full.names = TRUE
   )
   
-  string_db_path <- if (use_local) data_dir else ""
+  string_db_path <- if (use_local) cfg$paths$data_dir else ""
   
   string_db <- STRINGdb$new(
     version = "12.0",
@@ -343,13 +369,11 @@ plot_string_from_saved_hits <- function(
     out_dir <- dirname(f)
     base_name <- sub("_hits\\.rds$", "", basename(f))
     
-    # full network PNG from STRING
     string_db$get_png(
       mapped$STRING_id,
       file = file.path(out_dir, paste0(base_name, "_STRING_network.png"))
     )
     
-    # cluster-based plots
     clusters <- string_db$get_clusters(mapped$STRING_id)
     
     if (length(clusters) > 0) {
@@ -361,11 +385,12 @@ plot_string_from_saved_hits <- function(
           res = 220
         )
         string_db$plot_network(clusters[[i]], add_link = FALSE, add_summary = TRUE)
-        dev.off()
+        grDevices::dev.off()
       }
     }
   }
 }
+
 select_validation_genes <- function(core_genes,
                                     hits_df,
                                     consensus_pathways,
@@ -553,7 +578,9 @@ plot_significanceZ_histogram <- function(df,
   return(p)
 }
 
-run_pathway_by_category <- function(df, file_info_suffix,
+run_pathway_by_category <- function(df,
+                                    file_info_suffix,
+                                    cfg,
                                     category_col = "category",
                                     FDR_threshold = 0.05,
                                     go_enrichment = "ALL",
@@ -778,6 +805,7 @@ run_pathway_by_category <- function(df, file_info_suffix,
       
       perform_pathway_analysis(
         file_info_suffix = file_info_suffix,
+        cfg = cfg,
         FDR_threshold = FDR_threshold,
         go_enrichment = go_enrichment,
         method = method,
@@ -793,6 +821,7 @@ run_pathway_by_category <- function(df, file_info_suffix,
     message("Running pathway analysis for category: All_Hits")
     results[["All_Hits"]] <- perform_pathway_analysis(
       file_info_suffix = file_info_suffix,
+      cfg = cfg,
       FDR_threshold = FDR_threshold,
       go_enrichment = go_enrichment,
       method = method,
@@ -931,8 +960,9 @@ run_all_pathway_combinations <- function(
     df,
     dual_rep_dir,
     file_info_suffix,
+    cfg,
     shared_hits = c("shared_all_three", "DCA", "PA", "GalNAc"),
-    go_enrichment_values = c("ALL","CC", "BP", "MF"),
+    go_enrichment_values = c("ALL", "CC", "BP", "MF"),
     split_pos_neg_values = c(TRUE, FALSE),
     include_shared_hits_values = c(TRUE, FALSE),
     plot_enrichment = TRUE,
@@ -960,6 +990,7 @@ run_all_pathway_combinations <- function(
         
         args <- list(
           df = df,
+          cfg = cfg,
           split_pos_neg = split_flag,
           plot_enrichment = plot_enrichment,
           image_save_folder = image_save_folder,
@@ -991,7 +1022,7 @@ assign_broad_classes_and_go <- function(df,
   go_map <- suppressMessages(
     AnnotationDbi::select(
       org.Hs.eg.db,
-      keys     = as.character(all_conjugates_overlap_df$entrez),
+      keys     = as.character(df$entrez),
       keytype  = "ENTREZID",
       columns  = c("GO", "ONTOLOGY")
     )

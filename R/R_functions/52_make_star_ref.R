@@ -1,58 +1,53 @@
-make_star_custom_reference <- function(merged_sgRNA_df = get("merged_sgRNA_df", envir = .GlobalEnv)) {
+# This function is deprecated and it should be tested if it can just be removed without breaking anything. 
 
-  genome_output_folder <- get("genome_output_folder", envir = .GlobalEnv)
+make_star_custom_reference <- function(merged_sgRNA_df,
+                                       genome_output_folder) {
   
   fasta_path <- file.path(genome_output_folder, "reference.fa")
-  gtf_path   <- file.path(genome_output_folder, "reference.gtf")
+  gtf_path <- file.path(genome_output_folder, "reference.gtf")
   
   # ---------------------------------------------------------------------------
   # Sanity checks
   # ---------------------------------------------------------------------------
-
-  if (any(is.na(merged_sgRNA_df$align_seq)) || any(merged_sgRNA_df$align_seq == "")) {
-    stop("A column with alignment sequences must be included in the library file for make_reference. (see library_formatting_requirements.txt)")
+  
+  required_cols <- c("sgrna_id", "align_seq")
+  missing_cols <- setdiff(required_cols, colnames(merged_sgRNA_df))
+  
+  if (length(missing_cols) > 0) {
+    stop_log(
+      "Cannot make custom STAR reference. Missing columns: ",
+      paste(missing_cols, collapse = ", ")
+    )
   }
   
-  # Keep only the required reference information
+  if (any(is.na(merged_sgRNA_df$sgrna_id) | merged_sgRNA_df$sgrna_id == "")) {
+    stop_log("Cannot make custom STAR reference. Some `sgrna_id` values are missing.")
+  }
+  
+  if (any(is.na(merged_sgRNA_df$align_seq) | merged_sgRNA_df$align_seq == "")) {
+    stop_log(
+      "A column with alignment sequences must be included in the library file for make_reference. ",
+      "(see library_formatting_requirements.txt)"
+    )
+  }
+  
+  # ---------------------------------------------------------------------------
+  # Prepare reference data
+  # ---------------------------------------------------------------------------
+  
   ref_df <- merged_sgRNA_df %>%
-    dplyr::mutate(
-      align_seq = toupper(align_seq),
-      seq_length = nchar(align_seq)
-    )
-  
-  # ---------------------------------------------------------------------------
-  # Write FASTA
-  # ---------------------------------------------------------------------------
-  fasta_entries <- c(rbind(
-    paste0(">", ref_df$sgrna_id),
-    ref_df$align_seq
-  ))
-  
-  writeLines(fasta_entries, fasta_path)
-  
-  # ---------------------------------------------------------------------------
-  # Write minimal GTF
-  #
-  # STAR only needs valid GTF structure and the core attributes gene_id and
-  # transcript_id. Here each sgRNA/reference sequence is treated as one exon.
-  # Using sgrna_id for gene_id prevents multiple sgRNAs targeting the same gene
-  # from being collapsed at the annotation level.
-  # ---------------------------------------------------------------------------
-  gtf_df <- ref_df %>%
     dplyr::transmute(
-      seqname = sgrna_id,
-      source = "custom_reference",
-      feature = "exon",
-      start = 1L,
-      end = seq_length,
-      score = ".",
-      strand = "+",
-      frame = ".",
-      attribute = paste0(
-        'gene_id "', sgrna_id, '"; ',
-        'transcript_id "', sgrna_id, '";'
-      )
+      sgrna_id = sgrna_id,
+      full_oligo = toupper(align_seq)
     )
+  
+  # ---------------------------------------------------------------------------
+  # Write FASTA/GTF using shared helpers
+  # ---------------------------------------------------------------------------
+  
+  write_star_fasta(ref_df, fasta_path)
+  
+  gtf_df <- build_star_gtf(ref_df)
   
   write.table(
     gtf_df,
@@ -66,18 +61,23 @@ make_star_custom_reference <- function(merged_sgRNA_df = get("merged_sgRNA_df", 
   # ---------------------------------------------------------------------------
   # Calculate STAR genomeSAindexNbases
   # ---------------------------------------------------------------------------
-  total_reference_length <- sum(ref_df$seq_length)
   
-  genomeSAindexNbases <- round(
+  total_reference_length <- sum(nchar(ref_df$full_oligo))
+  
+  genome_sa_index_n_bases <- round(
     min(14, log2(total_reference_length) / 2 - 1),
     0
   )
   
-  genomeSAindexNbases <- max(1, as.integer(genomeSAindexNbases))
+  genome_sa_index_n_bases <- max(1, as.integer(genome_sa_index_n_bases))
   
-  message("Wrote FASTA: ", fasta_path)
-  message("Wrote GTF:   ", gtf_path)
-  message("For STAR --genomeSAindexNbases use: ", genomeSAindexNbases)
+  logger::log_info("Wrote FASTA: {fasta_path}")
+  logger::log_info("Wrote GTF: {gtf_path}")
+  logger::log_info("For STAR --genomeSAindexNbases use: {genome_sa_index_n_bases}")
   
-  return(genomeSAindexNbases)
+  invisible(list(
+    fasta_path = fasta_path,
+    gtf_path = gtf_path,
+    genome_sa_index_n_bases = genome_sa_index_n_bases
+  ))
 }

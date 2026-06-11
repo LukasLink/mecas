@@ -168,39 +168,6 @@
   invisible(option)
 }
 
-.validate_numeric <- function(option,
-                              name,
-                              required = TRUE,
-                              min = NULL,
-                              max = NULL,
-                              allow_na = FALSE) {
-  if (!required && .is_missing(option)) {
-    return(invisible(option))
-  }
-  
-  if (allow_na && length(option) == 1 && is.na(option)) {
-    return(invisible(option))
-  }
-  
-  .validate_required(option, name)
-  
-  numeric_option <- suppressWarnings(as.numeric(option))
-  
-  if (length(numeric_option) != 1 || is.na(numeric_option)) {
-    .fail_input(name, option, "Expected a single numeric value.")
-  }
-  
-  if (!is.null(min) && numeric_option < min) {
-    .fail_input(name, option, paste0("Expected a numeric value >= ", min, "."))
-  }
-  
-  if (!is.null(max) && numeric_option > max) {
-    .fail_input(name, option, paste0("Expected a numeric value <= ", max, "."))
-  }
-  
-  invisible(option)
-}
-
 .validate_path_string <- function(option,
                                   name,
                                   required = TRUE,
@@ -557,65 +524,82 @@
 #-------------------------------------------------------------------------------
 # Option-specific validator map
 #-------------------------------------------------------------------------------
+# Canonical validator names now mirror the nested cfg/YAML structure.
+# Example:
+#   check_input(cfg$filtering$drop_0s, "filtering.drop_0s")
+#   check_input(cfg$paths$output_folder, "paths.output_folder")
 
 .input_validators <- list(
   # Run behavior
-  first_time = function(option, name) {
+  "run.first_time" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  start_with = .validate_choice(c("beginning", "read_counting", "MAUDE_analysis", "generate_plots")),
+  "run.start_with" = .validate_choice(
+    c("beginning", "read_counting", "MAUDE_analysis", "generate_plots")
+  ),
   
-  machine = .validate_choice(c("local", "slurm")),
+  "run.machine" = .validate_choice(c("local", "slurm")),
   
   # Paths
-  output_folder = function(option, name) {
+  "paths.output_folder" = function(option, name) {
     .validate_dir_path(option, name, required = TRUE, must_exist = FALSE)
   },
   
-  input_folder = function(option, name) {
+  "paths.input_folder" = function(option, name) {
     .validate_dir_path(option, name, required = TRUE, must_exist = TRUE)
   },
   
-  library_path = function(option, name) {
+  "paths.library_path" = function(option, name) {
     .validate_file_path(option, name, required = TRUE, must_exist = TRUE)
   },
   
-  star_index_folder = function(option, name) {
+  "paths.star_index_folder" = function(option, name) {
     .validate_dir_path(option, name, required = TRUE, must_exist = TRUE)
   },
   
-  fastq_name_table_xlsx = function(option, name) {
-    .validate_file_path(option, name, required = FALSE, must_exist = FALSE, allow_empty = TRUE)
+  "paths.fastq_name_table_xlsx" = function(option, name) {
+    .validate_file_path(
+      option,
+      name,
+      required = FALSE,
+      must_exist = FALSE,
+      allow_empty = TRUE
+    )
   },
   
-  strict_file_match = function(option, name) {
+  "paths.strict_file_match" = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  # Files
+  "files.strict_file_match" = function(option, name) {
     .validate_logical(option, name)
   },
   
   # Modules
-  use_modules = function(option, name) {
+  "modules.use_modules" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  seqtk_module = function(option, name) {
+  "modules.seqtk" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  star_module = function(option, name) {
+  "modules.star" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  samtools_module = function(option, name) {
+  "modules.samtools" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  umi_tools_module = function(option, name) {
+  "modules.umi_tools" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
   # bcwithqc options
-  bcwithqc_bin = function(option, name) {
+  "bcwithqc.bcwithqc_bin" = function(option, name) {
     .validate_executable(
       option,
       name,
@@ -623,259 +607,280 @@
       allow_empty = TRUE
     )
   },
-  bcwithqc_dir = function(option, name) {
-    .validate_dir_path(option, name, required = FALSE, must_exist = FALSE, allow_empty = TRUE)
+  
+  "bcwithqc.bcwithqc_dir" = function(option, name) {
+    .validate_dir_path(
+      option,
+      name,
+      required = FALSE,
+      must_exist = FALSE,
+      allow_empty = TRUE
+    )
   },
   
-  bcwithqc_config_path = function(option, name) {
-    .validate_file_path(option, name, required = FALSE, must_exist = FALSE, allow_empty = TRUE)
+  "bcwithqc.bcwithqc_config_path" = function(option, name) {
+    .validate_file_path(
+      option,
+      name,
+      required = FALSE,
+      must_exist = FALSE,
+      allow_empty = TRUE
+    )
   },
   
-  # align_UMI_tools options 
-  UMI_regex = function(option, name) {
+  # align_UMI_tools options
+  "align_UMI_tools.UMI_regex" = function(option, name) {
     .validate_regex_string(option, name, required = FALSE, allow_empty = TRUE)
-  },  
+  },
   
   # QC filtering
-  qc_filtering_run = function(option, name) {
+  "qc_filtering.run" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  qc_min_qual = function(option, name) {
+  "qc_filtering.min_qual" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 0)
   },
   
-  qc_qual_offset = function(option, name) {
+  "qc_filtering.qual_offset" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 0)
   },
   
-  qc_min_length = function(option, name) {
+  "qc_filtering.min_length" = function(option, name) {
     .validate_integer(option, name, required = FALSE, min = 1, allow_na = TRUE)
   },
   
-  # Lists
-  skip_list = function(option, name) {
+  # Skip lists
+  "skip.files" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)
   },
   
-  skip_list_sublib = function(option, name) {
+  "skip.sublibraries" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)
   },
   
-  skip_list_sample = function(option, name) {
+  "skip.samples" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)
   },
   
-  include_controls_list = function(option, name) {
+  # Controls
+  "controls.include_controls" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)
   },
   
-  use_only_these_controls_list = function(option, name) {
+  "controls.use_only_these_controls" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)
   },
   
-  # Analysis options
-  read_counting = .validate_choice(c("bcwithqc", "align_UMI_tools")),
+  "controls.same_controls_in_all_sublibraries" = function(option, name) {
+    .validate_logical(option, name)
+  },
   
-  data_type = .validate_choice(c("reads", "umis")),
+  "controls.subsample_controls" = function(option, name) {
+    .validate_logical(option, name)
+  },
   
-  method = function(option, name) {
+  # Counting
+  "counting.read_counting" = .validate_choice(c("bcwithqc", "align_UMI_tools")),
+  
+  "counting.data_type" = .validate_choice(c("reads", "umis")),
+  
+  # Replicates / grouping
+  "replicates.method" = function(option, name) {
     .validate_string(option, name, required = TRUE, allow_empty = TRUE)
   },
   
-  norm_method = function(option, name) {
+  "replicates.combine_for_guide_stats" = function(option, name) {
+    .validate_string(option, name, required = TRUE, allow_empty = TRUE)
+  },
+  
+  "replicates.combine_for_gene_stats" = function(option, name) {
+    .validate_string(option, name, required = TRUE, allow_empty = TRUE)
+  },
+  
+  "replicates.auto_combine_replicates" = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  # Normalization
+  "normalization.norm_method" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  combine_for_guide_stats = function(option, name) {
-    .validate_string(option, name, required = TRUE, allow_empty = TRUE)
-  },
-  
-  combine_for_gene_stats = function(option, name) {
-    .validate_string(option, name, required = TRUE, allow_empty = TRUE)
-  },
-  
-  # Behavior options
-  recover_input = function(option, name) {
+  "normalization.recover_input" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  subsample_controls = function(option, name) {
+  "normalization.use_custom_bins" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  use_custom_bins = function(option, name) {
-    .validate_logical(option, name)
-  },
-  
-  same_controls_in_all_sublibraries = function(option, name) {
-    .validate_logical(option, name)
-  },
-  
-  # Suffix / thresholds
-  extra_suffix = function(option, name) {
-    .validate_string(option, name, required = FALSE, allow_empty = TRUE)
-  },
-  
-  upper_lower_percentage = function(option, name) {
+  "normalization.upper_lower_percentage" = function(option, name) {
     .validate_percentage(option, name, required = TRUE, min = 0, max = 100)
   },
   
   # Filtering / MAUDE behavior
-  drop_0s = function(option, name) {
+  "filtering.drop_0s" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  strict_mode = function(option, name) {
+  "filtering.strict_mode" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  min_guides_per_gene = function(option, name) {
+  "filtering.min_guides_per_gene" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 0)
   },
   
-  auto_combine_replicates = function(option, name) {
-    .validate_logical(option, name)
+  # Output naming
+  "output.extra_suffix" = function(option, name) {
+    .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
   # SLURM
-  slurm_account = function(option, name) {
+  "slurm.account" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  slurm_qos = function(option, name) {
+  "slurm.qos" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  slurm_cpus = function(option, name) {
+  "slurm.cpus" = function(option, name) {
     .validate_integer(option, name, required = FALSE, min = 1)
   },
   
-  slurm_mem = function(option, name) {
+  "slurm.mem" = function(option, name) {
     .validate_mem_string(option, name, required = FALSE)
   },
   
-  slurm_wall_time = function(option, name) {
+  "slurm.wall_time" = function(option, name) {
     .validate_wall_time(option, name, required = FALSE)
   },
   
-  slurm_partition = function(option, name) {
+  "slurm.partition" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
   
-  slurm_array = function(option, name) {
+  "slurm.array" = function(option, name) {
     .validate_integer(option, name, required = FALSE, min = 1)
   },
   
-  slurm_email = function(option, name) {
+  "slurm.email" = function(option, name) {
     .validate_email(option, name, required = FALSE, allow_empty = TRUE)
   },
   
   # Consensus calling
-  consensus_run = function(option, name) {
+  "consensus.run" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  consensus_n_reps = function(option, name) {
+  "consensus.n_reps" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 1)
   },
   
-  consensus_high_confidence_FDR_threshold = function(option, name) {
+  "consensus.high_confidence.FDR_threshold" = function(option, name) {
     .validate_percentage(option, name, required = TRUE, min = 0, max = 1)
   },
   
-  consensus_high_confidence_hits_in_X_reps = function(option, name) {
+  "consensus.high_confidence.hits_in_X_reps" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 1)
   },
   
-  consensus_high_confidence_correlation_heatmap = function(option, name) {
+  "consensus.high_confidence.correlation_heatmap" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  consensus_high_confidence_overlap = function(option, name) {
+  "consensus.high_confidence.overlap" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  consensus_high_confidence_venn_diagram = function(option, name) {
+  "consensus.high_confidence.venn_diagram" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  consensus_explorative_FDR_threshold = function(option, name) {
+  "consensus.explorative.FDR_threshold" = function(option, name) {
     .validate_percentage(option, name, required = TRUE, min = 0, max = 1)
   },
   
-  consensus_explorative_hits_in_X_reps = function(option, name) {
+  "consensus.explorative.hits_in_X_reps" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 1)
   },
   
-  consensus_explorative_correlation_heatmap = function(option, name) {
+  "consensus.explorative.correlation_heatmap" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  consensus_explorative_overlap = function(option, name) {
+  "consensus.explorative.overlap" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  consensus_explorative_venn_diagram = function(option, name) {
+  "consensus.explorative.venn_diagram" = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
+  # General plots
+  "plots.run_after_count" = function(option, name) {
     .validate_logical(option, name)
   },
   
   # Violin plot
-  plots_violin_y_limit = function(option, name){
+  "plots.read_count_violin.violin_y_limit" = function(option, name) {
     .validate_integer(option, name, min = 1)
   },
   
   # Waterfall plot
-  plots_waterfall_mark_cntrl = function(option, name) {
+  "plots.waterfall.mark_cntrl" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  plots_waterfall_mark_special = function(option, name) {
+  "plots.waterfall.mark_special" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)
   },
   
-  plots_waterfall_mark_N_top_hits = function(option, name) {
+  "plots.waterfall.mark_N_top_hits" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 0)
   },
   
-  plots_waterfall_box_padding = function(option, name) {
+  "plots.waterfall.box_padding" = function(option, name) {
     .validate_numeric(option, name, required = TRUE, min = 0)
   },
   
-  plots_waterfall_no_text = function(option, name) {
+  "plots.waterfall.no_text" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  plots_waterfall_signif_lines = function(option, name) {
+  "plots.waterfall.signif_lines" = function(option, name) {
     .validate_logical(option, name)
   },
   
-  plots_waterfall_mark_all_signif_level = function(option, name) {
+  "plots.waterfall.mark_all_signif_level" = function(option, name) {
     .validate_numeric(option, name, required = FALSE, min = 0, max = 1, allow_na = TRUE)
   },
   
-  plots_waterfall_break_in_plot = function(option, name) {
+  "plots.waterfall.break_in_plot" = function(option, name) {
     .validate_numeric_vector(option, name, required = FALSE, min = 0)
   },
   
-  plots_waterfall_top_padding = function(option, name) {
+  "plots.waterfall.top_padding" = function(option, name) {
     .validate_numeric(option, name, required = TRUE, min = 0)
   },
   
-  plots_waterfall_custom_title = function(option, name) {
+  "plots.waterfall.custom_title" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE, allow_null = TRUE)
   },
   
-  plots_waterfall_width = function(option, name) {
+  "plots.waterfall.width" = function(option, name) {
     .validate_numeric(option, name, required = TRUE, min = 1)
   },
   
-  plots_waterfall_height = function(option, name) {
+  "plots.waterfall.height" = function(option, name) {
     .validate_numeric(option, name, required = TRUE, min = 1)
   },
   
-  plots_waterfall_file_format = .validate_choice(c("png", "pdf", "svg"))
+  "plots.waterfall.file_format" = .validate_choice(c("png", "pdf", "svg"))
 )
+
 #-------------------------------------------------------------------------------
 # Cross-option / dependency validation
 #-------------------------------------------------------------------------------
@@ -923,16 +928,16 @@
   invisible(option)
 }
 
-check_config_dependencies <- function(opt) {
+check_config_dependencies <- function(cfg) {
   #-----------------------------------------------------------------------------
   # Basic required options for dependency checks
   #-----------------------------------------------------------------------------
   
-  machine <- opt$machine
-  read_counting <- opt$read_counting
+  machine <- cfg$run$machine
+  read_counting <- cfg$counting$read_counting
   
-  check_input(machine, "machine")
-  check_input(read_counting, "read_counting")
+  check_input(machine, "run.machine")
+  check_input(read_counting, "counting.read_counting")
   
   #-----------------------------------------------------------------------------
   # SLURM options are only required when machine == "slurm"
@@ -942,8 +947,8 @@ check_config_dependencies <- function(opt) {
   
   .require_if(
     condition = is_slurm,
-    option = opt$slurm_cpus,
-    name = "slurm_cpus",
+    option = cfg$slurm$cpus,
+    name = "slurm.cpus",
     reason = "`run.machine` is set to 'slurm'.",
     validator = function(option, name) {
       .validate_integer(option, name, required = TRUE, min = 1)
@@ -952,8 +957,8 @@ check_config_dependencies <- function(opt) {
   
   .require_if(
     condition = is_slurm,
-    option = opt$slurm_mem,
-    name = "slurm_mem",
+    option = cfg$slurm$mem,
+    name = "slurm.mem",
     reason = "`run.machine` is set to 'slurm'.",
     validator = function(option, name) {
       .validate_mem_string(option, name, required = TRUE)
@@ -962,8 +967,8 @@ check_config_dependencies <- function(opt) {
   
   .require_if(
     condition = is_slurm,
-    option = opt$slurm_wall_time,
-    name = "slurm_wall_time",
+    option = cfg$slurm$wall_time,
+    name = "slurm.wall_time",
     reason = "`run.machine` is set to 'slurm'.",
     validator = function(option, name) {
       .validate_wall_time(option, name, required = TRUE)
@@ -972,8 +977,8 @@ check_config_dependencies <- function(opt) {
   
   .require_if(
     condition = is_slurm,
-    option = opt$slurm_array,
-    name = "slurm_array",
+    option = cfg$slurm$array,
+    name = "slurm.array",
     reason = "`run.machine` is set to 'slurm'.",
     validator = function(option, name) {
       .validate_integer(option, name, required = TRUE, min = 1)
@@ -981,47 +986,47 @@ check_config_dependencies <- function(opt) {
   )
   
   # Optional SLURM options: validate if provided
-  if (!.is_null_or_empty(opt$slurm_account)) {
-    check_input(opt$slurm_account, "slurm_account")
+  if (!.is_null_or_empty(cfg$slurm$account)) {
+    check_input(cfg$slurm$account, "slurm.account")
   }
   
-  if (!.is_null_or_empty(opt$slurm_qos)) {
-    check_input(opt$slurm_qos, "slurm_qos")
+  if (!.is_null_or_empty(cfg$slurm$qos)) {
+    check_input(cfg$slurm$qos, "slurm.qos")
   }
   
-  if (!.is_null_or_empty(opt$slurm_partition)) {
-    check_input(opt$slurm_partition, "slurm_partition")
+  if (!.is_null_or_empty(cfg$slurm$partition)) {
+    check_input(cfg$slurm$partition, "slurm.partition")
   }
   
-  if (!.is_null_or_empty(opt$slurm_email)) {
-    check_input(opt$slurm_email, "slurm_email")
+  if (!.is_null_or_empty(cfg$slurm$email)) {
+    check_input(cfg$slurm$email, "slurm.email")
   }
   
   .check_allowed_when(
     condition = is_slurm,
-    option = opt$slurm_account,
-    name = "slurm_account",
+    option = cfg$slurm$account,
+    name = "slurm.account",
     reason = "`run.machine` is not set to 'slurm'."
   )
   
   .check_allowed_when(
     condition = is_slurm,
-    option = opt$slurm_qos,
-    name = "slurm_qos",
+    option = cfg$slurm$qos,
+    name = "slurm.qos",
     reason = "`run.machine` is not set to 'slurm'."
   )
   
   .check_allowed_when(
     condition = is_slurm,
-    option = opt$slurm_partition,
-    name = "slurm_partition",
+    option = cfg$slurm$partition,
+    name = "slurm.partition",
     reason = "`run.machine` is not set to 'slurm'."
   )
   
   .check_allowed_when(
     condition = is_slurm,
-    option = opt$slurm_email,
-    name = "slurm_email",
+    option = cfg$slurm$email,
+    name = "slurm.email",
     reason = "`run.machine` is not set to 'slurm'."
   )
   
@@ -1032,25 +1037,25 @@ check_config_dependencies <- function(opt) {
   uses_bcwithqc <- identical(read_counting, "bcwithqc")
   
   if (uses_bcwithqc) {
-    has_bcwithqc_dir <- !.is_null_or_empty(opt$bcwithqc_dir)
-    has_bcwithqc_config <- !.is_null_or_empty(opt$bcwithqc_config_path)
+    has_bcwithqc_dir <- !.is_null_or_empty(cfg$bcwithqc$bcwithqc_dir)
+    has_bcwithqc_config <- !.is_null_or_empty(cfg$bcwithqc$bcwithqc_config_path)
     
     if (!has_bcwithqc_dir && !has_bcwithqc_config) {
       stop(
         "Missing required bcwithqc configuration.\n",
-        "Reason: `read_counting` is set to 'bcwithqc'.\n",
+        "Reason: `counting.read_counting` is set to 'bcwithqc'.\n",
         "Provide at least one of:\n",
-        "  - `bcwithqc_dir`\n",
-        "  - `bcwithqc_config_path`",
+        "  - `bcwithqc.bcwithqc_dir`\n",
+        "  - `bcwithqc.bcwithqc_config_path`",
         call. = FALSE
       )
     }
     
     .require_if(
       condition = TRUE,
-      option = opt$bcwithqc_bin,
-      name = "bcwithqc_bin",
-      reason = "`read_counting` is set to 'bcwithqc'.",
+      option = cfg$bcwithqc$bcwithqc_bin,
+      name = "bcwithqc.bcwithqc_bin",
+      reason = "`counting.read_counting` is set to 'bcwithqc'.",
       validator = function(option, name) {
         .validate_executable(
           option,
@@ -1063,8 +1068,8 @@ check_config_dependencies <- function(opt) {
     
     if (has_bcwithqc_dir) {
       .validate_dir_path(
-        opt$bcwithqc_dir,
-        "bcwithqc_dir",
+        cfg$bcwithqc$bcwithqc_dir,
+        "bcwithqc.bcwithqc_dir",
         required = TRUE,
         must_exist = TRUE
       )
@@ -1072,38 +1077,37 @@ check_config_dependencies <- function(opt) {
     
     if (has_bcwithqc_config) {
       .validate_file_path(
-        opt$bcwithqc_config_path,
-        "bcwithqc_config_path",
+        cfg$bcwithqc$bcwithqc_config_path,
+        "bcwithqc.bcwithqc_config_path",
         required = TRUE,
         must_exist = TRUE
       )
     }
   }
-
+  
   #-----------------------------------------------------------------------------
   # Module dependencies
   #-----------------------------------------------------------------------------
   
-  if (isTRUE(opt$use_modules)) {
-    
-    if (isTRUE(opt$qc_filtering_run)) {
+  if (isTRUE(cfg$modules$use_modules)) {
+    if (isTRUE(cfg$qc_filtering$run)) {
       .require_if(
         condition = TRUE,
-        option = opt$seqtk_module,
-        name = "seqtk_module",
-        reason = "`modules.use_modules` is true and `qc_filtering.run` is true.",
+        option = cfg$modules$seqtk,
+        name = "modules.seqtk",
+        reason = "`modules.use_modules` is TRUE and `qc_filtering.run` is TRUE.",
         validator = function(option, name) {
           .validate_string(option, name, required = TRUE, allow_empty = FALSE)
         }
       )
     }
     
-    if (identical(opt$read_counting, "align_UMI_tools")) {
+    if (identical(cfg$counting$read_counting, "align_UMI_tools")) {
       .require_if(
         condition = TRUE,
-        option = opt$star_module,
-        name = "star_module",
-        reason = "`modules.use_modules` is true and `read_counting` is 'align_UMI_tools'.",
+        option = cfg$modules$star,
+        name = "modules.star",
+        reason = "`modules.use_modules` is TRUE and `counting.read_counting` is 'align_UMI_tools'.",
         validator = function(option, name) {
           .validate_string(option, name, required = TRUE, allow_empty = FALSE)
         }
@@ -1111,20 +1115,20 @@ check_config_dependencies <- function(opt) {
       
       .require_if(
         condition = TRUE,
-        option = opt$samtools_module,
-        name = "samtools_module",
-        reason = "`modules.use_modules` is true and `read_counting` is 'align_UMI_tools'.",
+        option = cfg$modules$samtools,
+        name = "modules.samtools",
+        reason = "`modules.use_modules` is TRUE and `counting.read_counting` is 'align_UMI_tools'.",
         validator = function(option, name) {
           .validate_string(option, name, required = TRUE, allow_empty = FALSE)
         }
       )
       
-      if (identical(opt$data_type, "umis")) {
+      if (identical(cfg$counting$data_type, "umis")) {
         .require_if(
           condition = TRUE,
-          option = opt$umi_tools_module,
-          name = "umi_tools_module",
-          reason = "`modules.use_modules` is true, `read_counting` is 'align_UMI_tools', and `data_type` is 'umis'.",
+          option = cfg$modules$umi_tools,
+          name = "modules.umi_tools",
+          reason = "`modules.use_modules` is TRUE, `counting.read_counting` is 'align_UMI_tools', and `counting.data_type` is 'umis'.",
           validator = function(option, name) {
             .validate_string(option, name, required = TRUE, allow_empty = FALSE)
           }
@@ -1132,34 +1136,34 @@ check_config_dependencies <- function(opt) {
       }
     }
   }
-
+  
   #-----------------------------------------------------------------------------
   # align_UMI_tools requirements
   #-----------------------------------------------------------------------------
   
-  uses_umi_tools <- identical(opt$read_counting, "align_UMI_tools")
+  uses_umi_tools <- identical(cfg$counting$read_counting, "align_UMI_tools")
   
   .require_if(
     condition = uses_umi_tools,
-    option = opt$UMI_regex,
-    name = "UMI_regex",
-    reason = "`read_counting` is set to 'align_UMI_tools'.",
+    option = cfg$align_UMI_tools$UMI_regex,
+    name = "align_UMI_tools.UMI_regex",
+    reason = "`counting.read_counting` is set to 'align_UMI_tools'.",
     validator = function(option, name) {
       .validate_regex_string(option, name, required = TRUE, allow_empty = FALSE)
     }
   )
-
   
   #-----------------------------------------------------------------------------
-  # data_type dependency
+  # consensus/start_with dependency
   #-----------------------------------------------------------------------------
   
-  if (isTRUE(opt$consensus_run) && identical(opt$start_with, "generate_plots")) {
+  if (isTRUE(cfg$consensus$run) &&
+      identical(cfg$run$start_with, "generate_plots")) {
     warning(
-      "For `consensus` `run` is set to 'true' but `start_with` is 'generate_plots'. ",
+      "For `consensus.run`, `run` is set to TRUE but `run.start_with` is 'generate_plots'. ",
       "Consensus calling requires the pipeline to start with at least the MAUDE run.\n",
-      " -> Consesus Calling will be skipped! \nSet `start_with` to `MAUDE_analysis`",
-      " or earlier to actually run Consensus Calling.",
+      " -> Consensus calling will be skipped!\n",
+      "Set `run.start_with` to `MAUDE_analysis` or earlier to actually run consensus calling.",
       call. = FALSE
     )
   }
@@ -1167,36 +1171,38 @@ check_config_dependencies <- function(opt) {
   #-----------------------------------------------------------------------------
   # consensus_call dependency
   #-----------------------------------------------------------------------------
-  if (isTRUE(opt$consensus_run)) {
-    
-    if (opt$consensus_high_confidence_hits_in_X_reps >
-        opt$consensus_n_reps + 1) {
+  
+  if (isTRUE(cfg$consensus$run)) {
+    if (cfg$consensus$high_confidence$hits_in_X_reps >
+        cfg$consensus$n_reps + 1) {
       stop_log(
-        "`consensus_high_confidence_hits_in_X_reps` cannot be larger than ",
-        "`consensus_n_reps + 1`.\n",
+        "`consensus.high_confidence.hits_in_X_reps` cannot be larger than ",
+        "`consensus.n_reps + 1`.\n",
         "Current values:\n",
-        "  consensus_n_reps: ",
-        opt$consensus_n_reps,
-        "\n  consensus_high_confidence_hits_in_X_reps: ",
-        opt$consensus_high_confidence_hits_in_X_reps
+        "  consensus.n_reps: ",
+        cfg$consensus$n_reps,
+        "\n  consensus.high_confidence.hits_in_X_reps: ",
+        cfg$consensus$high_confidence$hits_in_X_reps
       )
     }
     
-    if (opt$consensus_explorative_hits_in_X_reps >
-        opt$consensus_n_reps + 1) {
+    if (cfg$consensus$explorative$hits_in_X_reps >
+        cfg$consensus$n_reps + 1) {
       stop_log(
-        "`consensus_explorative_hits_in_X_reps` cannot be larger than ",
-        "`consensus_n_reps + 1`.\n",
+        "`consensus.explorative.hits_in_X_reps` cannot be larger than ",
+        "`consensus.n_reps + 1`.\n",
         "Current values:\n",
-        "  consensus_n_reps: ",
-        opt$consensus_n_reps,
-        "\n  consensus_explorative_hits_in_X_reps: ",
-        opt$consensus_explorative_hits_in_X_reps
+        "  consensus.n_reps: ",
+        cfg$consensus$n_reps,
+        "\n  consensus.explorative.hits_in_X_reps: ",
+        cfg$consensus$explorative$hits_in_X_reps
       )
     }
   }
+  
   invisible(TRUE)
 }
+
 #-------------------------------------------------------------------------------
 # Main public function
 #-------------------------------------------------------------------------------
