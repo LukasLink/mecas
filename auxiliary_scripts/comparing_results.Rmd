@@ -207,17 +207,16 @@ if (!is.null(user_opts$output_folder) && nzchar(user_opts$output_folder)) {
 # Source pipeline functions
 #-------------------------------------------------------------------------------
 
-source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
+source(file.path(project_root_dir, "R/R_functions", "zzz_source_all.R"))
 
 #-------------------------------------------------------------------------------
 # Run setup
 #-------------------------------------------------------------------------------
 
-project_setup(
+cfg <- project_setup(
   project_root_dir,
-  user_opts,
-  use_old_suffix_construction = TRUE,
-  parse_cli = FALSE
+  config_path = file.path(project_root_dir, "config.yaml"),
+  use_old_suffix_construction = TRUE
 )
 
 # The old_suffix is here so I don't run into compatibility issues with already
@@ -382,6 +381,7 @@ if (length(include_controls_list) > 0){
 }
 
 ```
+
 ```{r prepare_data_for_maude, eval=TRUE}
 if (subsample_controls == TRUE){
   # count_df_long_old <- subsample_controls_func_old(count_df_long, merged_sgRNA_df)
@@ -514,13 +514,24 @@ if (combine_for_guide_stats != ""){
 ## Some exploration options for the raw reads/umi counts
 Mostly for comparing this read_counting to bcwithqcs bcwithqc, ignore this. 
 ```{r basic_read_counting_comparision, eval=FALSE}
-compare_bcwithqc_align_UMI_tools <- function(data_type,
+compare_bcwithqc_align_UMI_tools <- function(
+    data_type,
+    cfg,
                                bcwithqc_function = process_bcwithqc_data,
                                addage = "",
-                               bcwithqc_dir = bcwithqc_dir,
-                               align_UMI_tools_umi_folder = dedup_output_folder,
-                               align_UMI_tools_read_folder = mapped_output_folder){
+                               bcwithqc_dir = cfg$paths$bcwithqc_output_folder,
+                               read_diff_histo_x_lim = c(-1000,1000),
+                               read_diff_histo_bin_width = 10,
+                               # read_diff_density_99_x_lim = c(-1000,1000),
+                               # read_diff_density_95_x_lim = c(-1000,1000),
+                               align_UMI_tools_umi_folder = cfg$paths$dedup_output_folder,
+                               align_UMI_tools_read_folder = cfg$paths$mapped_output_folder){
 
+  cfg$paths$bcwithqc_output_folder <- bcwithqc_dir
+  cfg$paths$dedup_output_folder <- align_UMI_tools_umi_folder
+  cfg$paths$mapped_output_folder <- align_UMI_tools_read_folder
+  cfg$counting$data_type <- data_type
+  
   if (!(data_type %in% c("umis","reads"))){
     print('ERROR: data_type must be "umis" or "reads"')
     return(NULL)
@@ -530,13 +541,23 @@ compare_bcwithqc_align_UMI_tools <- function(data_type,
     addage <- paste0("(",addage,")")
   }
   
-  bcwithqc_df_long <- bcwithqc_function(bcwithqc_dir,sgRNA_df, data_type = data_type, merged_sgRNA_df = merged_sgRNA_df)
+  bcwithqc_df_long <- bcwithqc_function(
+      cfg = cfg,
+      data_type = data_type,
+      skip_list = cfg$skip$files
+    )
   if (data_type == "umis"){
-    align_UMI_tools_df_long <- process_folder_files(align_UMI_tools_umi_folder) #Add threshold df if thresholds should be applied
+    align_UMI_tools_df_long <- process_folder_files(
+      cfg = cfg,
+      folder_path = align_UMI_tools_umi_folder,
+      skip_list = cfg$skip$files) #Add threshold df if thresholds should be applied
     data_name <- "UMI"
   }
   if (data_type == "reads"){
-    align_UMI_tools_df_long <- process_folder_files(align_UMI_tools_read_folder) #Add threshold df if thresholds should be applied
+    align_UMI_tools_df_long <- process_folder_files(
+      cfg = cfg,
+      folder_path = align_UMI_tools_read_folder,
+      skip_list = cfg$skip$files) #Add threshold df if thresholds should be applied
     data_name <- "Read"
   } 
   
@@ -553,27 +574,40 @@ compare_bcwithqc_align_UMI_tools <- function(data_type,
       # (Uncomment and adapt as needed!)
     )
 
-  # Compute the difference in count
+  # Compute the difference in count per matched entry
   matched_df <- matched_df %>%
     mutate(diff = count_bcwithqc - count_align_UMI_tools)
   
+  # Total counts
+  total_bcwithqc <- sum(matched_df$count_bcwithqc, na.rm = TRUE)
+  total_align    <- sum(matched_df$count_align_UMI_tools, na.rm = TRUE)
+  
   # Total difference
-  total_diff <- sum(matched_df$diff)
+  total_diff <- total_bcwithqc - total_align
+  
+  # Percentage difference relative to align_UMI_tools
+  perc_diff <- round(
+    100 * total_diff / total_align,
+    digits = 1
+  )
   
   # Mean difference
-  mean_diff <- mean(matched_df$diff)
+  mean_diff <- mean(matched_df$diff, na.rm = TRUE)
+  
+  # Median difference
+  median_diff <- median(matched_df$diff, na.rm = TRUE)
   
   # Standard deviation
-  sd_diff <- sd(matched_df$diff)
-  
-  
+  sd_diff <- sd(matched_df$diff, na.rm = TRUE)
   
   # Print results
-  cat("Total",data_name, addage, "Difference:", total_diff, "\n")
-  cat("Mean",data_name, addage, "Difference:", mean_diff, "\n")
-  cat(data_name, addage, "Standard Deviation:", sd_diff, "\n")
-  
-
+  cat(sprintf("%-45s %15s\n", paste("Total", data_name, addage, "bcwithqc:"), total_bcwithqc))
+  cat(sprintf("%-45s %15s\n", paste("Total", data_name, addage, "align_UMI_tools:"), total_align))
+  cat(sprintf("%-45s %15s\n", paste("Total", data_name, addage, "Difference:"), total_diff))
+  cat(sprintf("%-45s %14.1f%%\n", paste("Percentage", data_name, addage, "Difference:"), perc_diff))
+  cat(sprintf("%-45s %15s\n", paste("Median", addage, "Difference:"), median_diff))
+  cat(sprintf("%-45s %15.2f\n", paste("Mean", data_name, addage, "Difference:"), mean_diff))
+  cat(sprintf("%-45s %15.2f\n", paste(data_name, addage, "Standard Deviation:"), sd_diff))
 
   total_df <- tibble(
     source = c("bcwithqc", "align_UMI_tools"),
@@ -611,25 +645,59 @@ compare_bcwithqc_align_UMI_tools <- function(data_type,
   
   # Assuming you've matched the two runs: count_bcwithqc vs count_align_UMI_tools
   p <- ggplot(matched_df, aes(x = count_bcwithqc + 1, y = count_align_UMI_tools + 1)) +
-    geom_count(alpha = 0.7) +
+    geom_count(
+      aes(
+        size = after_stat(n),
+        colour = after_stat(n)
+      ),
+      alpha = 0.9
+    ) +
     geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
-    scale_size_area(max_size = 4) +  # optional: adjust max size
-    scale_x_log10() + scale_y_log10() +
+    scale_size_area(
+      max_size = 4,
+      trans = "log10",
+      name = "Count overlap"
+    ) +
+    scale_colour_gradientn(
+      colours = c("grey90", "skyblue2", "dodgerblue3", "navy"),
+      trans = "log10",
+      name = "Count overlap"
+    ) +
+    scale_x_log10() +
+    scale_y_log10() +
     labs(
       title = paste("Comparison of sgRNA", data_name, addage, "Counts"),
       x = paste("bcwithqc", data_name, addage, "Counts"),
-      y = paste("align_UMI_tools", data_name, addage, "Counts"),
-      size = "Count overlap"
+      y = paste("align_UMI_tools", data_name, addage, "Counts")
     ) +
     theme_minimal()
+  
   print(p)
   # Histogram
   p <- ggplot(matched_df, aes(x = diff)) +
-    geom_histogram(bins = 50, fill = "steelblue", color = "white") +
-    labs(title = paste("Distribution of",data_name, addage, "Count Differences (bcwithqc - align_UMI_tools)"),
-         x = paste(data_name, addage,"Count Difference"),
-         y = "Frequency") +
-    xlim(-1000, 1000) +
+    geom_histogram(
+      binwidth = read_diff_histo_bin_width,
+      boundary = 0,
+      fill = "steelblue",
+      color = "white"
+    ) +
+    annotate(
+      "label",
+      x = read_diff_histo_x_lim[1],
+      y = Inf,
+      label = paste0("Binwidth: ", read_diff_histo_bin_width),
+      hjust = 0,
+      vjust = 1.1,
+      fill = "white",
+      color = "black",
+      label.size = 0.3
+    ) +
+    labs(
+      title = paste("Distribution of", data_name, addage, "Count Differences (bcwithqc - align_UMI_tools)"),
+      x = paste(data_name, addage, "Count Difference"),
+      y = "Frequency"
+    ) +
+    xlim(read_diff_histo_x_lim[1], read_diff_histo_x_lim[2]) +
     theme_minimal()
   print(p)
   # Compute the 2.5th and 97.5th percentiles (95% interval)
@@ -669,31 +737,75 @@ compare_bcwithqc_align_UMI_tools <- function(data_type,
   print(p)
   return(matched_df)
 }
-compare_bcwithqc_align_UMI_tools("reads",
-                   bcwithqc_function = process_bcwithqc_data_backup)
-compare_bcwithqc_align_UMI_tools("umis",
-                   bcwithqc_function = process_bcwithqc_rf_data,
-                   bcwithqc_dir = bcwithqc_rf_folder)
-compare_bcwithqc_align_UMI_tools("umis",
-                   align_UMI_tools_umi_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/NB_EXP030/dedup_no_filt/",
-                   bcwithqc_function = process_bcwithqc_data_backup,
-                   addage = "#NoFilter")
 
-# Rank each row by count within each exp and condition group
-count_ranked <- count_df_long %>%
-  group_by(exp, condition) %>%
-  arrange(desc(count), .by_group = TRUE) %>%
-  mutate(rank = row_number())
+PA_count_diff_df <- compare_bcwithqc_align_UMI_tools(
+  data_type = "reads",
+  cfg = cfg,
+  bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output",
+  align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/mapped",
+  read_diff_histo_x_lim = c(-1000,10),
+  read_diff_histo_bin_width = 10
+  )
+DCA_count_diff_df <- compare_bcwithqc_align_UMI_tools(
+  data_type = "reads",
+  cfg = cfg,
+  bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output",
+  align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/mapped",
+  read_diff_histo_x_lim = c(-1000,10),
+  read_diff_histo_bin_width = 10
+  )
+GAL_count_diff_df <- compare_bcwithqc_align_UMI_tools(
+  data_type = "reads",
+  cfg = cfg,
+  bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output",
+  align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/mapped",
+  read_diff_histo_x_lim = c(-1000,10),
+  read_diff_histo_bin_width = 10
+  )
+# test_df <- compare_bcwithqc_align_UMI_tools(
+#   data_type = "reads",
+#   cfg = cfg,
+#   bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output",
+#   align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/mapped",
+#   read_diff_histo_x_lim = c(-100,5),
+#   read_diff_histo_bin_width = 1
+#   )
+```
 
-ggplot(count_ranked, aes(x = rank, y = count, color = condition)) +
-  geom_line() +
-  facet_wrap(~exp, scales = "free_y") +  # if you want separate panels per experiment
-  labs(title = "Ranked Counts per exp/condition",
-       x = "Rank",
-       y = "Count") +
-  scale_y_log10() +
-  scale_x_log10() +
-  theme_minimal()
+```{r further_analysis_read_count_diff, eval=TRUE}
+df <- PA_count_diff_df
+df <- df %>% 
+  left_join(cfg$merged_sgRNA_df %>% 
+              select(-sublib), by = c("sgRNA" = "sgrna_id")) %>% 
+  select(-c(count, Gene, align_seq))
+df <- df %>% 
+  filter(condition == "input") %>% 
+  filter(exp == "L1_1")
+
+
+df <- df %>% 
+  filter(count_bcwithqc == 1)
+
+library(Matrix)
+
+mat <- readMM(gzfile("/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/I_L1_1/raw_reads_bc_matrix/matrix.mtx.gz"))
+mat <- as(mat, "dgCMatrix")
+
+barcodes <- readLines(gzfile("/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/I_L1_1/raw_reads_bc_matrix/barcodes.tsv.gz"))
+
+if (ncol(mat) == length(barcodes)) {
+  colnames(mat) <- barcodes
+} else if (nrow(mat) == length(barcodes)) {
+  rownames(mat) <- barcodes
+} else {
+  stop("Barcode number does not match matrix rows or columns.")
+}
+
+if (is.null(rownames(mat))) {
+  rownames(mat) <- paste0("feature_", seq_len(nrow(mat)))
+}
+
+mat
 ```
 
 ## Functions that add more information to the results, like the gene symbol
@@ -1386,7 +1498,7 @@ plot_mapping_qc_boxes <- function(xlsx_paths, sample_names, output_dir = NULL) {
       dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
       ggplot2::ggsave(
-        filename = file.path(output_dir, paste0(metric_name, "_boxplot.pdf")),
+        filename = file.path(output_dir, paste0(metric_name, "_boxplot.png")),
         plot = p,
         width = 6,
         height = 4
@@ -1405,23 +1517,512 @@ xlsx_files <- c(
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx"
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx"
 )
 
 names <- c(
   "DCA align",
   "DCA bcwithqc",
   "PA align",  
-  "PA bcwithqc"
+  "PA bcwithqc",
+  "GAL align",  
+  "GAL bcwithqc"
 )
+
+output_dir <- "/g/steinmetz/link/Presentations/"
 
 plots <- plot_mapping_qc_boxes(
   xlsx_paths = xlsx_files,
   sample_names = names,
-  output_dir = "qc_boxplots"
+  output_dir = output_dir
 )
 
+
 ```
+
+``` {r compare_hits_bcwithqc_vs_align_UMI_tools, eval=TRUE}
+compare_hit_xlsx_pairs <- function(xlsx_paths,
+                                   sample_names,
+                                   output_dir = NULL,
+                                   FDR_threshold = NULL,
+                                   rank_method = "spearman",
+                                   make_plots = TRUE) {
+  
+  stopifnot(length(xlsx_paths) == length(sample_names))
+  
+  if (length(xlsx_paths) %% 2 != 0) {
+    stop("xlsx_paths must contain an even number of files because comparisons are done in pairs.")
+  }
+  
+  required_cols <- c("entrez", "FDR", "significanceZ")
+  
+  paired_colours <- c(
+    "#9ecae1", "#08519c",  # light blue, dark blue
+    "#fcae91", "#a50f15",  # light red, dark red
+    "#a1d99b", "#006d2c",  # light green, dark green
+    "#dadaeb", "#54278f",  # light purple, dark purple
+    "#fdd0a2", "#a63603",  # light orange, dark orange
+    "#bdbdbd", "#252525"   # light grey, dark grey
+  )
+  
+  if (length(xlsx_paths) > length(paired_colours)) {
+    stop(
+      "Not enough predefined colours for ",
+      length(xlsx_paths),
+      " input files. Please add more colours to paired_colours."
+    )
+  }
+  
+  if (!is.null(output_dir)) {
+    dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  }
+  
+  colour_df <- data.frame(
+    dataset = sample_names,
+    pair_colour = paired_colours[seq_along(sample_names)],
+    stringsAsFactors = FALSE
+  )
+  
+  read_one_file <- function(path, name) {
+    
+    df <- readxl::read_excel(path)
+    
+    colnames(df) <- colnames(df) %>%
+      stringr::str_trim() %>%
+      stringr::str_replace_all("\\s+", "_") %>%
+      stringr::str_replace_all("-", "_") %>%
+      tolower()
+    
+    # after lowercasing, required columns are:
+    required_cols_lower <- tolower(required_cols)
+    
+    missing_cols <- base::setdiff(required_cols_lower, colnames(df))
+    
+    if (length(missing_cols) > 0) {
+      stop(
+        "File ", path, " is missing columns: ",
+        paste(missing_cols, collapse = ", ")
+      )
+    }
+    
+    df %>%
+      dplyr::select(
+        entrez,
+        fdr,
+        significancez
+      ) %>%
+      dplyr::mutate(
+        entrez = as.character(entrez),
+        fdr = as.numeric(fdr),
+        significancez = as.numeric(significancez),
+        dataset = name
+      ) %>%
+      dplyr::filter(!is.na(entrez), entrez != "")
+  }
+  
+  all_data <- purrr::map2_dfr(xlsx_paths, sample_names, read_one_file) %>%
+    dplyr::left_join(colour_df, by = "dataset") %>%
+    dplyr::mutate(dataset = factor(dataset, levels = sample_names))
+  
+  if (!is.null(FDR_threshold)) {
+    all_data_for_venn <- all_data %>%
+      dplyr::filter(fdr <= FDR_threshold)
+  } else {
+    all_data_for_venn <- all_data
+  }
+  
+  pair_df <- data.frame(
+    pair_id = seq_len(length(sample_names) / 2),
+    sample_1 = sample_names[seq(1, length(sample_names), by = 2)],
+    sample_2 = sample_names[seq(2, length(sample_names), by = 2)],
+    stringsAsFactors = FALSE
+  )
+  
+  # ------------------------------------------------------------
+  # 1. FDR boxplot
+  # ------------------------------------------------------------
+  
+  fdr_boxplot <- ggplot2::ggplot(
+    all_data,
+    ggplot2::aes(
+      x = dataset,
+      y = fdr,
+      fill = pair_colour
+    )
+  ) +
+    ggplot2::geom_boxplot(outlier.shape = NA) +
+    ggplot2::geom_jitter(
+      ggplot2::aes(color = pair_colour),
+      width = 0.15,
+      alpha = 0.5,
+      size = 1
+    ) +
+    ggplot2::scale_fill_identity() +
+    ggplot2::scale_color_identity() +
+    ggplot2::labs(
+      x = NULL,
+      y = "FDR",
+      title = "FDR distribution"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      plot.title = ggplot2::element_text(hjust = 0.5)
+    )
+  
+  if (make_plots) {
+    print(fdr_boxplot)
+  }
+  
+  if (!is.null(output_dir)) {
+    ggplot2::ggsave(
+      filename = file.path(output_dir, "FDR_boxplot.png"),
+      plot = fdr_boxplot,
+      width = 7,
+      height = 4
+    )
+  }
+  
+  # Optional: often useful because FDR values can be strongly compressed near 0
+  fdr_log_boxplot <- all_data %>%
+    dplyr::mutate(
+      neg_log10_fdr = -log10(pmax(fdr, .Machine$double.xmin))
+    ) %>%
+    ggplot2::ggplot(
+      ggplot2::aes(
+        x = dataset,
+        y = neg_log10_fdr,
+        fill = pair_colour
+      )
+    ) +
+    ggplot2::geom_boxplot(outlier.shape = NA) +
+    ggplot2::geom_jitter(
+      ggplot2::aes(color = pair_colour),
+      width = 0.15,
+      alpha = 0.5,
+      size = 1
+    ) +
+    ggplot2::scale_fill_identity() +
+    ggplot2::scale_color_identity() +
+    ggplot2::labs(
+      x = NULL,
+      y = "-log10(FDR)",
+      title = "-log10(FDR) distribution"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      plot.title = ggplot2::element_text(hjust = 0.5)
+    )
+  
+  if (make_plots) {
+    print(fdr_log_boxplot)
+  }
+  
+  if (!is.null(output_dir)) {
+    ggplot2::ggsave(
+      filename = file.path(output_dir, "minus_log10_FDR_boxplot.png"),
+      plot = fdr_log_boxplot,
+      width = 7,
+      height = 4
+    )
+  }
+  
+  # ------------------------------------------------------------
+  # 2. Pairwise Venn diagrams
+  # ------------------------------------------------------------
+  
+  make_pair_venn <- function(df1, df2, name1, name2, title = NULL) {
+    
+    entrez1 <- unique(df1$entrez)
+    entrez2 <- unique(df2$entrez)
+    
+    area1 <- length(entrez1)
+    area2 <- length(entrez2)
+    cross_area <- length(intersect(entrez1, entrez2))
+    
+    tmp <- tempfile(fileext = ".pdf")
+    grDevices::pdf(tmp)
+    on.exit({
+      grDevices::dev.off()
+      unlink(tmp)
+    }, add = TRUE)
+    
+  g_list <- VennDiagram::draw.pairwise.venn(
+    area1 = area1,
+    area2 = area2,
+    cross.area = cross_area,
+    category = c(name1, name2),
+    fill = c("lightblue", "lightgreen"),
+    alpha = c(0.6, 0.6),
+    cat.cex = 0.9,
+    cex = 1.3,
+    col = c("darkblue", "darkgreen"),
+    cat.fontface = "bold",
+    cat.col = c("darkblue", "darkgreen"),
+    label.col = c("darkblue", "black", "darkgreen"),
+    cat.pos = c(-20, 20),
+    cat.dist = c(0.03, 0.03),
+    ind = TRUE
+  )
+    
+    g <- grid::grobTree(gList = do.call(grid::gList, g_list))
+    
+    if (!is.null(title)) {
+      title_grob <- grid::textGrob(
+        title,
+        gp = grid::gpar(fontsize = 14, fontface = "bold")
+      )
+      
+      g <- gridExtra::arrangeGrob(
+        title_grob,
+        g,
+        ncol = 1,
+        heights = c(0.12, 0.88)
+      )
+    }
+    
+    return(g)
+  }
+  
+  venns <- list()
+  overlap_summary <- list()
+  
+  for (i in seq_len(nrow(pair_df))) {
+    
+    name1 <- pair_df$sample_1[i]
+    name2 <- pair_df$sample_2[i]
+    
+    df1 <- all_data_for_venn %>% dplyr::filter(dataset == name1)
+    df2 <- all_data_for_venn %>% dplyr::filter(dataset == name2)
+    
+    entrez1 <- unique(df1$entrez)
+    entrez2 <- unique(df2$entrez)
+    
+    overlap_n <- length(intersect(entrez1, entrez2))
+    
+    overlap_summary[[i]] <- data.frame(
+      pair = paste(name1, "vs", name2),
+      dataset_1 = name1,
+      dataset_2 = name2,
+      n_dataset_1 = length(entrez1),
+      n_dataset_2 = length(entrez2),
+      n_overlap = overlap_n,
+      perc_of_dataset_1 = round(100 * overlap_n / length(entrez1), 2),
+      perc_of_dataset_2 = round(100 * overlap_n / length(entrez2), 2)
+    )
+    
+    venn_title <- paste("Entrez overlap:", name1, "vs", name2)
+    
+    if (!is.null(FDR_threshold)) {
+      venn_title <- paste0(
+        venn_title,
+        " | FDR <= ",
+        FDR_threshold
+      )
+    }
+    
+    venn_grob <- make_pair_venn(
+      df1 = df1,
+      df2 = df2,
+      name1 = name1,
+      name2 = name2,
+      title = venn_title
+    )
+    
+    venns[[paste(name1, "vs", name2)]] <- venn_grob
+    
+    if (make_plots) {
+      grid::grid.newpage()
+      grid::grid.draw(venn_grob)
+    }
+    
+    if (!is.null(output_dir)) {
+      png_file <- file.path(
+        output_dir,
+        paste0(
+          "venn_",
+          gsub("[^A-Za-z0-9]+", "_", name1),
+          "_vs_",
+          gsub("[^A-Za-z0-9]+", "_", name2),
+          ".png"
+        )
+      )
+      
+      grDevices::png(png_file, width = 1600, height = 1200, res = 200)
+      grid::grid.draw(venn_grob)
+      grDevices::dev.off()
+    }
+  }
+  
+  overlap_summary <- dplyr::bind_rows(overlap_summary)
+  
+  # ------------------------------------------------------------
+  # 3. Rank-order similarity
+  # ------------------------------------------------------------
+  
+  calculate_rank_similarity <- function(df1,
+                                        df2,
+                                        name1,
+                                        name2,
+                                        subset_name = "all",
+                                        sign_filter = NULL) {
+    
+    if (!is.null(sign_filter)) {
+      if (sign_filter == "positive") {
+        df1 <- df1 %>% dplyr::filter(significancez >= 0)
+        df2 <- df2 %>% dplyr::filter(significancez >= 0)
+      }
+      
+      if (sign_filter == "negative") {
+        df1 <- df1 %>% dplyr::filter(significancez < 0)
+        df2 <- df2 %>% dplyr::filter(significancez < 0)
+      }
+    }
+    
+    df1_ranked <- df1 %>%
+      dplyr::filter(!is.na(entrez), !is.na(fdr)) %>%
+      dplyr::group_by(entrez) %>%
+      dplyr::slice_min(order_by = fdr, n = 1, with_ties = FALSE) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(fdr) %>%
+      dplyr::mutate(rank_1 = dplyr::row_number()) %>%
+      dplyr::select(entrez, fdr_1 = fdr, significancez_1 = significancez, rank_1)
+    
+    df2_ranked <- df2 %>%
+      dplyr::filter(!is.na(entrez), !is.na(fdr)) %>%
+      dplyr::group_by(entrez) %>%
+      dplyr::slice_min(order_by = fdr, n = 1, with_ties = FALSE) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(fdr) %>%
+      dplyr::mutate(rank_2 = dplyr::row_number()) %>%
+      dplyr::select(entrez, fdr_2 = fdr, significancez_2 = significancez, rank_2)
+    
+    paired <- dplyr::inner_join(df1_ranked, df2_ranked, by = "entrez")
+    
+    if (!is.null(FDR_threshold)) {
+      paired <- paired %>%
+        dplyr::filter(fdr_1 <= FDR_threshold | fdr_2 <= FDR_threshold)
+    }
+    
+    if (nrow(paired) < 2) {
+      rank_cor <- NA_real_
+    } else {
+      rank_cor <- cor(
+        paired$rank_1,
+        paired$rank_2,
+        method = rank_method,
+        use = "complete.obs"
+      )
+    }
+    
+    data.frame(
+      pair = paste(name1, "vs", name2),
+      dataset_1 = name1,
+      dataset_2 = name2,
+      subset = subset_name,
+      n_shared_entrez = nrow(paired),
+      rank_correlation = round(rank_cor, 3),
+      method = rank_method,
+      stringsAsFactors = FALSE
+    )
+  }
+  
+  rank_similarity <- list()
+  
+  for (i in seq_len(nrow(pair_df))) {
+    
+    name1 <- pair_df$sample_1[i]
+    name2 <- pair_df$sample_2[i]
+    
+    df1 <- all_data %>% dplyr::filter(dataset == name1)
+    df2 <- all_data %>% dplyr::filter(dataset == name2)
+    
+    rank_similarity[[paste0(i, "_all")]] <- calculate_rank_similarity(
+      df1 = df1,
+      df2 = df2,
+      name1 = name1,
+      name2 = name2,
+      subset_name = "all",
+      sign_filter = NULL
+    )
+    
+    rank_similarity[[paste0(i, "_positive")]] <- calculate_rank_similarity(
+      df1 = df1,
+      df2 = df2,
+      name1 = name1,
+      name2 = name2,
+      subset_name = "significanceZ >= 0",
+      sign_filter = "positive"
+    )
+    
+    rank_similarity[[paste0(i, "_negative")]] <- calculate_rank_similarity(
+      df1 = df1,
+      df2 = df2,
+      name1 = name1,
+      name2 = name2,
+      subset_name = "significanceZ < 0",
+      sign_filter = "negative"
+    )
+  }
+  
+  rank_similarity <- dplyr::bind_rows(rank_similarity)
+  
+  print(overlap_summary)
+  print(rank_similarity)
+  
+  if (!is.null(output_dir)) {
+    writexl::write_xlsx(
+      list(
+        entrez_overlap_summary = overlap_summary,
+        FDR_rank_similarity_summary = rank_similarity
+      ),
+      path = file.path(output_dir, "hit_comparison_summary.xlsx")
+    )
+  }
+  
+  return(
+    list(
+      all_data = all_data,
+      overlap_summary = overlap_summary,
+      rank_similarity = rank_similarity,
+      fdr_boxplot = fdr_boxplot,
+      fdr_log_boxplot = fdr_log_boxplot,
+      venns = venns
+    )
+  )
+}
+
+xlsx_files <- c(
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/Hits_high_confidence_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/Hits_high_confidence_bcwithqc_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/Hits_high_confidence_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/Hits_high_confidence_bcwithqc_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/results/Hits_high_confidence_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/Hits_high_confidence_bcwithqc_reads_control_median_RI_comb_sample_comb_none.xlsx"
+)
+
+names <- c(
+  "DCA align",
+  "DCA bcwithqc",
+  "PA align",
+  "PA bcwithqc",
+  "GAL align",
+  "GAL bcwithqc"
+)
+
+output_dir <- "/g/steinmetz/link/Presentations/John_Update_2026_06/high_confidence"
+
+hit_compare_results <- compare_hit_xlsx_pairs(
+  xlsx_paths = xlsx_files,
+  sample_names = names,
+  output_dir = output_dir,
+  rank_method = "spearman"
+)
+
+``` 
 
 ``` {r compare_helper_functions, eval=TRUE}
 # Helper function to apply FDR filter
@@ -2645,7 +3246,7 @@ check_go_results_have_png <- function(root_dir) {
     path = root_dir,
     pattern = "_go_results\\.rds$",
     recursive = TRUE,
-    full.names = TRUE
+    full. <- s = TRUE
   )
   
   if (length(go_result_files) == 0) {
@@ -3784,7 +4385,7 @@ cat("Rows where all three columns are 1:", count_all_ones_false, "\n")
 ```
 
 ```{r Roche_compare_functions, eval=FALSE}
-Hits_current_settings <- add_info_wrapper(file_info_suffix)
+
 if (length(include_controls_list) > 0) {
   for (control_gene in include_controls_list) {
     # here we remove everything after the last _, so stuff like AAVS1_9 and
@@ -3796,20 +4397,6 @@ if (length(include_controls_list) > 0) {
   Hits_current_settings_no_controls <- Hits_current_settings %>% 
     filter(!symbol %in% include_controls_list | is.na(symbol))
 }
-
-roche_folder <- make_clean_dir(output_folder, "/Roche_compare")
-sup_3_path <- get_file_path(roche_folder, "41467_2025_61039_MOESM5_ESM.xls")
-sup_3 <- read_excel(sup_3_path)
-sup_3$GeneID <- gsub("GeneID:", "", sup_3$GeneID)
-
-compare_df <- sup_3 %>% 
-  rename(Rho_pos = Rho_Round1Pos_to_Bulk_enriched,
-         Rho_neg = Rho_Round1Neg_to_Bulk_enriched,
-         entrez = GeneID,
-         symbol = Symbol,
-         LFC_pos = MedianLFC_Round1Pos_to_Bulk_enriched,
-         LFC_neg = MedianLFC_Round1Neg_to_Bulk_enriched) %>% 
-  select(entrez, symbol, Rho_pos, Rho_neg, LFC_pos,LFC_neg)
 
 waterfall_roche_compare <- function(Hits_df,
                                       comp_df,
@@ -3826,8 +4413,7 @@ waterfall_roche_compare <- function(Hits_df,
   # Create rank column
   Hits_df <- Hits_df %>%
     mutate(rank = rank(significanceZ, ties.method = "first"))
-  signif_df <- Hits_df %>% 
-    filter(FDR <= signif_level)
+  signif_df <- Hits_df
   # Define the Limits for annotation boxes
   y_min   <- min(Hits_df$significanceZ, na.rm = TRUE)
   y_max   <- max(Hits_df$significanceZ, na.rm = TRUE)
@@ -4008,13 +4594,20 @@ make_cor_heatmap <- function(df, name = ""){
 ```
 
 ``` {r Roche_compare, eval=FALSE}
+conflicts_prefer(dplyr::select)
+conflicts_prefer(dplyr::rename)
+conflicts_prefer(dplyr::filter)
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
 
-roche_folder <- make_clean_dir(output_folder, "/Roche_compare")
-sup_3_path <- get_file_path(roche_folder, "41467_2025_61039_MOESM5_ESM.xls")
+all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+
+roche_folder <- make_clean_dir(dual_rep_dir, "/Roche_compare")
+
+sup_3_path <- get_file_path(roche_folder, "41467_2025_61039_MOESM5_ESM-3.xls")
 sup_3 <- read_excel(sup_3_path)
 
 sup_3$GeneID <- gsub("GeneID:", "", sup_3$GeneID)
-sup_3 <- sup_3 %>%
+sup_3_rename <- sup_3 %>%
   rename(
     entrez = GeneID,
     Rho_enriched = Rho_Bulk_to_Reference_enriched,
@@ -4041,7 +4634,8 @@ sup_3 <- sup_3 %>%
     Pval_depleted,
     RhoRank_depleted
   )
-compare_df <- merge(sup_3, export_df, by = "entrez")
+compare_df <- merge(sup_3_rename, merged_sgRNA_df, by = "entrez") %>% 
+  dplyr::distinct(entrez, .keep_all = TRUE) %>% 
 ###############################################################################
 # Venn Diagramm as requested by Nico
 nico_compare_df <- sup_3 %>% 
@@ -4051,20 +4645,51 @@ nico_compare_df <- sup_3 %>%
          symbol = Symbol,
          LFC_pos = MedianLFC_Round1Pos_to_Bulk_enriched,
          LFC_neg = MedianLFC_Round1Neg_to_Bulk_enriched) %>% 
-  select(entrez, symbol, Rho_pos, Rho_neg, LFC_pos,LFC_neg)
-nico_compare_df <- merge(nico_compare_df, export_df, by = "entrez")
+  select(entrez,
+         Rho_pos, Rho_neg, LFC_pos,LFC_neg)
+nico_compare_df <- merge(nico_compare_df, merged_sgRNA_df, by = "entrez") %>% 
+  dplyr::distinct(entrez, .keep_all = TRUE) %>% 
+  select(entrez, symbol,
+         Rho_pos, Rho_neg, LFC_pos,LFC_neg)
 
   
 
-nico_hits_intersect_top_neg <- nico_compare_df %>% filter(significanceZ > 0 & FDR <= 0.05 & Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5)
-nico_hits_intersect_low_pos <- nico_compare_df %>% filter(significanceZ < 0 & FDR <= 0.05 & Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+# nico_hits_intersect_top_neg <- nico_compare_df %>% filter(significanceZ > 0 & FDR <= 0.05 & Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5)
+# nico_hits_intersect_low_pos <- nico_compare_df %>% filter(significanceZ < 0 & FDR <= 0.05 & Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+# 
+# our_hits_df <- nico_compare_df %>% filter(significanceZ > 0 & FDR <= 0.05)
+# roche_hits_df <- nico_compare_df %>% filter(Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5)
 
-our_hits_df <- nico_compare_df %>% filter(significanceZ > 0 & FDR <= 0.05)
-roche_hits_df <- nico_compare_df %>% filter(Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5)
+our_hits_df <- nico_compare_df 
+roche_hits_df <- nico_compare_df %>%
+  filter(
+    (Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5) |
+    (Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+  )
 
-our_hits <- our_hits_df$entrez
+our_hits <- all_conjugates_overlap_classified$entrez
 roche_hits <- roche_hits_df$entrez
 
+overlap_our_hits_roche_hits <- merged_sgRNA_df %>% 
+  filter(
+    (entrez %in% our_hits) &
+    (entrez %in% roche_hits)
+  ) %>%
+  dplyr::distinct(entrez, .keep_all = TRUE) %>% 
+  select(entrez) %>% 
+  mutate(entrez = as.character(entrez)) %>% 
+  left_join(all_conjugates_overlap_classified, by = "entrez") %>% 
+  select(entrez, symbol,
+         significanceZ, significanceZ_PA,significanceZ_DCA,significanceZ_GalNAc,
+         category, broad_class,
+         essential_HepG2,essential_general,essential_liver,
+         HepG2_CPM_Xie, HepG2_CPM_Battisti, HepG2_14B11_CPM_Battisti,
+         GO_terms, GO_ontology, GO_terms_expanded) %>% 
+  rename(sigZ_PA = significanceZ_PA,
+         sigZ_DCA = significanceZ_DCA,
+         sigZ_GAL = significanceZ_GalNAc)
+
+write_xlsx(overlap_our_hits_roche_hits, "/g/steinmetz/link/sharing/20_Hits_overlap_between_roche_and_us.xlsx")
 
 # Create the Venn as a grob (plot object)
 venn_2 <- venn.diagram(
@@ -4086,38 +4711,38 @@ grid.newpage()
 grid.draw(venn_2)
 
 
-our_hits_df <- nico_compare_df %>% filter(significanceZ < 0 & FDR <= 0.05)
-roche_hits_df <- nico_compare_df %>% filter(Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
-
-our_hits <- our_hits_df$entrez
-roche_hits <- roche_hits_df$entrez
-
-
-# Create the Venn as a grob (plot object)
-venn_2 <- venn.diagram(
-  x = list(
-    our_hits = our_hits,
-    roche_hits = roche_hits
-  ),
-  filename = NULL,          # NULL = return a grid object instead of saving to file
-  fill = c("red", "yellow"),
-  alpha = 0.5,              # transparency
-  cex = 1.5, 
-  cat.pos  = c(0, 0),      # 90° = above each circle
-  cat.dist = c(0.05, 0.05),  # distance from the circle border
-  cat.cex  = 1.5# size of set names
-)
-
-# Draw it in the plotting window
-grid.newpage()
-grid.draw(venn_2)
+# our_hits_df <- nico_compare_df %>% filter(significanceZ < 0 & FDR <= 0.05)
+# roche_hits_df <- nico_compare_df %>% filter(Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+# 
+# our_hits <- our_hits_df$entrez
+# roche_hits <- roche_hits_df$entrez
+# 
+# 
+# # Create the Venn as a grob (plot object)
+# venn_2 <- venn.diagram(
+#   x = list(
+#     our_hits = our_hits,
+#     roche_hits = roche_hits
+#   ),
+#   filename = NULL,          # NULL = return a grid object instead of saving to file
+#   fill = c("red", "yellow"),
+#   alpha = 0.5,              # transparency
+#   cex = 1.5, 
+#   cat.pos  = c(0, 0),      # 90° = above each circle
+#   cat.dist = c(0.05, 0.05),  # distance from the circle border
+#   cat.cex  = 1.5# size of set names
+# )
+# 
+# # Draw it in the plotting window
+# grid.newpage()
+# grid.draw(venn_2)
 ###############################################################################
 
 
 
 
 
-waterfall_roche_compare(Hits_current_settings_no_controls, compare_df)
+waterfall_roche_compare(all_conjugates_overlap_classified, nico_compare_df)
 
 
 
@@ -4497,4 +5122,273 @@ csv_file_path <- get_file_path(results_output_folder,"L2FC_vs_input.csv")
 write_csv(vs_input$means, csv_file_path)
 csv_file_path <- get_file_path(results_output_folder,"L2FC_vs_plasmid.csv")
 write_csv(vs_plasmid$means, csv_file_path)
+```
+
+```{r top_guide_per_gene, eval=FALSE}
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+merged_sgRNA_df <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds")
+PA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align"
+DCA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align"
+GAL_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align"
+
+library(dplyr)
+
+build_conjugate_maude_summary <- function(
+  conjugates_overlap,
+  merged_sgRNA_df,
+  DCA_dir,
+  PA_dir,
+  GAL_dir,
+  mode = c("use_all", "use_only_confirmed_hits")
+) {
+  mode <- match.arg(mode)
+  
+  merged_sgRNA_df <- merged_sgRNA_df %>%
+    mutate(
+      entrez = if_else(
+        is.na(entrez),
+        sub("^CONTROL_C_(.*)_\\d+$", "\\1", sgrna_id),
+        as.character(entrez)
+      )
+    )
+
+  mean_na <- function(x) {
+    x <- suppressWarnings(as.numeric(as.character(x)))
+    if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
+  }
+
+  row_mean_na <- function(mat) {
+    mat <- as.matrix(mat)
+    storage.mode(mat) <- "numeric"
+    out <- rowMeans(mat, na.rm = TRUE)
+    out[is.nan(out)] <- NA_real_
+    out
+  }
+
+  to_logical_flag <- function(x) {
+    x <- toupper(trimws(as.character(x)))
+    out <- rep(NA, length(x))
+    out[x %in% c("TRUE", "T", "1", "YES", "Y")] <- TRUE
+    out[x %in% c("FALSE", "F", "0", "NO", "N")] <- FALSE
+    out
+  }
+
+  summarise_maude_dir <- function(input_dir, suffix) {
+    rds_dir <- file.path(input_dir, "rds")
+
+    files <- list.files(
+      rds_dir,
+      pattern = "^MAUDE_guide_stats.*\\.rds$",
+      full.names = TRUE
+    )
+
+    if (length(files) == 0) {
+      stop("No MAUDE_guide_stats*.rds files found in: ", rds_dir)
+    }
+
+    df <- lapply(files, function(f) {
+      x <- readRDS(f)
+
+      required_cols <- c("sgRNA", "input", "lower", "upper")
+      missing_cols <- setdiff(required_cols, colnames(x))
+
+      if (length(missing_cols) > 0) {
+        stop(
+          "File is missing required columns: ",
+          paste(missing_cols, collapse = ", "),
+          "\nFile: ",
+          f
+        )
+      }
+
+      x %>%
+        select(sgRNA,input,upper,lower) %>% 
+        transmute(
+          sgRNA = as.character(.data$sgRNA),
+          input = suppressWarnings(as.numeric(as.character(.data$input))),
+          lower = suppressWarnings(as.numeric(as.character(.data$lower))),
+          upper = suppressWarnings(as.numeric(as.character(.data$upper)))
+        )
+    }) %>%
+      bind_rows() %>%
+      group_by(sgRNA) %>%
+      summarise(
+        input = mean_na(input),
+        lower = mean_na(lower),
+        upper = mean_na(upper),
+        .groups = "drop"
+      ) %>%
+      rename(
+        !!paste0("input_", suffix) := input,
+        !!paste0("lower_", suffix) := lower,
+        !!paste0("upper_", suffix) := upper
+      )
+
+    df
+  }
+
+  PA_df  <- summarise_maude_dir(PA_dir,  "PA")
+  DCA_df <- summarise_maude_dir(DCA_dir, "DCA")
+  GAL_df <- summarise_maude_dir(GAL_dir, "GAL")
+
+  combined_df <- list(PA_df, DCA_df, GAL_df) %>%
+    Reduce(function(x, y) full_join(x, y, by = "sgRNA"), .)
+
+  sgrna_col <- if ("sgrna_id" %in% colnames(merged_sgRNA_df)) {
+    "sgrna_id"
+  } else if ("sgRNA" %in% colnames(merged_sgRNA_df)) {
+    "sgRNA"
+  } else {
+    stop("merged_sgRNA_df must contain either `sgrna_id` or `sgRNA`.")
+  }
+
+  if (!"entrez" %in% colnames(merged_sgRNA_df)) {
+    stop("merged_sgRNA_df must contain an `entrez` column.")
+  }
+
+  sgRNA_to_entrez <- merged_sgRNA_df %>%
+    transmute(
+      sgRNA = as.character(.data[[sgrna_col]]),
+      entrez = as.character(.data$entrez)
+    ) %>%
+    distinct()
+
+  overlap_entrez <- as.character(conjugates_overlap$entrez)
+
+  combined_df <- combined_df %>%
+    left_join(sgRNA_to_entrez, by = "sgRNA") %>%
+    filter(!is.na(entrez), entrez %in% overlap_entrez)
+
+  metric_suffixes <- c("PA", "DCA", "GAL")
+
+  if (mode == "use_all") {
+    combined_df <- combined_df %>%
+      mutate(
+        mean_input = row_mean_na(across(all_of(paste0("input_", metric_suffixes)))),
+        mean_upper = row_mean_na(across(all_of(paste0("upper_", metric_suffixes)))),
+        mean_lower = row_mean_na(across(all_of(paste0("lower_", metric_suffixes))))
+      )
+  }
+
+  if (mode == "use_only_confirmed_hits") {
+    required_overlap_cols <- c("entrez", "PA", "DCA", "GalNAc")
+    missing_overlap_cols <- setdiff(required_overlap_cols, colnames(conjugates_overlap))
+
+    if (length(missing_overlap_cols) > 0) {
+      stop(
+        "conjugates_overlap is missing required columns: ",
+        paste(missing_overlap_cols, collapse = ", ")
+      )
+    }
+
+    hit_lookup <- conjugates_overlap %>%
+      transmute(
+        entrez = as.character(.data$entrez),
+        PA = to_logical_flag(.data$PA),
+        DCA = to_logical_flag(.data$DCA),
+        GalNAc = to_logical_flag(.data$GalNAc)
+      ) %>%
+      group_by(entrez) %>%
+      summarise(
+        PA = any(PA, na.rm = TRUE),
+        DCA = any(DCA, na.rm = TRUE),
+        GalNAc = any(GalNAc, na.rm = TRUE),
+        .groups = "drop"
+      )
+
+    combined_df <- combined_df %>%
+      left_join(hit_lookup, by = "entrez")
+
+    confirmed_row_mean <- function(df, metric) {
+      value_cols <- paste0(metric, "_", c("PA", "DCA", "GAL"))
+      flag_cols <- c("PA", "DCA", "GalNAc")
+
+      value_mat <- as.matrix(df[, value_cols])
+      storage.mode(value_mat) <- "numeric"
+
+      flag_mat <- as.matrix(df[, flag_cols])
+      flag_mat[is.na(flag_mat)] <- FALSE
+
+      value_mat[!flag_mat] <- NA_real_
+
+      row_mean_na(value_mat)
+    }
+
+    combined_df <- combined_df %>%
+      mutate(
+        mean_input = confirmed_row_mean(pick(everything()), "input"),
+        mean_upper = confirmed_row_mean(pick(everything()), "upper"),
+        mean_lower = confirmed_row_mean(pick(everything()), "lower")
+      )
+  }
+  combined_df <- combined_df %>%
+    mutate(
+      mean = row_mean_na(across(all_of(c("mean_input", "mean_upper", "mean_lower"))))
+    )
+  
+  # Keep best sgRNA per entrez based on highest overall mean
+  mean_df <- combined_df %>%
+    arrange(entrez, desc(mean), sgRNA) %>%
+    group_by(entrez) %>%
+    slice(1) %>%
+    ungroup()
+  
+  # Cut merged_sgRNA_df down to selected sgRNAs only
+  merged_sgRNA_df_selected <- merged_sgRNA_df %>%
+    mutate(
+      sgrna_id = as.character(.data[[sgrna_col]]),
+      entrez = as.character(.data$entrez)
+    ) %>%
+    filter(sgrna_id %in% mean_df$sgRNA)
+  
+  # Make lookup; should now be one seq/sgRNA per entrez
+  seq_sgrna_lookup <- merged_sgRNA_df_selected %>%
+    select(
+      entrez,
+      new_seq = seq,
+      new_sgRNA = sgrna_id
+    ) %>%
+    distinct(entrez, .keep_all = TRUE)
+  
+  # Modify overlap/conjugates dataframe
+  modified_overlap_df <- conjugates_overlap %>%
+    mutate(entrez = as.character(entrez)) %>%
+    left_join(seq_sgrna_lookup, by = "entrez") %>%
+    mutate(
+      seq = if_else(!is.na(new_seq), new_seq, seq),
+      sgRNA = if_else(!is.na(new_sgRNA), new_sgRNA, sgRNA)
+    ) %>%
+    select(-new_seq, -new_sgRNA)
+  
+  return(
+    list(
+      modified_overlap_df = modified_overlap_df,
+      mean_df = mean_df
+    )
+  )
+}
+
+guide_summary_all <- build_conjugate_maude_summary(
+  conjugates_overlap = all_conjugates_overlap_classified,
+  merged_sgRNA_df = merged_sgRNA_df,
+  DCA_dir = DCA_dir,
+  PA_dir = PA_dir,
+  GAL_dir = GAL_dir,
+  mode = "use_all"
+)
+best_sgRNA_all <- guide_summary_all$modified_overlap_df
+
+guide_summary_confirmed <- build_conjugate_maude_summary(
+  conjugates_overlap = all_conjugates_overlap_classified,
+  merged_sgRNA_df = merged_sgRNA_df,
+  DCA_dir = DCA_dir,
+  PA_dir = PA_dir,
+  GAL_dir = GAL_dir,
+  mode = "use_only_confirmed_hits"
+)
+best_sgRNA_confirmed_hits <- guide_summary_confirmed$modified_overlap_df
+
+saveRDS(best_sgRNA_all,"/g/steinmetz/link/sharing/nico/best_guides_all.rds")
+saveRDS(best_sgRNA_confirmed_hits,"/g/steinmetz/link/sharing/nico/best_guides_confirmed_hits.rds")
 ```

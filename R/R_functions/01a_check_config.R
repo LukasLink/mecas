@@ -928,17 +928,27 @@
   invisible(option)
 }
 
-check_config_dependencies <- function(cfg) {
+check_config_dependencies <- function(cfg, setup_mode) {
   #-----------------------------------------------------------------------------
   # Basic required options for dependency checks
   #-----------------------------------------------------------------------------
   
   machine <- cfg$run$machine
-  read_counting <- cfg$counting$read_counting
-  
   check_input(machine, "run.machine")
-  check_input(read_counting, "counting.read_counting")
+  if (!identical(setup_mode, "make_reference")){
+    read_counting <- cfg$counting$read_counting
+    check_input(read_counting, "counting.read_counting")
+  }
   
+  
+  #-----------------------------------------------------------------------------
+  # plot requries less checks
+  #-----------------------------------------------------------------------------
+  if (identical(setup_mode, "plot")){
+    # Maybe add plot specifc checks if I can think of them. 
+    # Abort checking the rest, because make plot does not need those.
+    return(invisible(TRUE))
+  }
   #-----------------------------------------------------------------------------
   # SLURM options are only required when machine == "slurm"
   #-----------------------------------------------------------------------------
@@ -1029,6 +1039,24 @@ check_config_dependencies <- function(cfg) {
     name = "slurm.email",
     reason = "`run.machine` is not set to 'slurm'."
   )
+  #-----------------------------------------------------------------------------
+  # make_reference requries less checks
+  #-----------------------------------------------------------------------------
+  if (identical(setup_mode, "make_reference")){
+    if (isTRUE(cfg$modules$use_modules)) {
+        .require_if(
+          condition = TRUE,
+          option = cfg$modules$star,
+          name = "modules.star",
+          reason = "`modules.use_modules` is TRUE and `counting.read_counting` is 'align_UMI_tools'.",
+          validator = function(option, name) {
+            .validate_string(option, name, required = TRUE, allow_empty = FALSE)
+          }
+        )
+      }
+    # Abort checking the rest, because make reference does not need those.
+    return(invisible(TRUE))
+  }
   
   #-----------------------------------------------------------------------------
   # bcwithqc-specific requirements

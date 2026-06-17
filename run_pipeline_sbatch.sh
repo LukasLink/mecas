@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-#SBATCH -J PA_align                    # chmod +x ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/run_pipeline_sbatch.sh
+#SBATCH -J speed                 # chmod +x ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/run_pipeline_sbatch.sh
 #SBATCH -A lsteinme                       # sbatch ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/run_pipeline_sbatch.sh
 #SBATCH --mem=16g                         #  --dependency=afterok:46151850
 #SBATCH -N 1
 #SBATCH --cpus-per-task=1
-#SBATCH -t 72:00:00
+#SBATCH -t 51:00:00
 #SBATCH --qos normal
 #SBATCH --array=0
 #SBATCH -o /g/steinmetz/link/logs/log_%x_%A_%a.out

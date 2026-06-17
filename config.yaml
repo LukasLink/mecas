@@ -10,9 +10,6 @@
 # Run behavior
 # ------------------------------------------------------------------------------
 run:
-  # If true, all results will be recomputed and saved.
-  # If false, the pipeline will try to load existing results where possible.
-  first_time: false
   # Defines at which Stage the Pipeline begins, only relevant for count command.
   # Assumes that there are results from previous pipeline runs. 
   # Allowed values:
@@ -33,12 +30,12 @@ run:
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align"
-  output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
+  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/ref_test"
+  output_folder: "/scratch/link/Amplicon_barcode_analysis/PA_no_STAR_test"
   
   # Mandatory input directory for fastq files
-  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/bcwithqc_test_fastqs_1"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
+  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
@@ -85,7 +82,7 @@ slurm:
   qos: "normal"
   cpus: 10              # cpus per task
   mem: "80g"            # memory allocated to each Job
-  wall_time: "60:00:00" # Time-out limit before process is killed. hours:minutes:seconds
+  wall_time: "50:00:00" # Time-out limit before process is killed. hours:minutes:seconds
   partition: null       # Specific partition
   array: 12             # Resources consumed = Base_Resources * array 
                         # Runtime = Base_runtime / array 
@@ -273,7 +270,7 @@ filtering:
 # Due to subsampeling MAUDE has a small amount of internal randomness. 
 # This can be handled by consensus calling -> running MAUDE multiple times. 
 consensus:
-  run: true
+  run: false
   n_reps: 19 # repetitions IN ADDITION to the inital MAUDE run
 
   high_confidence:
@@ -301,7 +298,7 @@ plots:
 
   read_count_violin:
     
-    violin_y_limit: 8000 # limit for the Y axis: Number of reads per sgRNA
+    violin_y_limit: 4000 # limit for the Y axis: Number of reads per sgRNA
     
   waterfall:
   

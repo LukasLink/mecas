@@ -310,7 +310,6 @@ log_project_setup <- function(cfg) {
   logger::log_info("Project setup options")
   logger::log_info("==========================================================")
   
-  logger::log_info("first_time:                        {cfg$run$first_time}")
   logger::log_info("start_with:                        {cfg$run$start_with}")
   logger::log_info("machine:                           {cfg$run$machine}")
   logger::log_info("setup_mode:                        {cfg$run$setup_mode}")
@@ -436,7 +435,7 @@ project_setup <- function(project_root_dir,
   cfg <- list()
   
   cfg$run <- list(
-    first_time = check_input(config$run$first_time %||% FALSE, "run.first_time"),
+    first_time = check_input(TRUE, "run.first_time"), # Hotfix, properly remove first_time later
     start_with = check_input(config$run$start_with %||% "beginning", "run.start_with"),
     machine = check_input(config$run$machine %||% "local", "run.machine"),
     setup_mode = setup_mode
@@ -727,10 +726,17 @@ project_setup <- function(project_root_dir,
     )
   )
   
+  if (identical(setup_mode, "make_reference")){
+    if (cfg$slurm$array > 1){
+      warning("Slurm array will always be set to 1 for STAR genome generation.")
+      cfg$slurm$array <- 1
+    }
+  }
+  
   # If you update check_config_dependencies() to accept nested cfg, keep this.
   # Otherwise temporarily comment it out while migrating that validator.
   if (exists("check_config_dependencies", mode = "function")) {
-    check_config_dependencies(cfg)
+    check_config_dependencies(cfg, setup_mode)
   }
   
   #=============================================================================

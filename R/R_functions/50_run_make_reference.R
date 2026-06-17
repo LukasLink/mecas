@@ -1,18 +1,26 @@
 # 31_run_make_reference.R
 
-run_make_reference <- function(config_path, project_root_dir, cli_args) {
+run_make_reference <- function(config_path, project_root_dir, cli_args, run_setup = TRUE, cfg = NULL) {
   #-----------------------------------------------------------------------------
   # Run setup
   #-----------------------------------------------------------------------------
+  if (isTRUE(run_setup)){
+    cfg <- project_setup(
+      project_root_dir = project_root_dir,
+      config_path = config_path,
+      setup_mode = "make_reference",
+      use_old_suffix_construction = FALSE
+    )
+  } else {
+    cfg$slurm$array <- 1
+  }
+  if (is.null(cfg)){
+    stop("Config is NULL after run_make_reference stup. This is a code Error, users can not fix this.")
+  }
   
-  cfg <- project_setup(
-    project_root_dir = project_root_dir,
-    config_path = config_path,
-    setup_mode = "make_reference",
-    use_old_suffix_construction = FALSE
-  )
-  
-  use_pure_sgrna_sequence <- "--use-pure-sgrna-sequence" %in% cli_args
+  # This is the old version from the external function, the internal should always use just the sgRNA sequence. 
+  # use_pure_sgrna_sequence <- "--use-pure-sgrna-sequence" %in% cli_args
+  use_pure_sgrna_sequence <- TRUE
   stop_before_star <- "--only-ref-no-star" %in% cli_args
   
   #-----------------------------------------------------------------------------
@@ -182,8 +190,10 @@ run_make_reference <- function(config_path, project_root_dir, cli_args) {
   )
   
   logger::log_info("STAR index generated at: {star_index_output_dir}")
-  logger::log_info("Copy this path to the config to proceed.")
-  logger::log_info("Done.")
+  if (isTRUE(run_setup)){
+    logger::log_info("Copy this path to the config to proceed.")
+    logger::log_info("Done.")    
+  }
   
   return(invisible(list(
     cfg = cfg,

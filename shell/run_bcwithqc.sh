@@ -298,6 +298,7 @@ run_bcwithqc_one_input_dir() {
     "--config=$BCWITHQC_CONFIG"
     "--output-dir=$run_output_dir"
     "--threads=$THREADS"
+    "--output-format-bam"
   )
 
   if [[ -n "$VERBOSITY" ]]; then
@@ -312,58 +313,58 @@ run_bcwithqc_one_input_dir() {
   # Find preprocessed FASTQ
   ##############################################################################
 
-  mapfile -t preprocessed_fastqs < <(
+  mapfile -t preprocessed_bams < <(
     find "$run_output_dir" -maxdepth 1 \
-      \( -name "*.fq" -o -name "*.fastq" -o -name "*.fq.gz" -o -name "*.fastq.gz" \) \
+      -name "*Aligned.out.bam" \
       -type f | sort
   )
-
-  if [[ "${#preprocessed_fastqs[@]}" -eq 0 ]]; then
-    die "[$run_name] No preprocessed FASTQ found in: $run_output_dir"
+  
+  if [[ "${#preprocessed_bams[@]}" -eq 0 ]]; then
+    die "[$run_name] No preprocessed BAM found in: $run_output_dir"
   fi
-
-  if [[ "${#preprocessed_fastqs[@]}" -gt 1 ]]; then
-    printf '%s\n' "${preprocessed_fastqs[@]}"
-    die "[$run_name] Expected exactly one preprocessed FASTQ per run."
+  
+  if [[ "${#preprocessed_bams[@]}" -gt 1 ]]; then
+    printf '%s\n' "${preprocessed_bams[@]}"
+    die "[$run_name] Expected exactly one preprocessed BAM per run."
   fi
-
-  local preprocessed_fastq="${preprocessed_fastqs[0]}"
-
-  log "[$run_name] Preprocessed FASTQ: $preprocessed_fastq"
+  
+  local preprocessed_bam="${preprocessed_bams[0]}"
+  log "[$run_name] Preprocessed BAM: $preprocessed_bam"
 
   ##############################################################################
   # 2. STAR alignment
   ##############################################################################
+  # This was depracted when STAR was removed as obligatory for bcwithqc. 
 
-  log "[$run_name] Starting STAR alignment"
-
-  load_star_if_needed
-
-  local star_prefix="$star_dir/${run_name}_"
-
-  star_cmd=(
-    STAR
-    --runThreadN "$THREADS"
-    --genomeDir "$STAR_INDEX"
-    --readFilesIn "$preprocessed_fastq"
-    --outFileNamePrefix "$star_prefix"
-    --outFilterMultimapNmax 1
-    --outSAMtype BAM Unsorted
-    --outSAMattributes NH HI AS nM GX GN
-  )
-
-  if [[ "$preprocessed_fastq" == *.gz ]]; then
-    star_cmd+=(--readFilesCommand zcat)
-  fi
-
-  "${star_cmd[@]}" 2>&1 | tee "$LOGS_DIR/${run_name}_02_STAR.log"
-
-  local aligned_bam="${star_prefix}Aligned.out.bam"
-
-  [[ -f "$aligned_bam" ]] || die "[$run_name] Expected STAR BAM not found: $aligned_bam"
-
-  log "[$run_name] Finished STAR alignment"
-  log "[$run_name] STAR BAM: $aligned_bam"
+  # log "[$run_name] Starting STAR alignment"
+  # 
+  # load_star_if_needed
+  # 
+  # local star_prefix="$star_dir/${run_name}_"
+  # 
+  # star_cmd=(
+  #   STAR
+  #   --runThreadN "$THREADS"
+  #   --genomeDir "$STAR_INDEX"
+  #   --readFilesIn "$preprocessed_fastq"
+  #   --outFileNamePrefix "$star_prefix"
+  #   --outFilterMultimapNmax 1
+  #   --outSAMtype BAM Unsorted
+  #   --outSAMattributes NH HI AS nM GX GN
+  # )
+  # 
+  # if [[ "$preprocessed_fastq" == *.gz ]]; then
+  #   star_cmd+=(--readFilesCommand zcat)
+  # fi
+  # 
+  # "${star_cmd[@]}" 2>&1 | tee "$LOGS_DIR/${run_name}_02_STAR.log"
+  # 
+  # local aligned_bam="${star_prefix}Aligned.out.bam"
+  # 
+  # [[ -f "$aligned_bam" ]] || die "[$run_name] Expected STAR BAM not found: $aligned_bam"
+  # 
+  # log "[$run_name] Finished STAR alignment"
+  # log "[$run_name] STAR BAM: $aligned_bam"
 
   ##############################################################################
   # 3. bcwithqc count
@@ -374,7 +375,7 @@ run_bcwithqc_one_input_dir() {
   count_cmd=(
     "$BCWITHQC_BIN" "count"
     "$run_output_dir"
-    "--STAR-output-dir=$star_dir"
+    "--STAR-output-dir=$run_output_dir"
     "--config=$BCWITHQC_CONFIG"
     "--output-dir=$run_output_dir"
     "--threads=$THREADS"

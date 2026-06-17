@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #SBATCH -J clean_copy
-#SBATCH -A lsteinme
+#SBATCH -A lsteinme                                     
 #SBATCH --mem=40g
 #SBATCH -N 1
 #SBATCH --cpus-per-task=1
-#SBATCH -t 02:00:00
+#SBATCH -t 04:00:00
 #SBATCH --qos normal
 #SBATCH -o /g/steinmetz/link/logs/log_%x_%j.out
 #SBATCH -e /g/steinmetz/link/logs/log_%x_%j.err
@@ -42,3 +42,4 @@ log "  DST: $DST"
 rsync -a --human-readable --stats --info=progress2 -- "$SRC"/ "$DST"/
 
 log "Copy completed successfully."
+# sbatch ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/auxiliary_scripts/clean_copy_from_scratch.sh

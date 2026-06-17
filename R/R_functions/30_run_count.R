@@ -67,7 +67,16 @@ run_count <- function(config_path, project_root_dir, cli_args) {
       "standardized FASTQ manifest"
     )
   }
-  
+  #-----------------------------------------------------------------------------
+  # Create reference genome
+  #-----------------------------------------------------------------------------
+  run_make_reference(
+    config_path = config_path,
+    project_root_dir = project_root_dir,
+    cli_args = cli_args,
+    cfg = cfg, 
+    run_setup = FALSE
+  )
   #-----------------------------------------------------------------------------
   # Run Read Counting
   #-----------------------------------------------------------------------------

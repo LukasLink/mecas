@@ -576,7 +576,7 @@ print(s)
 print(o)
 print(p)        
 plot_maude_qc(maude_counts_df)
-plot_maude_qc(maude_counts_df, add_0s = TRUE)
+# plot_maude_qc(maude_counts_df, add_0s = TRUE)
 ```
 
 ## Run MAUDE and generate maude_guide_hits and maude_gene_hits
