@@ -1,8 +1,0 @@
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/05_bcwithqc.done
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds/count_df.rds
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/mapping_results.xlsx
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/Hits_explorative.xlsx
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/resolved_config.rds
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/resolved_config.yaml
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/fastq_manifest.tsv
-/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/01_setup.done
