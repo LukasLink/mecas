@@ -53,25 +53,49 @@ run_consensus_call <- function(maude_counts_df,
     venn_diagram = FALSE
   )
   
-  high_confidence_xlsx <- get_file_path(
-    cfg$paths$results_output_folder,
-    paste0("Hits_high_confidence_", cfg$suffix$file_info_suffix, ".xlsx")
-  )
+  if (cfg$suffix$file_info_suffix == ""){
+    high_confidence_xlsx <- get_file_path(
+      cfg$paths$results_output_folder,
+      paste0("Hits_high_confidence", cfg$suffix$file_info_suffix, ".xlsx")
+    )
+    
+    high_confidence_rds <- get_file_path(
+      cfg$paths$rds_output_folder,
+      paste0("high_confidence_hits", cfg$suffix$file_info_suffix, ".rds")
+    )
+    
+    explorative_xlsx <- get_file_path(
+      cfg$paths$results_output_folder,
+      paste0("Hits_explorative", cfg$suffix$file_info_suffix, ".xlsx")
+    )
+    
+    explorative_rds <- get_file_path(
+      cfg$paths$rds_output_folder,
+      paste0("explorative_hits", cfg$suffix$file_info_suffix, ".rds")
+    )
+  } else {
+    high_confidence_xlsx <- get_file_path(
+      cfg$paths$results_output_folder,
+      paste0("Hits_high_confidence_", cfg$suffix$file_info_suffix, ".xlsx")
+    )
+    
+    high_confidence_rds <- get_file_path(
+      cfg$paths$rds_output_folder,
+      paste0("high_confidence_hits_", cfg$suffix$file_info_suffix, ".rds")
+    )
+    
+    explorative_xlsx <- get_file_path(
+      cfg$paths$results_output_folder,
+      paste0("Hits_explorative_", cfg$suffix$file_info_suffix, ".xlsx")
+    )
+    
+    explorative_rds <- get_file_path(
+      cfg$paths$rds_output_folder,
+      paste0("explorative_hits_", cfg$suffix$file_info_suffix, ".rds")
+    )
+  }
   
-  high_confidence_rds <- get_file_path(
-    cfg$paths$rds_output_folder,
-    paste0("high_confidence_hits_", cfg$suffix$file_info_suffix, ".rds")
-  )
-  
-  explorative_xlsx <- get_file_path(
-    cfg$paths$results_output_folder,
-    paste0("Hits_explorative_", cfg$suffix$file_info_suffix, ".xlsx")
-  )
-  
-  explorative_rds <- get_file_path(
-    cfg$paths$rds_output_folder,
-    paste0("explorative_hits_", cfg$suffix$file_info_suffix, ".rds")
-  )
+
   
   writexl::write_xlsx(high_confidence_hits$Hits_in_X_df, high_confidence_xlsx)
   saveRDS(high_confidence_hits$Hits_in_X_df, high_confidence_rds)

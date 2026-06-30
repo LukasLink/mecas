@@ -240,7 +240,7 @@ run_read_counting <- function(manifest,
   # Optional: combine samples or sublibraries of the same condition
   #-----------------------------------------------------------------------------
   
-  combine_for_guide_stats <- cfg$counting$combine_for_guide_stats %||% ""
+  combine_for_guide_stats <- cfg$replicates$combine_for_guide_stats %||% ""
   
   if (!identical(combine_for_guide_stats, "")) {
     

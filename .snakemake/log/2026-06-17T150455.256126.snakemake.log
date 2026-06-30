@@ -1,0 +1,42 @@
+Assuming unrestricted shared filesystem usage.
+
+SNAKEMAKE
+=========
+  Date: 2026-06-17 15:04:55
+  Workflow ID: c2c82ec2-0146-4863-b8ed-dc37766d7ca8
+  Platform: Linux-5.14.0-611.54.1.el9_7.x86_64-x86_64-with-glibc2.39
+  Host: jupyter-link
+  User: link
+  Snakemake version: 9.23.0
+  Python version: 3.12.3 (main, Jan  8 2026, 11:30:50) [GCC 13.3.0]
+  Command: /home/link/venvs/snakemake/bin/snakemake setup_R --cores 1
+  Snakefile: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile
+  Base directory: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis
+  Run directory: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis
+  Working directory: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis
+  Config file(s): ['config.yaml']
+  Config MD5: 44a19e1881dd64aecfafe9e49fd8b655
+
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job        count
+-------  -------
+setup_R        1
+total          1
+
+Select jobs to execute...
+Execute 1 jobs...
+[Wed Jun 17 15:04:55 2026]
+localrule setup_R:
+    input: config.yaml
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/setup_test/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/setup_test/.pipeline_state/resolved_config.yaml, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/setup_test/.pipeline_state/fastq_manifest.tsv, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/setup_test/.pipeline_state/01_setup.done
+    jobid: 0
+    reason: Updated input files: config.yaml
+    resources: tmpdir=/tmp
+[Wed Jun 17 15:05:03 2026]
+Finished jobid: 0 (Rule: setup_R)
+1 of 1 steps (100%) done
+Complete log(s): /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/log/2026-06-17T150455.256126.snakemake.log

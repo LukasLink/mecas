@@ -1,0 +1,45 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 14:05:09 2026]
+rule QC_filtering_done:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/I_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/L_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/U_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/03_QC_filtering.done
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        touch /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/03_QC_filtering.done
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 14:05:12 2026]
+localrule QC_filtering_done:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/I_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/L_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/U_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/03_QC_filtering.done
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57336564, runtime=60, slurm_account=lsteinme
+
+
+        touch /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/03_QC_filtering.done
+        
+[Wed Jun 24 14:05:12 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Wed Jun 24 14:05:12 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

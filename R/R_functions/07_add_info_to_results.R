@@ -193,14 +193,15 @@ add_info_to_gene_stats <- function(maude_guide_stats,
 }
 
 
-add_info_wrapper <- function(suffix,
-                             cfg,
-                             folder = cfg$paths$rds_output_folder,
-                             prefix_gene = "MAUDE_gene_stats",
-                             prefix_guide = "MAUDE_guide_stats") {
+add_info_wrapper <- function(
+    cfg,
+    file_suffix = cfg$suffix$file_suffix,
+    folder = cfg$paths$rds_output_folder,
+    prefix_gene = "MAUDE_gene_stats",
+    prefix_guide = "MAUDE_guide_stats") {
   
-  gene <- readRDS(file.path(folder, paste0(prefix_gene, "_", suffix, ".rds")))
-  guide <- readRDS(file.path(folder, paste0(prefix_guide, "_", suffix, ".rds")))
+  gene <- readRDS(file.path(folder, paste0(prefix_gene, file_suffix)))
+  guide <- readRDS(file.path(folder, paste0(prefix_guide, file_suffix)))
   
   result <- add_info_to_gene_stats(
     maude_guide_stats = guide,

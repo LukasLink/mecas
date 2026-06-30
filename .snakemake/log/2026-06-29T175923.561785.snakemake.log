@@ -1,0 +1,62 @@
+Building DAG of jobs...
+You are running snakemake in a SLURM job context. This is not recommended, as it may lead to unexpected behavior.Please run Snakemake directly on the login node.
+SLURM run ID: c7d36675-dea9-45e7-9ae6-c18e7945e4c9
+Using shell: /usr/bin/bash
+Provided remote nodes: 20
+Job stats:
+job               count
+--------------  -------
+MAUDE_and_plot        1
+all                   1
+bcwithqc_done         1
+setup                 1
+total                 4
+
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 17:59:28 2026]
+checkpoint setup:
+    input: config.yaml
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.yaml, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/fastq_manifest.tsv, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    jobid: 2
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+DAG of jobs will be updated after completion.
+
+
+        module load R/4.5.2-gfbf-2025b
+        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_setup.R config.yaml
+        
+Job 2 has been submitted with SLURM jobid 57769251 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_setup/57769251.log).
+[Mon Jun 29 18:00:23 2026]
+Finished job 2.
+1 of 4 steps (25%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:00:24 2026]
+rule QC_filtering_R:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    jobid: 10
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds
+        
+Job 10 has been submitted with SLURM jobid 57769281 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filtering_R/57769281.log).
+Waiting at most 60 seconds for missing files.
+MissingOutputException in rule QC_filtering_R in file /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile, line 154:
+Job 10  completed successfully, but some output files are missing. Missing files after 60 seconds. This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait:
+/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh (missing locally, parent dir not present)
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2026-06-29T175923.561785.snakemake.log
+WorkflowError:
+At least one job did not complete successfully.

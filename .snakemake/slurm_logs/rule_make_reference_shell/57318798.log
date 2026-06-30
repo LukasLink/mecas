@@ -1,0 +1,112 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=128000, mem_mib=122071, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 11:44:24 2026]
+rule make_reference_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/ref/ref.fa, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/ref/ref.gtf, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/STAR_ref_params.sh
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/02_make_reference.done
+    jobid: 0
+    reason: Forced execution
+    threads: 12
+    resources: mem_mb=128000, mem_mib=122071, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=5760, slurm_account=lsteinme
+
+
+        module load STAR/2.7.11b
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/STAR_ref_params.sh
+
+        LIMIT_GENOME_GENERATE_RAM=$(( 128000 * 1000000 * 90 / 100 ))
+
+        mkdir -p "$STAR_INDEX_OUTPUT_DIR"
+
+        STAR \
+          --runThreadN 12 \
+          --runMode genomeGenerate \
+          --genomeDir "$STAR_INDEX_OUTPUT_DIR" \
+          --genomeFastaFiles "$REF_FASTA_PATH" \
+          --sjdbGTFfile "$REF_GTF_PATH" \
+          --limitGenomeGenerateRAM "$LIMIT_GENOME_GENERATE_RAM" \
+          --genomeSAindexNbases "$GENOME_SA_INDEX_N_BASES" \
+          --sjdbOverhang "$SJDB_OVERHANG" \
+          --genomeChrBinNbits "$GENOME_CHR_BIN_N_BITS"
+
+        touch /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/02_make_reference.done
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 12
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=128000, mem_mib=122071, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 11:44:26 2026]
+localrule make_reference_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/ref/ref.fa, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/ref/ref.gtf, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/STAR_ref_params.sh
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/02_make_reference.done
+    jobid: 0
+    reason: Forced execution
+    threads: 12
+    resources: mem_mb=128000, mem_mib=122071, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57318798, runtime=5760, slurm_account=lsteinme
+
+
+        module load STAR/2.7.11b
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/STAR_ref_params.sh
+
+        LIMIT_GENOME_GENERATE_RAM=$(( 128000 * 1000000 * 90 / 100 ))
+
+        mkdir -p "$STAR_INDEX_OUTPUT_DIR"
+
+        STAR \
+          --runThreadN 12 \
+          --runMode genomeGenerate \
+          --genomeDir "$STAR_INDEX_OUTPUT_DIR" \
+          --genomeFastaFiles "$REF_FASTA_PATH" \
+          --sjdbGTFfile "$REF_GTF_PATH" \
+          --limitGenomeGenerateRAM "$LIMIT_GENOME_GENERATE_RAM" \
+          --genomeSAindexNbases "$GENOME_SA_INDEX_N_BASES" \
+          --sjdbOverhang "$SJDB_OVERHANG" \
+          --genomeChrBinNbits "$GENOME_CHR_BIN_N_BITS"
+
+        touch /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/02_make_reference.done
+        
+
+The following have been reloaded with a version change:
+  1) GCC/12.3.0 => GCC/13.2.0
+  2) GCCcore/12.3.0 => GCCcore/13.2.0
+  3) XZ/5.4.2-GCCcore-12.3.0 => XZ/5.4.4-GCCcore-13.2.0
+  4) binutils/2.40-GCCcore-12.3.0 => binutils/2.40-GCCcore-13.2.0
+  5) bzip2/1.0.8-GCCcore-12.3.0 => bzip2/1.0.8-GCCcore-13.2.0
+  6) cURL/8.0.1-GCCcore-12.3.0 => cURL/8.3.0-GCCcore-13.2.0
+  7) zlib/1.2.13-GCCcore-12.3.0 => zlib/1.2.13-GCCcore-13.2.0
+
+	STAR --runThreadN 12 --runMode genomeGenerate --genomeDir /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/star_index --genomeFastaFiles /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/ref/ref.fa --sjdbGTFfile /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/ref/ref.gtf --limitGenomeGenerateRAM 115200000000 --genomeSAindexNbases 9 --sjdbOverhang 19 --genomeChrBinNbits 4
+	STAR version: 2.7.11b   compiled: 2024-08-16T23:28:19+02:00 smug14:/tmp/eb-build/STAR/2.7.11b/GCC-13.2.0/STAR-2.7.11b/source
+Jun 24 11:44:28 ..... started STAR run
+!!!!! WARNING: Could not move Log.out file from ./Log.out into /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/star_index/Log.out. Will keep ./Log.out
+
+Jun 24 11:44:28 ... starting to generate Genome files
+Jun 24 11:44:28 ..... processing annotations GTF
+Jun 24 11:44:29 ... starting to sort Suffix Array. This may take a long time...
+Jun 24 11:44:29 ... sorting Suffix Array chunks and saving them to disk...
+Jun 24 11:44:29 ... loading chunks from disk, packing SA...
+Jun 24 11:44:30 ... finished generating suffix array
+Jun 24 11:44:30 ... generating Suffix Array index
+Jun 24 11:44:30 ... completed Suffix Array index
+Jun 24 11:44:30 ... writing Genome to disk ...
+Jun 24 11:44:30 ... writing Suffix Array to disk ...
+Jun 24 11:44:30 ... writing SAindex to disk
+Jun 24 11:44:30 ..... finished successfully
+[Wed Jun 24 11:44:30 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Wed Jun 24 11:44:30 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

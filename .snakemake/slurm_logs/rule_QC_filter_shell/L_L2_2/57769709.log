@@ -1,0 +1,9 @@
+Building DAG of jobs...
+InputFunctionException in rule QC_filter_shell in file /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile, line 171:
+Error:
+  ValueError: No symlink FASTQ found for sample L_L2_2
+Wildcards:
+  sample=L_L2_2
+Traceback:
+  File "/home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile", line 173, in <lambda>
+  File "/home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile", line 35, in find_symlink_fastq (rule QC_filter_shell, line 227, /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile)

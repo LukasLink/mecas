@@ -360,9 +360,15 @@ prepare_fastq_inputs <- function(
   # Create symlink names
   # -----------------------------
   
+  manifest$symlink_extension <- ifelse(
+    grepl("\\.(gz|gzip)$", manifest$original_extension, ignore.case = TRUE),
+    ".fastq.gz",
+    ".fastq"
+  )
+  
   manifest$symlink_file_basename <- paste0(
     manifest$pipeline_name,
-    manifest$original_extension
+    manifest$symlink_extension
   )
   
   if (anyDuplicated(manifest$symlink_file_basename)) {

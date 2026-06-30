@@ -39,7 +39,7 @@ find_Hits_and_FDR_appearing_in_X_replicates <- function(df_list,
 }
 
 automate_calc_replicate_comparison <- function(cfg,
-                                               file_info_suffix = cfg$suffix$file_info_suffix,
+                                               file_suffix = cfg$suffix$file_suffix,
                                                rds_output_folder = cfg$paths$rds_output_folder,
                                                FDR_threshold = 0.05,
                                                hits_in_X_reps = NULL,
@@ -48,10 +48,13 @@ automate_calc_replicate_comparison <- function(cfg,
                                                venn_diagram = TRUE) {
   
   Hits_rep_0 <- add_info_wrapper(
-    suffix = file_info_suffix,
+    file_suffix = file_suffix,
     cfg = cfg,
     folder = rds_output_folder
   )
+  
+  # Not using the normal file_info_suffix from cfg here so it can be overwritten
+  file_info_suffix <- get_file_info_suffix(file_suffix)
   
   # List all files in the rds output folder
   rds_files <- list.files(
@@ -80,13 +83,25 @@ automate_calc_replicate_comparison <- function(cfg,
   rep_name <- unique(rep_name)
   rep_name_long <- paste0("calc_rep_", rep_name)
   
-  rep_suffixes <- paste0(file_info_suffix, "_rep", rep_name)
-  rep_suffixes <- unique(rep_suffixes)
+  if (file_info_suffix == ""){
+    rep_file_suffixes <- sub(
+      paste0("^.*(", file_info_suffix, "rep.+\\.rds$)"),
+      "_\\1",
+      basename(rds_files)
+    )
+  } else {
+    rep_file_suffixes <- sub(
+      paste0("^.*(", file_info_suffix, "_rep.+\\.rds$)"),
+      "_\\1",
+      basename(rds_files)
+    )
+  }
+
   
   # Generate Hits_df_list using add_info_wrapper for each sublib_suffixes
-  Hits_df_list <- lapply(rep_suffixes, function(rep_suffix) {
+  Hits_df_list <- lapply(rep_file_suffixes, function(rep_file_suffix) {
     add_info_wrapper(
-      suffix = rep_suffix,
+      file_suffix = rep_file_suffix,
       cfg = cfg,
       folder = rds_output_folder
     )
@@ -109,14 +124,17 @@ automate_calc_replicate_comparison <- function(cfg,
 # automate_calc_replicate_means
 #-----------------------------------------------------------------------------
 automate_calc_replicate_means <- function(cfg,
-                                          file_info_suffix = cfg$suffix$file_info_suffix,
+                                          file_suffix = cfg$suffix$file_suffix,
                                           rds_output_folder = cfg$paths$rds_output_folder) {
   
   Hits_rep_0 <- add_info_wrapper(
-    suffix = file_info_suffix,
+    file_suffix = file_suffix,
     cfg = cfg,
     folder = rds_output_folder
   )
+  
+  # Not using the normal file_info_suffix from cfg here so it can be overwritten
+  file_info_suffix <- get_file_info_suffix(file_suffix)
   
   rds_files <- list.files(
     rds_output_folder,
@@ -141,14 +159,25 @@ automate_calc_replicate_means <- function(cfg,
   
   rep_name <- unique(rep_name)
   
-  rep_suffixes <- paste0(file_info_suffix, "_rep", rep_name)
-  rep_suffixes <- unique(rep_suffixes)
+  if (file_info_suffix == ""){
+    rep_file_suffixes <- sub(
+      paste0("^.*(", file_info_suffix, "rep.+\\.rds$)"),
+      "_\\1",
+      basename(rds_files)
+    )
+  } else {
+    rep_file_suffixes <- sub(
+      paste0("^.*(", file_info_suffix, "_rep.+\\.rds$)"),
+      "_\\1",
+      basename(rds_files)
+    )
+  }
   
-  Hits_df_list <- lapply(rep_suffixes, function(rep_suffix) {
-    logger::log_info("Processing replicate suffix: {rep_suffix}")
+  Hits_df_list <- lapply(rep_file_suffixes, function(rep_file_suffix) {
+    logger::log_info("Processing replicate suffix: {rep_file_suffix}")
     
     add_info_wrapper(
-      suffix = rep_suffix,
+      file_suffix = rep_file_suffix,
       cfg = cfg,
       folder = rds_output_folder
     )

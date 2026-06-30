@@ -1,9 +1,19 @@
 # 31_run_make_reference.R
 
-run_make_reference <- function(config_path, project_root_dir, cli_args, run_setup = TRUE, cfg = NULL) {
+run_make_reference <- function(
+    config_path,
+    project_root_dir,
+    cli_args,
+    run_setup = TRUE,
+    cfg = NULL, 
+    snakemake = FALSE) {
   #-----------------------------------------------------------------------------
   # Run setup
   #-----------------------------------------------------------------------------
+  if (isTRUE(snakemake)) {
+    run_setup <- FALSE
+  }
+  
   if (isTRUE(run_setup)){
     cfg <- project_setup(
       project_root_dir = project_root_dir,
@@ -141,7 +151,29 @@ run_make_reference <- function(config_path, project_root_dir, cli_args, run_setu
   # Stop here if "--only-ref-no-star" flag is set
   #-----------------------------------------------------------------------------
   
-  if (isTRUE(stop_before_star)) {
+  if (isTRUE(stop_before_star) || isTRUE(snakemake)) {
+
+    reference_params <- list(
+      ref_fasta_path = ref_fasta_path,
+      ref_gtf_path = ref_gtf_path,
+      star_index_output_dir = cfg$paths$star_index_folder,
+      genome_sa_index_n_bases = genome_sa_index_n_bases,
+      sjdb_overhang = genome_expected_sjdb_overhang,
+      genome_chr_bin_n_bits = genome_chr_bin_n_bits
+    )
+    
+    writeLines(
+      c(
+        paste0("REF_FASTA_PATH=", shQuote(ref_fasta_path)),
+        paste0("REF_GTF_PATH=", shQuote(ref_gtf_path)),
+        paste0("STAR_INDEX_OUTPUT_DIR=", shQuote(cfg$paths$star_index_folder)),
+        paste0("GENOME_SA_INDEX_N_BASES=", genome_sa_index_n_bases),
+        paste0("SJDB_OVERHANG=", genome_expected_sjdb_overhang),
+        paste0("GENOME_CHR_BIN_N_BITS=", genome_chr_bin_n_bits)
+      ),
+      cfg$paths$snake$STAR_ref_params_sh
+    )
+    
     logger::log_info("Done.")
     
     return(invisible(list(

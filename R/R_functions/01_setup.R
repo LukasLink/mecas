@@ -78,6 +78,7 @@ suppressMessages({
   conflicts_prefer(dplyr::select)
   conflicts_prefer(dplyr::slice)
   conflicts_prefer(dplyr::first)
+  conflicts_prefer(dplyr::desc)
   conflicts_prefer(base::setdiff)
   conflicts_prefer(base::intersect)
 })
@@ -392,10 +393,21 @@ project_setup <- function(project_root_dir,
                           overrides = list(),
                           envir = .GlobalEnv,
                           use_old_suffix_construction = FALSE,
-                          export_legacy_globals = FALSE) {
+                          export_legacy_globals = FALSE,
+                          only_one_logger = TRUE) {
   stopifnot(is.character(project_root_dir), length(project_root_dir) == 1)
   
-  if (!(setup_mode %in% c("count", "make_reference", "plot"))) {
+  allowed_setup_modes <- c(
+    "setup",
+    "make_reference",
+    "QC_filtering",
+    "count",
+    "load_reads",
+    "run_MAUDE",
+    "plot"
+  )
+  
+  if (!(setup_mode %in% allowed_setup_modes)) {
     stop(
       paste0(
         "Unsupported setup_mode: ",
@@ -438,7 +450,8 @@ project_setup <- function(project_root_dir,
     first_time = check_input(TRUE, "run.first_time"), # Hotfix, properly remove first_time later
     start_with = check_input(config$run$start_with %||% "beginning", "run.start_with"),
     machine = check_input(config$run$machine %||% "local", "run.machine"),
-    setup_mode = setup_mode
+    setup_mode = setup_mode,
+    run_id = format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
   )
   
   cfg$paths <- list(
@@ -447,7 +460,6 @@ project_setup <- function(project_root_dir,
     output_folder = check_input(config$paths$output_folder, "paths.output_folder"),
     input_folder = check_input(config$paths$input_folder %||% "", "paths.input_folder"),
     library_path = check_input(config$paths$library_path %||% "", "paths.library_path"),
-    star_index_folder = check_input(config$paths$star_index_folder %||% "", "paths.star_index_folder"),
     fastq_name_table_xlsx = check_input(
       config$paths$fastq_name_table_xlsx %||% "",
       "paths.fastq_name_table_xlsx"
@@ -482,8 +494,8 @@ project_setup <- function(project_root_dir,
   
   cfg$align_UMI_tools <- list(
     UMI_regex = check_input(
-      config$align_UMI_tools$umi_regex %||% "",
-      "align_UMI_tools.umi_regex"
+      config$align_UMI_tools$UMI_regex %||% "",
+      "align_UMI_tools.UMI_regex"
     )
   )
   
@@ -732,9 +744,8 @@ project_setup <- function(project_root_dir,
       cfg$slurm$array <- 1
     }
   }
-  
-  # If you update check_config_dependencies() to accept nested cfg, keep this.
-  # Otherwise temporarily comment it out while migrating that validator.
+
+  # Check dependencies
   if (exists("check_config_dependencies", mode = "function")) {
     check_config_dependencies(cfg, setup_mode)
   }
@@ -841,37 +852,73 @@ project_setup <- function(project_root_dir,
   cfg$paths$qc_filtered_folder <- make_clean_dir(cfg$paths$output_folder, "QC_filtered")
   cfg$paths$rds_output_folder <- make_clean_dir(cfg$paths$output_folder, "rds")
   cfg$paths$results_output_folder <- make_clean_dir(cfg$paths$output_folder, "results")
+  cfg$paths$star_index_folder <- make_clean_dir(cfg$paths$output_folder, "star_index")
   
   cfg$paths$plots_output_folder <- make_clean_dir(cfg$paths$output_folder, "plots")
-  cfg$paths$plots_output_folder <- make_clean_dir(
-    cfg$paths$plots_output_folder,
-    cfg$suffix$file_info_suffix
-  )
-  
-  cfg$paths$symlinks_folder <- get_file_path(cfg$paths$output_folder, "symlinks")
+ 
+  cfg$paths$symlinks_folder <- get_file_path(cfg$paths$output_folder, "symlinks") # Check if this is used anywhere and delete it if not
   cfg$paths$fastq_symlinks_folder <- make_clean_dir(cfg$paths$output_folder, "fastq_symlinks")
   cfg$paths$bcwithqc_symlinks_folder <- make_clean_dir(cfg$paths$output_folder, "bcwithqc_symlinks")
   
+  cfg$paths$config_path <- config_path %||% ""
+  #=============================================================================
+  # Snakemake handeling
+  #=============================================================================
+  cfg$paths$snake <- list(
+    state_dir = make_clean_dir(cfg$paths$output_folder, ".pipeline_state")
+    )
+  
+  cfg$paths$manifest <- file.path(cfg$paths$snake$state_dir,"fastq_manifest.tsv")
+  cfg$paths$snake$resolved_config_rds <- file.path(cfg$paths$snake$state_dir, "resolved_config.rds")
+  cfg$paths$snake$resolved_config_yaml <- file.path(cfg$paths$snake$state_dir, "resolved_config.yaml")
+  cfg$paths$snake$STAR_ref_params_sh <- file.path(cfg$paths$snake$state_dir,"STAR_ref_params.sh")
+  cfg$paths$snake$QC_filtering_params_sh <- file.path(cfg$paths$snake$state_dir,"QC_filtering_params.sh")
+  
+  cfg$paths$snake$setup_done <- file.path(cfg$paths$snake$state_dir, "01_setup.done")
+  cfg$paths$snake$make_reference_done <- file.path(cfg$paths$snake$state_dir, "02_make_reference.done")
+  cfg$paths$snake$QC_filtering_done <- file.path(cfg$paths$snake$state_dir, "03_QC_filtering.done")
+  cfg$paths$snake$count_done <- file.path(cfg$paths$snake$state_dir, "04_read_count.done")
+  cfg$paths$snake$load_reads_done <- file.path(cfg$paths$snake$state_dir, "05_load_reads.done")
+  cfg$paths$snake$run_MAUDE_done <- file.path(cfg$paths$snake$state_dir, "06_run_MAUDE.done")
+  cfg$paths$snake$plot_done <- file.path(cfg$paths$snake$state_dir, "07_plot.done")
+  cfg$paths$snake$all_done <- file.path(cfg$paths$snake$state_dir, "99_all.done")
+  
+  #=============================================================================
+  # Logging 
+  #=============================================================================
   cfg$paths$log_folder <- make_clean_dir(cfg$paths$output_folder, "logs")
-  cfg$paths$log_file <- file.path(
-    cfg$paths$log_folder,
-    paste0(
-      "log_",
-      cfg$suffix$file_info_suffix,
-      "_",
-      format(Sys.time(), "%Y-%m-%d_%H-%M-%S"),
-      ".log"
+  # This is for the old logging version, which has one log file for everything
+  if (isTRUE(only_one_logger)){
+    cfg$paths$log_file <- file.path(
+      cfg$paths$log_folder,
+      paste0(
+        "log_",
+        cfg$suffix$file_info_suffix,
+        "_",
+        format(Sys.time(), "%Y-%m-%d_%H-%M-%S"),
+        ".log"
+      )
     )
-  )
-  
-  logger::log_appender(logger::appender_tee(cfg$paths$log_file))
-  logger::log_layout(
-    logger::layout_glue_generator(
-      format = "{format(time, '%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
+    
+    initialize_pipeline_logger(cfg$paths$log_file)
+    
+  } else {
+    # This is for the new snakemake log version. 
+    cfg$paths$log_files <- list(
+      setup = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_01_setup.log")),
+      # make_reference = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_make_reference.log")),
+      QC_filtering = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_QC_filtering.log")),
+      # count = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_04_read_count.log")),
+      # load_reads = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_05_load_reads.log")),
+      # run_MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_06_run_MAUDE.log")),
+      plot = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_04_plot.log")),
+      MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_03_MAUDE.log"))
     )
-  )
-  
-  logger::log_info("Logger initialized. Find log file at: {cfg$paths$log_file}")
+    if (is.null(cfg$paths$log_files[[setup_mode]])) {
+      stop("No log file configured for setup_mode: ", setup_mode, call. = FALSE)
+    }
+    initialize_pipeline_logger(cfg$paths$log_files[[setup_mode]])
+  }
   
   #=============================================================================
   # Load library

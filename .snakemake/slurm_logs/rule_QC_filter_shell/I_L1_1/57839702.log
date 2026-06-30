@@ -1,0 +1,85 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Tue Jun 30 13:45:03 2026]
+rule QC_filter_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=I_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz \
+            --output-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz")"
+
+          if [[ "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz"
+          else
+            gzip -c "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" > "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz"
+          fi
+        fi
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Tue Jun 30 13:45:07 2026]
+localrule QC_filter_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=I_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57839702, runtime=60, slurm_account=lsteinme
+
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz \
+            --output-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz")"
+
+          if [[ "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz"
+          else
+            gzip -c "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" > "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz"
+          fi
+        fi
+        
+[Tue Jun 30 13:45:07 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Tue Jun 30 13:45:08 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

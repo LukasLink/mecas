@@ -1,0 +1,604 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:50:26 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=L_L3_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_symlinks/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done"
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:50:29 2026]
+localrule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=L_L3_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57771422, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_symlinks/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done"
+        
+2026-06-29 18:50:30   Writing log to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/bcwithqc_preprocess.log
+2026-06-29 18:50:30   Files to process:
+2026-06-29 18:50:30     /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+2026-06-29 18:50:30   Processing file:
+2026-06-29 18:50:30     barcode fastq: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+2026-06-29 18:50:30     sans-bc fastq: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/sans_bc_L_L3_1.fq
+2026-06-29 18:50:30     tags file:     /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/rec_names_and_tags1_L_L3_1.txt
+2026-06-29 18:50:30   Building aligners and barcode decoders
+2026-06-29 18:50:31   Processing first 10,000 for score threshold...
+2026-06-29 18:50:53   Score threshold: 0.62
+2026-06-29 18:50:53   Continuing...
+2026-06-29 18:54:30     100,000 processed,  96,154 output
+2026-06-29 18:58:06     200,000 processed,  191,636 output
+2026-06-29 19:01:43     300,000 processed,  287,547 output
+2026-06-29 19:05:19     400,000 processed,  383,268 output
+2026-06-29 19:08:55     500,000 processed,  479,208 output
+2026-06-29 19:12:31     600,000 processed,  575,032 output
+2026-06-29 19:16:08     700,000 processed,  671,135 output
+2026-06-29 19:19:44     800,000 processed,  766,901 output
+2026-06-29 19:23:20     900,000 processed,  862,587 output
+2026-06-29 19:26:57     1,000,000 processed,  957,695 output
+2026-06-29 19:30:33     1,100,000 processed,  1,053,630 output
+2026-06-29 19:34:10     1,200,000 processed,  1,149,599 output
+2026-06-29 19:37:46     1,300,000 processed,  1,245,820 output
+2026-06-29 19:41:23     1,400,000 processed,  1,341,610 output
+2026-06-29 19:44:59     1,500,000 processed,  1,437,381 output
+2026-06-29 19:48:35     1,600,000 processed,  1,533,294 output
+2026-06-29 19:52:12     1,700,000 processed,  1,628,974 output
+2026-06-29 19:55:48     1,800,000 processed,  1,724,597 output
+2026-06-29 19:59:23     1,900,000 processed,  1,820,151 output
+2026-06-29 20:02:58     2,000,000 processed,  1,915,467 output
+2026-06-29 20:06:36     2,100,000 processed,  2,011,105 output
+2026-06-29 20:10:11     2,200,000 processed,  2,106,927 output
+2026-06-29 20:13:46     2,300,000 processed,  2,203,034 output
+2026-06-29 20:17:21     2,400,000 processed,  2,298,767 output
+2026-06-29 20:20:56     2,500,000 processed,  2,394,632 output
+2026-06-29 20:24:33     2,600,000 processed,  2,490,444 output
+2026-06-29 20:28:08     2,700,000 processed,  2,586,068 output
+2026-06-29 20:31:42     2,800,000 processed,  2,681,614 output
+2026-06-29 20:35:17     2,900,000 processed,  2,777,099 output
+2026-06-29 20:38:52     3,000,000 processed,  2,872,191 output
+2026-06-29 20:42:31     3,100,000 processed,  2,967,636 output
+2026-06-29 20:46:06     3,200,000 processed,  3,063,562 output
+2026-06-29 20:49:41     3,300,000 processed,  3,159,369 output
+2026-06-29 20:53:16     3,400,000 processed,  3,255,301 output
+2026-06-29 20:56:51     3,500,000 processed,  3,350,934 output
+2026-06-29 21:00:26     3,600,000 processed,  3,446,482 output
+2026-06-29 21:04:06     3,700,000 processed,  3,542,379 output
+2026-06-29 21:07:41     3,800,000 processed,  3,637,883 output
+2026-06-29 21:11:15     3,900,000 processed,  3,733,198 output
+2026-06-29 21:14:51     4,000,000 processed,  3,829,089 output
+2026-06-29 21:18:26     4,100,000 processed,  3,924,888 output
+2026-06-29 21:22:01     4,200,000 processed,  4,020,752 output
+2026-06-29 21:25:36     4,300,000 processed,  4,116,947 output
+2026-06-29 21:29:11     4,400,000 processed,  4,212,850 output
+2026-06-29 21:32:52     4,500,000 processed,  4,308,521 output
+2026-06-29 21:36:27     4,600,000 processed,  4,404,150 output
+2026-06-29 21:40:02     4,700,000 processed,  4,499,938 output
+2026-06-29 21:43:38     4,800,000 processed,  4,595,442 output
+2026-06-29 21:47:12     4,900,000 processed,  4,690,852 output
+2026-06-29 21:50:48     5,000,000 processed,  4,786,248 output
+2026-06-29 21:54:22     5,100,000 processed,  4,882,254 output
+2026-06-29 21:57:58     5,200,000 processed,  4,978,130 output
+2026-06-29 22:01:32     5,300,000 processed,  5,074,042 output
+2026-06-29 22:05:14     5,400,000 processed,  5,169,558 output
+2026-06-29 22:08:49     5,500,000 processed,  5,265,329 output
+2026-06-29 22:12:24     5,600,000 processed,  5,360,778 output
+2026-06-29 22:15:59     5,700,000 processed,  5,456,602 output
+2026-06-29 22:19:34     5,800,000 processed,  5,552,247 output
+2026-06-29 22:23:09     5,900,000 processed,  5,647,842 output
+2026-06-29 22:26:44     6,000,000 processed,  5,743,130 output
+2026-06-29 22:30:19     6,100,000 processed,  5,839,152 output
+2026-06-29 22:33:55     6,200,000 processed,  5,934,178 output
+2026-06-29 22:37:30     6,300,000 processed,  6,030,029 output
+2026-06-29 22:41:05     6,400,000 processed,  6,126,031 output
+2026-06-29 22:44:40     6,500,000 processed,  6,222,037 output
+2026-06-29 22:48:23     6,600,000 processed,  6,317,899 output
+2026-06-29 22:51:58     6,700,000 processed,  6,414,008 output
+2026-06-29 22:55:33     6,800,000 processed,  6,509,967 output
+2026-06-29 22:59:08     6,900,000 processed,  6,605,604 output
+2026-06-29 23:02:43     7,000,000 processed,  6,701,567 output
+2026-06-29 23:06:18     7,100,000 processed,  6,796,863 output
+2026-06-29 23:09:54     7,200,000 processed,  6,892,953 output
+2026-06-29 23:13:29     7,300,000 processed,  6,988,932 output
+2026-06-29 23:17:04     7,400,000 processed,  7,084,947 output
+2026-06-29 23:20:40     7,500,000 processed,  7,180,957 output
+2026-06-29 23:24:15     7,600,000 processed,  7,277,017 output
+2026-06-29 23:27:50     7,700,000 processed,  7,372,850 output
+2026-06-29 23:31:25     7,800,000 processed,  7,468,756 output
+2026-06-29 23:35:10     7,900,000 processed,  7,564,570 output
+2026-06-29 23:38:45     8,000,000 processed,  7,660,284 output
+2026-06-29 23:42:19     8,100,000 processed,  7,755,602 output
+2026-06-29 23:45:55     8,200,000 processed,  7,851,519 output
+2026-06-29 23:49:30     8,300,000 processed,  7,947,147 output
+2026-06-29 23:53:05     8,400,000 processed,  8,043,108 output
+2026-06-29 23:56:40     8,500,000 processed,  8,138,941 output
+2026-06-30 00:00:16     8,600,000 processed,  8,235,059 output
+2026-06-30 00:03:51     8,700,000 processed,  8,330,845 output
+2026-06-30 00:07:26     8,800,000 processed,  8,426,277 output
+2026-06-30 00:11:02     8,900,000 processed,  8,521,906 output
+2026-06-30 00:14:37     9,000,000 processed,  8,617,600 output
+2026-06-30 00:18:12     9,100,000 processed,  8,713,174 output
+2026-06-30 00:21:47     9,200,000 processed,  8,808,268 output
+2026-06-30 00:25:22     9,300,000 processed,  8,904,363 output
+2026-06-30 00:28:57     9,400,000 processed,  9,000,354 output
+2026-06-30 00:32:45     9,500,000 processed,  9,096,090 output
+2026-06-30 00:36:20     9,600,000 processed,  9,191,947 output
+2026-06-30 00:39:56     9,700,000 processed,  9,287,852 output
+2026-06-30 00:43:31     9,800,000 processed,  9,383,704 output
+2026-06-30 00:47:06     9,900,000 processed,  9,479,657 output
+2026-06-30 00:50:41     10,000,000 processed,  9,575,290 output
+2026-06-30 00:54:16     10,100,000 processed,  9,670,898 output
+2026-06-30 00:57:51     10,200,000 processed,  9,766,356 output
+2026-06-30 01:01:26     10,300,000 processed,  9,861,501 output
+2026-06-30 01:05:01     10,400,000 processed,  9,957,352 output
+2026-06-30 01:08:36     10,500,000 processed,  10,053,316 output
+2026-06-30 01:12:11     10,600,000 processed,  10,149,341 output
+2026-06-30 01:15:47     10,700,000 processed,  10,245,441 output
+2026-06-30 01:19:22     10,800,000 processed,  10,341,309 output
+2026-06-30 01:22:57     10,900,000 processed,  10,437,113 output
+2026-06-30 01:26:32     11,000,000 processed,  10,533,009 output
+2026-06-30 01:30:07     11,100,000 processed,  10,628,775 output
+2026-06-30 01:33:42     11,200,000 processed,  10,724,484 output
+2026-06-30 01:37:17     11,300,000 processed,  10,820,215 output
+2026-06-30 01:40:52     11,400,000 processed,  10,915,396 output
+2026-06-30 01:44:41     11,500,000 processed,  11,010,852 output
+2026-06-30 01:48:15     11,600,000 processed,  11,106,801 output
+2026-06-30 01:51:50     11,700,000 processed,  11,202,780 output
+2026-06-30 01:55:25     11,800,000 processed,  11,298,865 output
+2026-06-30 01:59:00     11,900,000 processed,  11,394,771 output
+2026-06-30 02:02:35     12,000,000 processed,  11,490,735 output
+2026-06-30 02:06:10     12,100,000 processed,  11,586,602 output
+2026-06-30 02:09:45     12,200,000 processed,  11,682,470 output
+2026-06-30 02:13:20     12,300,000 processed,  11,778,077 output
+2026-06-30 02:16:55     12,400,000 processed,  11,873,702 output
+2026-06-30 02:20:29     12,500,000 processed,  11,969,271 output
+2026-06-30 02:24:04     12,600,000 processed,  12,064,703 output
+2026-06-30 02:27:39     12,700,000 processed,  12,160,459 output
+2026-06-30 02:31:14     12,800,000 processed,  12,256,249 output
+2026-06-30 02:34:49     12,900,000 processed,  12,352,144 output
+2026-06-30 02:38:24     13,000,000 processed,  12,447,590 output
+2026-06-30 02:41:59     13,100,000 processed,  12,543,282 output
+2026-06-30 02:45:34     13,200,000 processed,  12,639,045 output
+2026-06-30 02:49:09     13,300,000 processed,  12,734,926 output
+2026-06-30 02:52:44     13,400,000 processed,  12,831,068 output
+2026-06-30 02:56:19     13,500,000 processed,  12,926,733 output
+2026-06-30 02:59:54     13,600,000 processed,  13,022,540 output
+2026-06-30 03:03:29     13,700,000 processed,  13,118,012 output
+2026-06-30 03:07:03     13,800,000 processed,  13,213,358 output
+2026-06-30 03:10:56     13,900,000 processed,  13,308,536 output
+2026-06-30 03:14:31     14,000,000 processed,  13,403,757 output
+2026-06-30 03:18:05     14,100,000 processed,  13,498,790 output
+2026-06-30 03:21:40     14,200,000 processed,  13,594,561 output
+2026-06-30 03:25:16     14,300,000 processed,  13,690,646 output
+2026-06-30 03:28:51     14,400,000 processed,  13,786,725 output
+2026-06-30 03:32:26     14,500,000 processed,  13,882,045 output
+2026-06-30 03:36:01     14,600,000 processed,  13,977,534 output
+2026-06-30 03:39:36     14,700,000 processed,  14,073,111 output
+2026-06-30 03:43:11     14,800,000 processed,  14,168,134 output
+2026-06-30 03:46:46     14,900,000 processed,  14,263,620 output
+2026-06-30 03:50:21     15,000,000 processed,  14,358,887 output
+2026-06-30 03:53:56     15,100,000 processed,  14,454,740 output
+2026-06-30 03:57:31     15,200,000 processed,  14,550,157 output
+2026-06-30 04:01:06     15,300,000 processed,  14,646,013 output
+2026-06-30 04:04:41     15,400,000 processed,  14,741,578 output
+2026-06-30 04:08:15     15,500,000 processed,  14,837,175 output
+2026-06-30 04:11:49     15,600,000 processed,  14,931,926 output
+2026-06-30 04:15:24     15,700,000 processed,  15,027,692 output
+2026-06-30 04:18:58     15,800,000 processed,  15,123,632 output
+2026-06-30 04:22:32     15,900,000 processed,  15,219,083 output
+2026-06-30 04:26:07     16,000,000 processed,  15,315,083 output
+2026-06-30 04:29:41     16,100,000 processed,  15,411,020 output
+2026-06-30 04:33:16     16,200,000 processed,  15,506,707 output
+2026-06-30 04:36:50     16,300,000 processed,  15,602,273 output
+2026-06-30 04:40:25     16,400,000 processed,  15,697,647 output
+2026-06-30 04:44:00     16,500,000 processed,  15,793,620 output
+2026-06-30 04:47:35     16,600,000 processed,  15,889,593 output
+2026-06-30 04:51:10     16,700,000 processed,  15,985,470 output
+2026-06-30 04:55:06     16,800,000 processed,  16,081,573 output
+2026-06-30 04:58:40     16,900,000 processed,  16,177,559 output
+2026-06-30 05:02:15     17,000,000 processed,  16,273,438 output
+2026-06-30 05:05:50     17,100,000 processed,  16,369,348 output
+2026-06-30 05:09:25     17,200,000 processed,  16,464,843 output
+2026-06-30 05:12:59     17,300,000 processed,  16,560,884 output
+2026-06-30 05:16:34     17,400,000 processed,  16,656,830 output
+2026-06-30 05:20:08     17,500,000 processed,  16,752,812 output
+2026-06-30 05:23:43     17,600,000 processed,  16,848,713 output
+2026-06-30 05:27:18     17,700,000 processed,  16,944,473 output
+2026-06-30 05:30:52     17,800,000 processed,  17,040,354 output
+2026-06-30 05:34:27     17,900,000 processed,  17,136,216 output
+2026-06-30 05:38:01     18,000,000 processed,  17,231,890 output
+2026-06-30 05:41:36     18,100,000 processed,  17,327,950 output
+2026-06-30 05:45:10     18,200,000 processed,  17,423,887 output
+2026-06-30 05:48:45     18,300,000 processed,  17,519,804 output
+2026-06-30 05:52:20     18,400,000 processed,  17,615,719 output
+2026-06-30 05:55:54     18,500,000 processed,  17,711,640 output
+2026-06-30 05:59:29     18,600,000 processed,  17,806,726 output
+2026-06-30 06:03:03     18,700,000 processed,  17,898,732 output
+2026-06-30 06:06:38     18,800,000 processed,  17,994,685 output
+2026-06-30 06:10:12     18,900,000 processed,  18,090,402 output
+2026-06-30 06:13:47     19,000,000 processed,  18,186,230 output
+2026-06-30 06:17:22     19,100,000 processed,  18,282,076 output
+2026-06-30 06:20:56     19,200,000 processed,  18,377,647 output
+2026-06-30 06:24:30     19,300,000 processed,  18,473,316 output
+2026-06-30 06:28:04     19,400,000 processed,  18,568,981 output
+2026-06-30 06:31:38     19,500,000 processed,  18,664,803 output
+2026-06-30 06:35:12     19,600,000 processed,  18,760,455 output
+2026-06-30 06:38:47     19,700,000 processed,  18,856,119 output
+2026-06-30 06:42:21     19,800,000 processed,  18,951,787 output
+2026-06-30 06:45:55     19,900,000 processed,  19,047,754 output
+2026-06-30 06:49:29     20,000,000 processed,  19,143,857 output
+2026-06-30 06:53:03     20,100,000 processed,  19,236,330 output
+2026-06-30 06:57:02     20,200,000 processed,  19,331,835 output
+2026-06-30 07:00:36     20,300,000 processed,  19,427,787 output
+2026-06-30 07:04:11     20,400,000 processed,  19,523,673 output
+2026-06-30 07:07:46     20,500,000 processed,  19,619,286 output
+2026-06-30 07:11:21     20,600,000 processed,  19,715,025 output
+2026-06-30 07:14:55     20,700,000 processed,  19,809,849 output
+2026-06-30 07:18:27     20,800,000 processed,  19,897,580 output
+2026-06-30 07:22:01     20,900,000 processed,  19,993,065 output
+2026-06-30 07:25:35     21,000,000 processed,  20,085,639 output
+2026-06-30 07:29:08     21,100,000 processed,  20,180,929 output
+2026-06-30 07:32:42     21,200,000 processed,  20,276,448 output
+2026-06-30 07:36:17     21,300,000 processed,  20,372,199 output
+2026-06-30 07:39:51     21,400,000 processed,  20,467,733 output
+2026-06-30 07:43:23     21,500,000 processed,  20,563,285 output
+2026-06-30 07:46:47     21,600,000 processed,  20,654,626 output
+2026-06-30 07:50:20     21,700,000 processed,  20,750,077 output
+2026-06-30 07:53:54     21,800,000 processed,  20,845,603 output
+2026-06-30 07:57:28     21,900,000 processed,  20,941,548 output
+2026-06-30 08:01:01     22,000,000 processed,  21,037,463 output
+2026-06-30 08:04:35     22,100,000 processed,  21,133,465 output
+2026-06-30 08:08:09     22,200,000 processed,  21,229,342 output
+2026-06-30 08:11:44     22,300,000 processed,  21,325,448 output
+2026-06-30 08:15:18     22,400,000 processed,  21,421,455 output
+2026-06-30 08:18:52     22,500,000 processed,  21,517,377 output
+2026-06-30 08:22:26     22,600,000 processed,  21,613,383 output
+2026-06-30 08:26:00     22,700,000 processed,  21,709,366 output
+2026-06-30 08:29:34     22,800,000 processed,  21,805,131 output
+2026-06-30 08:33:08     22,900,000 processed,  21,900,919 output
+2026-06-30 08:36:42     23,000,000 processed,  21,996,521 output
+2026-06-30 08:40:17     23,100,000 processed,  22,092,384 output
+2026-06-30 08:43:51     23,200,000 processed,  22,188,277 output
+2026-06-30 08:47:25     23,300,000 processed,  22,284,104 output
+2026-06-30 08:50:59     23,400,000 processed,  22,380,054 output
+2026-06-30 08:54:33     23,500,000 processed,  22,475,922 output
+2026-06-30 08:58:07     23,600,000 processed,  22,571,587 output
+2026-06-30 09:01:41     23,700,000 processed,  22,667,465 output
+2026-06-30 09:05:15     23,800,000 processed,  22,763,187 output
+2026-06-30 09:07:27   23,862,064 barcode records processed
+2026-06-30 09:07:27   22,822,578 records output
+2026-06-30 09:10:37   Collected 23,862,064 read QC entries
+2026-06-30 09:11:07   Wrote barcode-level QC metrics to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/bcs.tsv
+2026-06-30 09:11:07   Wrote block summary QC metrics to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/bcs_summary.tsv
+2026-06-30 09:11:53   Wrote read-level QC metrics to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/reads.tsv
+2026-06-30 09:11:53   Wrote read-level QC summary to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/reads_summary.tsv
+2026-06-30 09:12:04   Writing log to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/bcwithqc_count.log
+2026-06-30 09:12:04   Writing output to:
+2026-06-30 09:12:04     /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/with_bc.bam
+2026-06-30 09:12:04   Using STAR results from /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1
+2026-06-30 09:12:04   Adding barcode tags to mapped reads... 
+2026-06-30 11:07:42   Sorting bam...
+2026-06-30 11:09:21   Indexing bam...
+2026-06-30 11:09:30   Correcting UMIs...
+2026-06-30 11:10:41   100,000 processed.
+2026-06-30 11:10:42   200,000 processed.
+2026-06-30 11:10:43   300,000 processed.
+2026-06-30 11:10:43   400,000 processed.
+2026-06-30 11:10:44   500,000 processed.
+2026-06-30 11:10:45   600,000 processed.
+2026-06-30 11:10:46   700,000 processed.
+2026-06-30 11:10:47   800,000 processed.
+2026-06-30 11:10:48   900,000 processed.
+2026-06-30 11:10:49   1,000,000 processed.
+2026-06-30 11:10:50   1,100,000 processed.
+2026-06-30 11:10:51   1,200,000 processed.
+2026-06-30 11:10:51   1,300,000 processed.
+2026-06-30 11:10:52   1,400,000 processed.
+2026-06-30 11:10:53   1,500,000 processed.
+2026-06-30 11:10:54   1,600,000 processed.
+2026-06-30 11:10:55   1,700,000 processed.
+2026-06-30 11:10:56   1,800,000 processed.
+2026-06-30 11:10:57   1,900,000 processed.
+2026-06-30 11:10:58   2,000,000 processed.
+2026-06-30 11:10:59   2,100,000 processed.
+2026-06-30 11:10:59   2,200,000 processed.
+2026-06-30 11:11:00   2,300,000 processed.
+2026-06-30 11:11:01   2,400,000 processed.
+2026-06-30 11:11:02   2,500,000 processed.
+2026-06-30 11:11:03   2,600,000 processed.
+2026-06-30 11:11:04   2,700,000 processed.
+2026-06-30 11:11:05   2,800,000 processed.
+2026-06-30 11:11:06   2,900,000 processed.
+2026-06-30 11:11:07   3,000,000 processed.
+2026-06-30 11:11:07   3,100,000 processed.
+2026-06-30 11:11:08   3,200,000 processed.
+2026-06-30 11:11:09   3,300,000 processed.
+2026-06-30 11:11:10   3,400,000 processed.
+2026-06-30 11:11:11   3,500,000 processed.
+2026-06-30 11:11:12   3,600,000 processed.
+2026-06-30 11:11:13   3,700,000 processed.
+2026-06-30 11:11:14   3,800,000 processed.
+2026-06-30 11:11:15   3,900,000 processed.
+2026-06-30 11:11:15   4,000,000 processed.
+2026-06-30 11:11:16   4,100,000 processed.
+2026-06-30 11:11:17   4,200,000 processed.
+2026-06-30 11:11:18   4,300,000 processed.
+2026-06-30 11:11:19   4,400,000 processed.
+2026-06-30 11:11:20   4,500,000 processed.
+2026-06-30 11:11:21   4,600,000 processed.
+2026-06-30 11:11:22   4,700,000 processed.
+2026-06-30 11:11:23   4,800,000 processed.
+2026-06-30 11:11:23   4,900,000 processed.
+2026-06-30 11:11:24   5,000,000 processed.
+2026-06-30 11:11:25   5,100,000 processed.
+2026-06-30 11:11:26   5,200,000 processed.
+2026-06-30 11:11:27   5,300,000 processed.
+2026-06-30 11:11:28   5,400,000 processed.
+2026-06-30 11:11:29   5,500,000 processed.
+2026-06-30 11:11:30   5,600,000 processed.
+2026-06-30 11:11:31   5,700,000 processed.
+2026-06-30 11:11:31   5,800,000 processed.
+2026-06-30 11:11:32   5,900,000 processed.
+2026-06-30 11:11:33   6,000,000 processed.
+2026-06-30 11:11:34   6,100,000 processed.
+2026-06-30 11:11:35   6,200,000 processed.
+2026-06-30 11:11:36   6,300,000 processed.
+2026-06-30 11:11:36   6,400,000 processed.
+2026-06-30 11:11:37   6,500,000 processed.
+2026-06-30 11:11:38   6,600,000 processed.
+2026-06-30 11:11:39   6,700,000 processed.
+2026-06-30 11:11:40   6,800,000 processed.
+2026-06-30 11:11:41   6,900,000 processed.
+2026-06-30 11:11:41   7,000,000 processed.
+2026-06-30 11:11:42   7,100,000 processed.
+2026-06-30 11:11:43   7,200,000 processed.
+2026-06-30 11:11:44   7,300,000 processed.
+2026-06-30 11:11:45   7,400,000 processed.
+2026-06-30 11:11:46   7,500,000 processed.
+2026-06-30 11:11:47   7,600,000 processed.
+2026-06-30 11:11:47   7,700,000 processed.
+2026-06-30 11:11:48   7,800,000 processed.
+2026-06-30 11:11:49   7,900,000 processed.
+2026-06-30 11:11:50   8,000,000 processed.
+2026-06-30 11:11:51   8,100,000 processed.
+2026-06-30 11:11:52   8,200,000 processed.
+2026-06-30 11:11:52   8,300,000 processed.
+2026-06-30 11:11:53   8,400,000 processed.
+2026-06-30 11:11:54   8,500,000 processed.
+2026-06-30 11:11:55   8,600,000 processed.
+2026-06-30 11:11:56   8,700,000 processed.
+2026-06-30 11:11:57   8,800,000 processed.
+2026-06-30 11:11:57   8,900,000 processed.
+2026-06-30 11:11:58   9,000,000 processed.
+2026-06-30 11:11:59   9,100,000 processed.
+2026-06-30 11:12:00   9,200,000 processed.
+2026-06-30 11:12:01   9,300,000 processed.
+2026-06-30 11:12:02   9,400,000 processed.
+2026-06-30 11:12:03   9,500,000 processed.
+2026-06-30 11:12:03   9,600,000 processed.
+2026-06-30 11:12:04   9,700,000 processed.
+2026-06-30 11:12:05   9,800,000 processed.
+2026-06-30 11:12:06   9,900,000 processed.
+2026-06-30 11:12:07   10,000,000 processed.
+2026-06-30 11:12:08   10,100,000 processed.
+2026-06-30 11:12:08   10,200,000 processed.
+2026-06-30 11:12:09   10,300,000 processed.
+2026-06-30 11:12:10   10,400,000 processed.
+2026-06-30 11:12:11   10,500,000 processed.
+2026-06-30 11:12:12   10,600,000 processed.
+2026-06-30 11:12:13   10,700,000 processed.
+2026-06-30 11:12:13   10,800,000 processed.
+2026-06-30 11:12:14   10,900,000 processed.
+2026-06-30 11:12:15   11,000,000 processed.
+2026-06-30 11:12:16   11,100,000 processed.
+2026-06-30 11:12:17   11,200,000 processed.
+2026-06-30 11:12:18   11,300,000 processed.
+2026-06-30 11:12:18   11,400,000 processed.
+2026-06-30 11:12:19   11,500,000 processed.
+2026-06-30 11:12:20   11,600,000 processed.
+2026-06-30 11:12:21   11,700,000 processed.
+2026-06-30 11:12:22   11,800,000 processed.
+2026-06-30 11:12:23   11,900,000 processed.
+2026-06-30 11:12:23   12,000,000 processed.
+2026-06-30 11:12:24   12,100,000 processed.
+2026-06-30 11:12:25   12,200,000 processed.
+2026-06-30 11:12:26   12,300,000 processed.
+2026-06-30 11:12:27   12,400,000 processed.
+2026-06-30 11:12:28   12,500,000 processed.
+2026-06-30 11:12:29   12,600,000 processed.
+2026-06-30 11:12:30   12,700,000 processed.
+2026-06-30 11:12:31   12,800,000 processed.
+2026-06-30 11:12:31   12,900,000 processed.
+2026-06-30 11:12:32   13,000,000 processed.
+2026-06-30 11:12:33   13,100,000 processed.
+2026-06-30 11:12:34   13,200,000 processed.
+2026-06-30 11:12:35   13,300,000 processed.
+2026-06-30 11:12:36   13,400,000 processed.
+2026-06-30 11:12:37   13,500,000 processed.
+2026-06-30 11:12:38   13,600,000 processed.
+2026-06-30 11:12:38   13,700,000 processed.
+2026-06-30 11:12:39   13,800,000 processed.
+2026-06-30 11:12:40   13,900,000 processed.
+2026-06-30 11:12:41   14,000,000 processed.
+2026-06-30 11:12:42   14,100,000 processed.
+2026-06-30 11:12:43   14,200,000 processed.
+2026-06-30 11:12:44   14,300,000 processed.
+2026-06-30 11:12:45   14,400,000 processed.
+2026-06-30 11:12:45   14,500,000 processed.
+2026-06-30 11:12:46   14,600,000 processed.
+2026-06-30 11:12:47   14,700,000 processed.
+2026-06-30 11:12:48   14,800,000 processed.
+2026-06-30 11:12:49   14,900,000 processed.
+2026-06-30 11:12:50   15,000,000 processed.
+2026-06-30 11:12:51   15,100,000 processed.
+2026-06-30 11:12:52   15,200,000 processed.
+2026-06-30 11:12:52   15,300,000 processed.
+2026-06-30 11:12:53   15,400,000 processed.
+2026-06-30 11:12:54   15,500,000 processed.
+2026-06-30 11:12:55   15,600,000 processed.
+2026-06-30 11:12:56   15,700,000 processed.
+2026-06-30 11:12:57   15,800,000 processed.
+2026-06-30 11:12:58   15,900,000 processed.
+2026-06-30 11:12:59   16,000,000 processed.
+2026-06-30 11:12:59   16,100,000 processed.
+2026-06-30 11:13:00   16,200,000 processed.
+2026-06-30 11:13:01   16,300,000 processed.
+2026-06-30 11:13:02   16,400,000 processed.
+2026-06-30 11:13:03   16,500,000 processed.
+2026-06-30 11:13:04   16,600,000 processed.
+2026-06-30 11:13:05   16,700,000 processed.
+2026-06-30 11:13:05   16,800,000 processed.
+2026-06-30 11:13:06   16,900,000 processed.
+2026-06-30 11:13:07   17,000,000 processed.
+2026-06-30 11:13:08   17,100,000 processed.
+2026-06-30 11:13:09   17,200,000 processed.
+2026-06-30 11:13:10   17,300,000 processed.
+2026-06-30 11:13:10   17,400,000 processed.
+2026-06-30 11:13:11   17,500,000 processed.
+2026-06-30 11:13:12   17,600,000 processed.
+2026-06-30 11:13:13   17,700,000 processed.
+2026-06-30 11:13:14   17,800,000 processed.
+2026-06-30 11:13:14   17,900,000 processed.
+2026-06-30 11:13:15   18,000,000 processed.
+2026-06-30 11:13:16   18,100,000 processed.
+2026-06-30 11:13:17   18,200,000 processed.
+2026-06-30 11:13:18   18,300,000 processed.
+2026-06-30 11:13:18   18,400,000 processed.
+2026-06-30 11:13:19   18,500,000 processed.
+2026-06-30 11:13:20   18,600,000 processed.
+2026-06-30 11:13:21   18,700,000 processed.
+2026-06-30 11:13:22   18,800,000 processed.
+2026-06-30 11:13:22   18,900,000 processed.
+2026-06-30 11:13:23   19,000,000 processed.
+2026-06-30 11:13:24   19,100,000 processed.
+2026-06-30 11:13:25   19,200,000 processed.
+2026-06-30 11:13:26   19,300,000 processed.
+2026-06-30 11:13:26   19,400,000 processed.
+2026-06-30 11:13:27   19,500,000 processed.
+2026-06-30 11:13:28   19,600,000 processed.
+2026-06-30 11:13:29   19,700,000 processed.
+2026-06-30 11:13:30   19,800,000 processed.
+2026-06-30 11:13:30   19,900,000 processed.
+2026-06-30 11:13:31   20,000,000 processed.
+2026-06-30 11:13:32   20,100,000 processed.
+2026-06-30 11:13:33   20,200,000 processed.
+2026-06-30 11:13:34   20,300,000 processed.
+2026-06-30 11:13:34   20,400,000 processed.
+2026-06-30 11:13:35   20,500,000 processed.
+2026-06-30 11:13:36   20,600,000 processed.
+2026-06-30 11:13:37   20,700,000 processed.
+2026-06-30 11:13:38   20,800,000 processed.
+2026-06-30 11:13:38   20,900,000 processed.
+2026-06-30 11:13:39   21,000,000 processed.
+2026-06-30 11:13:40   21,100,000 processed.
+2026-06-30 11:13:41   21,200,000 processed.
+2026-06-30 11:13:42   21,300,000 processed.
+2026-06-30 11:13:43   21,400,000 processed.
+2026-06-30 11:13:43   21,500,000 processed.
+2026-06-30 11:13:44   21,600,000 processed.
+2026-06-30 11:13:45   21,700,000 processed.
+2026-06-30 11:13:46   21,800,000 processed.
+2026-06-30 11:13:47   21,900,000 processed.
+2026-06-30 11:13:47   22,000,000 processed.
+2026-06-30 11:13:48   22,100,000 processed.
+2026-06-30 11:13:49   22,200,000 processed.
+2026-06-30 11:13:50   22,300,000 processed.
+2026-06-30 11:13:51   22,400,000 processed.
+2026-06-30 11:13:51   22,500,000 processed.
+2026-06-30 11:13:52   22,600,000 processed.
+2026-06-30 11:13:53   22,700,000 processed.
+2026-06-30 11:13:54   22,800,000 processed.
+2026-06-30 11:13:54   22,822,578 processed.
+2026-06-30 11:13:54   Sorting bam...
+2026-06-30 11:15:33   Indexing bam...
+2026-06-30 11:15:42   Finding all barcodes present...
+2026-06-30 11:16:34   Counting reads...
+2026-06-30 11:17:43   Writing raw read count matrix...
+2026-06-30 11:17:47   Deleting intermediary files...
+2026-06-30 11:17:47   Wrote combined read/block stacked barplot to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/reads_and_blocks_summary.png
+/home/link/John_UMIs/bcwithqc/bcwithqc/qc_metrics.py:806: UserWarning: Creating legend with loc="best" can be slow with large amounts of data.
+  plt.tight_layout()
+/home/link/John_UMIs/bcwithqc/bcwithqc/qc_metrics.py:813: UserWarning: Creating legend with loc="best" can be slow with large amounts of data.
+  plt.savefig(output_file, dpi=300)
+2026-06-30 11:25:38   Wrote combined barcode-level stacked barplot to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/barcodes_R1_sgrna.png
+2026-06-30 11:25:38   Wrote combined read/block stacked barplot to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output/L_L3_1/QC_metrics/reads_and_blocks_summary.png
+2026-06-30 11:25:38   Done
+[Tue Jun 30 11:26:26 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Tue Jun 30 11:26:27 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

@@ -1,0 +1,2639 @@
+Building DAG of jobs...
+You are running snakemake in a SLURM job context. This is not recommended, as it may lead to unexpected behavior.Please run Snakemake directly on the login node.
+SLURM run ID: 0903e27e-95c7-43a2-91d3-b7c4ff2dab31
+Using shell: /usr/bin/bash
+Provided remote nodes: 20
+Job stats:
+job               count
+--------------  -------
+MAUDE_and_plot        1
+all                   1
+bcwithqc_done         1
+setup                 1
+total                 4
+
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:12:49 2026]
+checkpoint setup:
+    input: config.yaml
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.yaml, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/fastq_manifest.tsv, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    jobid: 2
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+DAG of jobs will be updated after completion.
+
+
+        module load R/4.5.2-gfbf-2025b
+        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_setup.R config.yaml
+        
+Job 2 has been submitted with SLURM jobid 57769590 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_setup/57769590.log).
+[Mon Jun 29 18:13:23 2026]
+Finished job 2.
+1 of 4 steps (25%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:13:23 2026]
+rule QC_filtering_R:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    jobid: 10
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/resolved_config.rds
+        
+Job 10 has been submitted with SLURM jobid 57769611 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filtering_R/57769611.log).
+[Mon Jun 29 18:14:23 2026]
+Finished job 10.
+2 of 77 steps (3%) done
+Select jobs to execute...
+Execute 20 jobs...
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz
+    jobid: 55
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L4_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1046, disk_mib=998, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz"
+          fi
+        fi
+        
+Job 55 has been submitted with SLURM jobid 57769641 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L4_2/57769641.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz
+    jobid: 79
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L4_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1130, disk_mib=1078, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz"
+          fi
+        fi
+        
+Job 79 has been submitted with SLURM jobid 57769642 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L4_2/57769642.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz
+    jobid: 13
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L1_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz"
+          fi
+        fi
+        
+Job 13 has been submitted with SLURM jobid 57769643 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L1_2/57769643.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz
+    jobid: 58
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz"
+          fi
+        fi
+        
+Job 58 has been submitted with SLURM jobid 57769644 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L1_1/57769644.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz
+    jobid: 31
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L4_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1329, disk_mib=1268, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz"
+          fi
+        fi
+        
+Job 31 has been submitted with SLURM jobid 57769645 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L4_2/57769645.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz
+    jobid: 37
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L1_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz"
+          fi
+        fi
+        
+Job 37 has been submitted with SLURM jobid 57769646 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L1_2/57769646.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz
+    jobid: 16
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L2_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1452, disk_mib=1385, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz"
+          fi
+        fi
+        
+Job 16 has been submitted with SLURM jobid 57769647 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L2_1/57769647.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz
+    jobid: 61
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L1_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L1_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz"
+          fi
+        fi
+        
+Job 61 has been submitted with SLURM jobid 57769648 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L1_2/57769648.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz
+    jobid: 40
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L2_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1683, disk_mib=1606, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz"
+          fi
+        fi
+        
+Job 40 has been submitted with SLURM jobid 57769649 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L2_1/57769649.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz
+    jobid: 76
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L4_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1220, disk_mib=1164, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L4_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz"
+          fi
+        fi
+        
+Job 76 has been submitted with SLURM jobid 57769650 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L4_1/57769650.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_1.fastq.gz
+    jobid: 22
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L3_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1473, disk_mib=1405, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_1.fastq.gz"
+          fi
+        fi
+        
+Job 22 has been submitted with SLURM jobid 57769651 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L3_1/57769651.log).
+
+[Mon Jun 29 18:14:26 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_2.fastq.gz
+    jobid: 67
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L2_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1139, disk_mib=1087, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_2.fastq.gz"
+          fi
+        fi
+        
+Job 67 has been submitted with SLURM jobid 57769652 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L2_2/57769652.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz
+    jobid: 46
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L3_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1214, disk_mib=1158, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz"
+          fi
+        fi
+        
+Job 46 has been submitted with SLURM jobid 57769653 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L3_1/57769653.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz
+    jobid: 70
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L3_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1711, disk_mib=1632, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz"
+          fi
+        fi
+        
+Job 70 has been submitted with SLURM jobid 57769654 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L3_1/57769654.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz
+    jobid: 25
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L3_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1435, disk_mib=1369, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L3_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz"
+          fi
+        fi
+        
+Job 25 has been submitted with SLURM jobid 57769655 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L3_2/57769655.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz
+    jobid: 49
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L3_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L3_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz"
+          fi
+        fi
+        
+Job 49 has been submitted with SLURM jobid 57769656 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L3_2/57769656.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz
+    jobid: 28
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L4_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1640, disk_mib=1565, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L4_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz"
+          fi
+        fi
+        
+Job 28 has been submitted with SLURM jobid 57769657 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L4_1/57769657.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz
+    jobid: 73
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L3_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1585, disk_mib=1512, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L3_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz"
+          fi
+        fi
+        
+Job 73 has been submitted with SLURM jobid 57769659 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L3_2/57769659.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz
+    jobid: 52
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L4_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1827, disk_mib=1743, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L4_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz"
+          fi
+        fi
+        
+Job 52 has been submitted with SLURM jobid 57769660 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L4_1/57769660.log).
+
+[Mon Jun 29 18:14:27 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz
+    jobid: 9
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L1_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz"
+          fi
+        fi
+        
+Job 9 has been submitted with SLURM jobid 57769661 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L1_1/57769661.log).
+[Mon Jun 29 18:14:53 2026]
+Finished job 55.
+3 of 77 steps (4%) done
+[Mon Jun 29 18:14:53 2026]
+Finished job 79.
+4 of 77 steps (5%) done
+[Mon Jun 29 18:14:53 2026]
+Finished job 13.
+5 of 77 steps (6%) done
+[Mon Jun 29 18:14:53 2026]
+Finished job 58.
+6 of 77 steps (8%) done
+Select jobs to execute...
+Execute 4 jobs...
+
+[Mon Jun 29 18:14:53 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+    jobid: 54
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz
+    wildcards: sample=L_L4_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1046, disk_mib=998, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz"
+        
+Job 54 has been submitted with SLURM jobid 57769675 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L4_2/57769675.log).
+
+[Mon Jun 29 18:14:55 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_1.fastq.gz
+    jobid: 34
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L1_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_1.fastq.gz"
+          fi
+        fi
+        
+Job 34 has been submitted with SLURM jobid 57769676 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L1_1/57769676.log).
+
+[Mon Jun 29 18:14:55 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    jobid: 57
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz
+    wildcards: sample=U_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz"
+        
+Job 57 has been submitted with SLURM jobid 57769677 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L1_1/57769677.log).
+
+[Mon Jun 29 18:14:55 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz
+    jobid: 78
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz
+    wildcards: sample=U_L4_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1130, disk_mib=1078, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz"
+        
+Job 78 has been submitted with SLURM jobid 57769678 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L4_2/57769678.log).
+Select jobs to execute...
+[Mon Jun 29 18:15:03 2026]
+Finished job 31.
+7 of 77 steps (9%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 37.
+8 of 77 steps (10%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 16.
+9 of 77 steps (12%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 61.
+10 of 77 steps (13%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 40.
+11 of 77 steps (14%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 76.
+12 of 77 steps (16%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 22.
+13 of 77 steps (17%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 67.
+14 of 77 steps (18%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 46.
+15 of 77 steps (19%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 70.
+16 of 77 steps (21%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 25.
+17 of 77 steps (22%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 49.
+18 of 77 steps (23%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 28.
+19 of 77 steps (25%) done
+[Mon Jun 29 18:15:03 2026]
+Finished job 73.
+20 of 77 steps (26%) done
+[Mon Jun 29 18:15:04 2026]
+Finished job 52.
+21 of 77 steps (27%) done
+[Mon Jun 29 18:15:04 2026]
+Finished job 9.
+22 of 77 steps (29%) done
+Execute 16 jobs...
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz
+    jobid: 69
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz
+    wildcards: sample=U_L3_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1711, disk_mib=1632, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz"
+        
+Job 69 has been submitted with SLURM jobid 57769681 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L3_1/57769681.log).
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz
+    jobid: 24
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz
+    wildcards: sample=I_L3_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1435, disk_mib=1369, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L3_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz"
+        
+Job 24 has been submitted with SLURM jobid 57769682 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L3_2/57769682.log).
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    jobid: 8
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz
+    wildcards: sample=I_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz"
+        
+Job 8 has been submitted with SLURM jobid 57769683 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L1_1/57769683.log).
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz
+    jobid: 75
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz
+    wildcards: sample=U_L4_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1220, disk_mib=1164, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L4_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz"
+        
+Job 75 has been submitted with SLURM jobid 57769684 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L4_1/57769684.log).
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz
+    jobid: 36
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz
+    wildcards: sample=L_L1_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L1_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz"
+        
+Job 36 has been submitted with SLURM jobid 57769685 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L1_2/57769685.log).
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz
+    jobid: 48
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz
+    wildcards: sample=L_L3_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz"
+        
+Job 48 has been submitted with SLURM jobid 57769686 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L3_2/57769686.log).
+
+[Mon Jun 29 18:15:04 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+    jobid: 45
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz
+    wildcards: sample=L_L3_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1214, disk_mib=1158, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L3_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz"
+        
+Job 45 has been submitted with SLURM jobid 57769687 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L3_1/57769687.log).
+
+[Mon Jun 29 18:15:06 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz
+    jobid: 15
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz
+    wildcards: sample=I_L2_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1452, disk_mib=1385, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz"
+        
+Job 15 has been submitted with SLURM jobid 57769688 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L2_1/57769688.log).
+
+[Mon Jun 29 18:15:07 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz
+    jobid: 60
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz
+    wildcards: sample=U_L1_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L1_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz"
+        
+Job 60 has been submitted with SLURM jobid 57769689 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L1_2/57769689.log).
+
+[Mon Jun 29 18:15:07 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz
+    jobid: 27
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz
+    wildcards: sample=I_L4_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1640, disk_mib=1565, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz"
+        
+Job 27 has been submitted with SLURM jobid 57769690 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L4_1/57769690.log).
+
+[Mon Jun 29 18:15:07 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz
+    jobid: 72
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz
+    wildcards: sample=U_L3_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1585, disk_mib=1512, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L3_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz"
+        
+Job 72 has been submitted with SLURM jobid 57769691 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L3_2/57769691.log).
+
+[Mon Jun 29 18:15:08 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz
+    jobid: 51
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz
+    wildcards: sample=L_L4_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1827, disk_mib=1743, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L4_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz"
+        
+Job 51 has been submitted with SLURM jobid 57769692 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L4_1/57769692.log).
+
+[Mon Jun 29 18:15:08 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz
+    jobid: 19
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L2_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1361, disk_mib=1298, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/I_L2_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz"
+          fi
+        fi
+        
+Job 19 has been submitted with SLURM jobid 57769693 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L2_2/57769693.log).
+
+[Mon Jun 29 18:15:08 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz
+    jobid: 39
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz
+    wildcards: sample=L_L2_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1683, disk_mib=1606, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_1.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz"
+        
+Job 39 has been submitted with SLURM jobid 57769694 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L2_1/57769694.log).
+
+[Mon Jun 29 18:15:08 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz
+    jobid: 12
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz
+    wildcards: sample=I_L1_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L1_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz"
+        
+Job 12 has been submitted with SLURM jobid 57769695 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L1_2/57769695.log).
+
+[Mon Jun 29 18:15:08 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_1.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_1.fastq.gz
+    jobid: 64
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_1.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L2_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1163, disk_mib=1110, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_1.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_1.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_1.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_1.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/U_L2_1.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/U_L2_1.fastq.gz"
+          fi
+        fi
+        
+Job 64 has been submitted with SLURM jobid 57769696 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L2_1/57769696.log).
+Select jobs to execute...
+[Mon Jun 29 18:15:33 2026]
+Finished job 54.
+23 of 77 steps (30%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 34.
+24 of 77 steps (31%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 57.
+25 of 77 steps (32%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 78.
+26 of 77 steps (34%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 69.
+27 of 77 steps (35%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 24.
+28 of 77 steps (36%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 8.
+29 of 77 steps (38%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 75.
+30 of 77 steps (39%) done
+[Mon Jun 29 18:15:33 2026]
+Finished job 36.
+31 of 77 steps (40%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 48.
+32 of 77 steps (42%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 45.
+33 of 77 steps (43%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 15.
+34 of 77 steps (44%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 60.
+35 of 77 steps (45%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 27.
+36 of 77 steps (47%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 72.
+37 of 77 steps (48%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 51.
+38 of 77 steps (49%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 19.
+39 of 77 steps (51%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 39.
+40 of 77 steps (52%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 12.
+41 of 77 steps (53%) done
+[Mon Jun 29 18:15:34 2026]
+Finished job 64.
+42 of 77 steps (55%) done
+Execute 20 jobs...
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done
+    jobid: 35
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz
+    wildcards: sample=L_L1_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done"
+        
+Job 35 has been submitted with SLURM jobid 57769698 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L1_2/57769698.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz
+    jobid: 30
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz
+    wildcards: sample=I_L4_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1329, disk_mib=1268, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz"
+        
+Job 30 has been submitted with SLURM jobid 57769699 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L4_2/57769699.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done
+    jobid: 77
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz
+    wildcards: sample=U_L4_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1130, disk_mib=1078, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done"
+        
+Job 77 has been submitted with SLURM jobid 57769700 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L4_2/57769700.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done
+    jobid: 74
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz
+    wildcards: sample=U_L4_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1220, disk_mib=1164, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done"
+        
+Job 74 has been submitted with SLURM jobid 57769701 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L4_1/57769701.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done
+    jobid: 71
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz
+    wildcards: sample=U_L3_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1585, disk_mib=1512, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done"
+        
+Job 71 has been submitted with SLURM jobid 57769702 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L3_2/57769702.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done
+    jobid: 26
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz
+    wildcards: sample=I_L4_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1640, disk_mib=1565, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done"
+        
+Job 26 has been submitted with SLURM jobid 57769703 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L4_1/57769703.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done
+    jobid: 68
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz
+    wildcards: sample=U_L3_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1711, disk_mib=1632, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done"
+        
+Job 68 has been submitted with SLURM jobid 57769704 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L3_1/57769704.log).
+
+[Mon Jun 29 18:15:34 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done
+    jobid: 23
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz
+    wildcards: sample=I_L3_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1435, disk_mib=1369, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done"
+        
+Job 23 has been submitted with SLURM jobid 57769705 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L3_2/57769705.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done
+    jobid: 14
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz
+    wildcards: sample=I_L2_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1452, disk_mib=1385, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done"
+        
+Job 14 has been submitted with SLURM jobid 57769706 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L2_1/57769706.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done
+    jobid: 59
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz
+    wildcards: sample=U_L1_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done"
+        
+Job 59 has been submitted with SLURM jobid 57769707 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L1_2/57769707.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz
+    jobid: 18
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz
+    wildcards: sample=I_L2_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1361, disk_mib=1298, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz"
+        
+Job 18 has been submitted with SLURM jobid 57769708 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L2_2/57769708.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule QC_filter_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz
+    jobid: 43
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L2_2
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1643, disk_mib=1567, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz"
+          fi
+        fi
+        
+Job 43 has been submitted with SLURM jobid 57769709 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L2_2/57769709.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done
+    jobid: 11
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz
+    wildcards: sample=I_L1_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done"
+        
+Job 11 has been submitted with SLURM jobid 57769710 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L1_2/57769710.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done
+    jobid: 56
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    wildcards: sample=U_L1_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done"
+        
+Job 56 has been submitted with SLURM jobid 57769711 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L1_1/57769711.log).
+
+[Mon Jun 29 18:15:35 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done
+    jobid: 7
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    wildcards: sample=I_L1_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done"
+        
+Job 7 has been submitted with SLURM jobid 57769712 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L1_1/57769712.log).
+
+[Mon Jun 29 18:15:36 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done
+    jobid: 53
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+    wildcards: sample=L_L4_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1046, disk_mib=998, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done"
+        
+Job 53 has been submitted with SLURM jobid 57769713 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L4_2/57769713.log).
+
+[Mon Jun 29 18:15:36 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done
+    jobid: 50
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz
+    wildcards: sample=L_L4_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1827, disk_mib=1743, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done"
+        
+Job 50 has been submitted with SLURM jobid 57769714 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L4_1/57769714.log).
+
+[Mon Jun 29 18:15:36 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done
+    jobid: 47
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz
+    wildcards: sample=L_L3_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done"
+        
+Job 47 has been submitted with SLURM jobid 57769715 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L3_2/57769715.log).
+
+[Mon Jun 29 18:15:36 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done
+    jobid: 44
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+    wildcards: sample=L_L3_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1214, disk_mib=1158, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done"
+        
+Job 44 has been submitted with SLURM jobid 57769716 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L3_1/57769716.log).
+
+[Mon Jun 29 18:15:36 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done
+    jobid: 38
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz
+    wildcards: sample=L_L2_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1683, disk_mib=1606, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done"
+        
+Job 38 has been submitted with SLURM jobid 57769717 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L2_1/57769717.log).
+Select jobs to execute...
+[Mon Jun 29 18:15:43 2026]
+Error in rule QC_filter_shell:
+    message: SLURM-job '57769709' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 43
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L2_2/57769709.log (check log file(s) for error details)
+    shell:
+        
+        source /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz \
+            --output-fastq /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz")"
+
+          if [[ "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz" == *.gz ]]; then
+            ln -sf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz"
+          else
+            gzip -c "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/fastq_symlinks/L_L2_2.fastq.gz" > "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/L_L2_2.fastq.gz"
+          fi
+        fi
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769709
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769698' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 35
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2/L_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L1_2/57769698.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L1_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L1_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769698
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule prepare_bcwithqc_input:
+    message: SLURM-job '57769699' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 30
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L4_2/57769699.log (check log file(s) for error details)
+    shell:
+        
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L4_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769699
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769700' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 77
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2/U_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L4_2/57769700.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769700
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769701' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 74
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1/U_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L4_1/57769701.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L4_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L4_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769701
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769702' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 71
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2/U_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L3_2/57769702.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769702
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769703' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 26
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1/I_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L4_1/57769703.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L4_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L4_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769703
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769704' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 68
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1/U_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L3_1/57769704.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L3_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L3_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769704
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769705' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 23
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2/I_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L3_2/57769705.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L3_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L3_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769705
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769706' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 14
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1/I_L2_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L2_1/57769706.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L2_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L2_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769706
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769707' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 59
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2/U_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L1_2/57769707.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769707
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule prepare_bcwithqc_input:
+    message: SLURM-job '57769708' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 18
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L2_2/57769708.log (check log file(s) for error details)
+    shell:
+        
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/QC_filtered/I_L2_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L2_2/I_L2_2.fastq.gz"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769708
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769710' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 11
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2/I_L1_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L1_2/57769710.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769710
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769711' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 56
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L1_1/57769711.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/U_L1_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769711
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769712' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 7
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L1_1/57769712.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/I_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/I_L1_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/I_L1_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769712
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769713' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 53
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L4_2/57769713.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769713
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769714' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 50
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1/L_L4_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L4_1/57769714.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L4_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769714
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769715' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 47
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2/L_L3_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L3_2/57769715.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_2.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769715
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769716' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 44
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1/L_L3_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L3_1/57769716.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L3_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L3_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769716
+
+[Mon Jun 29 18:17:14 2026]
+Error in rule bcwithqc_one_sample:
+    message: SLURM-job '57769717' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 38
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1/L_L2_1.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L2_1/57769717.log (check log file(s) for error details)
+    shell:
+        
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_symlinks/L_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output/L_L2_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/.pipeline_state/bcwithqc_done/L_L2_1.done"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769717
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2026-06-29T181243.317831.snakemake.log
+WorkflowError:
+At least one job did not complete successfully.

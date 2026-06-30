@@ -1,0 +1,43 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 16:25:30 2026]
+rule bcwithqc_done:
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done"
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 16:25:33 2026]
+localrule bcwithqc_done:
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57345366, runtime=60, slurm_account=lsteinme
+
+
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done"
+        
+[Wed Jun 24 16:25:33 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Wed Jun 24 16:25:33 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

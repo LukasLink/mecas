@@ -1,0 +1,49 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1263, disk_mib=1205
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:19:56 2026]
+rule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/QC_filtered/I_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=I_L4_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1263, disk_mib=1205, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/QC_filtered/I_L4_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz"
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1263, disk_mib=1205
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:19:59 2026]
+localrule prepare_bcwithqc_input:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/QC_filtered/I_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=I_L4_2
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1263, disk_mib=1205, tmpdir=/scratch/jobs/57769910, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz)"
+        ln -sf "$(realpath "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/QC_filtered/I_L4_2.fastq.gz")" "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/I_L4_2/I_L4_2.fastq.gz"
+        
+[Mon Jun 29 18:19:59 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Mon Jun 29 18:19:59 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

@@ -1,0 +1,49 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 15:09:39 2026]
+rule prepare_bcwithqc_input:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/I_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=I_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz)"
+        ln -sf "$(realpath /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/I_L1_1.fastq.gz)" /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 15:09:42 2026]
+localrule prepare_bcwithqc_input:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/I_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=I_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57340638, runtime=60, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz)"
+        ln -sf "$(realpath /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/QC_filtered/I_L1_1.fastq.gz)" /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+        
+[Wed Jun 24 15:09:42 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Wed Jun 24 15:09:42 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

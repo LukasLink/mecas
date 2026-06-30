@@ -1,0 +1,107 @@
+Building DAG of jobs...
+SLURM run ID: 8184198d-8d34-4dec-8d7c-a24a7fd17ee4
+Using shell: /usr/bin/bash
+Provided remote nodes: 20
+Job stats:
+job                     count
+--------------------  -------
+all                         1
+make_reference_R            1
+make_reference_shell        1
+setup_R                     1
+total                       4
+
+Select jobs to execute...
+Execute 1 jobs...
+
+[Fri Jun 19 11:46:31 2026]
+rule setup_R:
+    input: config.yaml
+    output: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/resolved_config.yaml, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/fastq_manifest.tsv, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/01_setup.done
+    jobid: 1
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/01_setup.done, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/resolved_config.rds
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_setup.R config.yaml
+        
+Job 1 has been submitted with SLURM jobid 56773725 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_setup_R/56773725.log).
+[Fri Jun 19 11:47:30 2026]
+Finished job 1.
+1 of 4 steps (25%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Fri Jun 19 11:47:30 2026]
+rule make_reference_R:
+    input: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.fa, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.gtf, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/STAR_ref_params.sh
+    jobid: 2
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.fa, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.gtf, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/STAR_ref_params.sh; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/01_setup.done, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/resolved_config.rds
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=20, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_make_reference.R /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/resolved_config.rds --snakemake
+        
+Job 2 has been submitted with SLURM jobid 56773896 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_make_reference_R/56773896.log).
+[Fri Jun 19 11:48:31 2026]
+Finished job 2.
+2 of 4 steps (50%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Fri Jun 19 11:48:31 2026]
+rule make_reference_shell:
+    input: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.fa, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.gtf, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/STAR_ref_params.sh
+    output: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/02_make_reference.done
+    jobid: 3
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/02_make_reference.done; Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.fa, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.gtf, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/STAR_ref_params.sh
+    threads: 12
+    resources: mem_mb=128000, mem_mib=122071, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=5760, slurm_account=lsteinme
+
+
+        module load STAR/2.7.11b
+
+        source /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/STAR_ref_params.sh
+
+        LIMIT_GENOME_GENERATE_RAM=$(( 128000 * 1000000 * 90 / 100 ))
+
+        mkdir -p "$STAR_INDEX_OUTPUT_DIR"
+
+        STAR \
+          --runThreadN 12 \
+          --runMode genomeGenerate \
+          --genomeDir "$STAR_INDEX_OUTPUT_DIR" \
+          --genomeFastaFiles "$REF_FASTA_PATH" \
+          --sjdbGTFfile "$REF_GTF_PATH" \
+          --limitGenomeGenerateRAM "$LIMIT_GENOME_GENERATE_RAM" \
+          --genomeSAindexNbases "$GENOME_SA_INDEX_N_BASES" \
+          --sjdbOverhang "$SJDB_OVERHANG" \
+          --genomeChrBinNbits "$GENOME_CHR_BIN_N_BITS"
+
+        touch /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/02_make_reference.done
+        
+Job 3 has been submitted with SLURM jobid 56774015 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_make_reference_shell/56774015.log).
+[Fri Jun 19 11:49:01 2026]
+Finished job 3.
+3 of 4 steps (75%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Fri Jun 19 11:49:01 2026]
+localrule all:
+    input: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/01_setup.done, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.gtf, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/02_make_reference.done
+    jobid: 0
+    reason: Input files updated by another job: /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/ref/ref.gtf, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/02_make_reference.done, /scratch/link/Amplicon_barcode_analysis/snake_test/make_ref/.pipeline_state/01_setup.done
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/tmp, runtime=60, slurm_account=lsteinme
+
+[Fri Jun 19 11:49:01 2026]
+Finished job 0.
+4 of 4 steps (100%) done
+Complete log: .snakemake/log/2026-06-19T114629.971551.snakemake.log

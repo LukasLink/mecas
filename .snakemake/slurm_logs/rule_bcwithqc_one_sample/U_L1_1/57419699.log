@@ -1,0 +1,138 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Thu Jun 25 13:36:47 2026]
+rule bcwithqc_one_sample:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=U_L1_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=240, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1"
+        mkdir -p "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --STAR-output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done")"
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done"
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Thu Jun 25 13:36:49 2026]
+localrule bcwithqc_one_sample:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=U_L1_1
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57419699, runtime=240, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1"
+        mkdir -p "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --STAR-output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done")"
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done"
+        
+2026-06-25 13:36:50   Writing log to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/bcwithqc_preprocess.log
+2026-06-25 13:36:50   Files to process:
+2026-06-25 13:36:50     /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+2026-06-25 13:36:50   Processing file:
+2026-06-25 13:36:50     barcode fastq: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+2026-06-25 13:36:50     sans-bc fastq: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/sans_bc_U_L1_1.fq
+2026-06-25 13:36:50     tags file:     /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/rec_names_and_tags1_U_L1_1.txt
+2026-06-25 13:36:50   Building aligners and barcode decoders
+2026-06-25 13:36:51   Processing first 10,000 for score threshold...
+2026-06-25 13:37:11   Score threshold: 0.66
+2026-06-25 13:37:11   Continuing...
+2026-06-25 13:39:04   58,162 barcode records processed
+2026-06-25 13:39:04   56,023 records output
+2026-06-25 13:39:05   Collected 58,162 read QC entries
+2026-06-25 13:39:05   Wrote barcode-level QC metrics to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/bcs.tsv
+2026-06-25 13:39:05   Wrote block summary QC metrics to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/bcs_summary.tsv
+2026-06-25 13:39:05   Wrote read-level QC metrics to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/reads.tsv
+2026-06-25 13:39:05   Wrote read-level QC summary to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/reads_summary.tsv
+2026-06-25 13:39:06   Writing log to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/bcwithqc_count.log
+2026-06-25 13:39:06   Writing output to:
+2026-06-25 13:39:06     /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/with_bc.bam
+2026-06-25 13:39:06   Using STAR results from /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1
+2026-06-25 13:39:06   Adding barcode tags to mapped reads... 
+2026-06-25 13:39:19   Sorting bam...
+2026-06-25 13:39:19   Indexing bam...
+2026-06-25 13:39:19   Correcting UMIs...
+2026-06-25 13:39:21   56,023 processed.
+2026-06-25 13:39:21   Sorting bam...
+2026-06-25 13:39:21   Indexing bam...
+2026-06-25 13:39:21   Finding all barcodes present...
+2026-06-25 13:39:22   Counting reads...
+2026-06-25 13:39:22   Writing raw read count matrix...
+2026-06-25 13:39:23   Deleting intermediary files...
+2026-06-25 13:39:23   Wrote combined read/block stacked barplot to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/reads_and_blocks_summary.png
+/home/link/John_UMIs/bcwithqc/bcwithqc/qc_metrics.py:806: UserWarning: Creating legend with loc="best" can be slow with large amounts of data.
+  plt.tight_layout()
+/home/link/John_UMIs/bcwithqc/bcwithqc/qc_metrics.py:813: UserWarning: Creating legend with loc="best" can be slow with large amounts of data.
+  plt.savefig(output_file, dpi=300)
+2026-06-25 13:47:08   Wrote combined barcode-level stacked barplot to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/barcodes_R1_sgrna.png
+2026-06-25 13:47:09   Wrote combined read/block stacked barplot to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1/QC_metrics/reads_and_blocks_summary.png
+2026-06-25 13:47:09   Done
+[Thu Jun 25 13:47:48 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.
+[Thu Jun 25 13:47:49 2026]
+Finished job 0.
+1 of 1 steps (100%) done
+Storing output in storage.

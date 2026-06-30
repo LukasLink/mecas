@@ -1,0 +1,339 @@
+Building DAG of jobs...
+SLURM run ID: f08ad058-3d83-49ac-bb4e-19000783ba1d
+Using shell: /usr/bin/bash
+Provided remote nodes: 20
+Job stats:
+job              count
+-------------  -------
+MAUDE                1
+bcwithqc_done        1
+setup                1
+total                3
+
+Select jobs to execute...
+Execute 1 jobs...
+
+[Tue Jun 30 13:43:27 2026]
+checkpoint setup:
+    input: config.yaml
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.yaml, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/fastq_manifest.tsv, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    jobid: 1
+    reason: Updated input files: config.yaml
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+DAG of jobs will be updated after completion.
+
+
+        module load R/4.5.2-gfbf-2025b
+        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_setup.R config.yaml
+        
+Job 1 has been submitted with SLURM jobid 57839638 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_setup/57839638.log).
+[Tue Jun 30 13:44:27 2026]
+Finished job 1.
+1 of 3 steps (33%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Tue Jun 30 13:44:27 2026]
+rule QC_filtering_R:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+    jobid: 9
+    reason: Updated input files: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+        
+Job 9 has been submitted with SLURM jobid 57839680 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filtering_R/57839680.log).
+[Tue Jun 30 13:44:57 2026]
+Finished job 9.
+2 of 13 steps (15%) done
+Select jobs to execute...
+Execute 3 jobs...
+
+[Tue Jun 30 13:44:57 2026]
+rule QC_filter_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/L_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz
+    jobid: 12
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=L_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/L_L1_1.fastq.gz \
+            --output-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz")"
+
+          if [[ "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/L_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/L_L1_1.fastq.gz" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz"
+          else
+            gzip -c "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/L_L1_1.fastq.gz" > "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz"
+          fi
+        fi
+        
+Job 12 has been submitted with SLURM jobid 57839700 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/L_L1_1/57839700.log).
+
+[Tue Jun 30 13:44:58 2026]
+rule QC_filter_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/U_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz
+    jobid: 15
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=U_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/U_L1_1.fastq.gz \
+            --output-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz")"
+
+          if [[ "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/U_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/U_L1_1.fastq.gz" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz"
+          else
+            gzip -c "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/U_L1_1.fastq.gz" > "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz"
+          fi
+        fi
+        
+Job 15 has been submitted with SLURM jobid 57839701 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/U_L1_1/57839701.log).
+
+[Tue Jun 30 13:44:58 2026]
+rule QC_filter_shell:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz
+    jobid: 8
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+    wildcards: sample=I_L1_1
+    resources: mem_mb=16000, mem_mib=15259, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=60, slurm_account=lsteinme
+
+
+        source /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/QC_filtering_params.sh
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          bash shell/QC_filtering_snake.sh \
+            --input-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz \
+            --output-fastq /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz \
+            --min-qual "$QC_MIN_QUAL" \
+            --qual-offset "$QC_QUAL_OFFSET" \
+            --min-length "$QC_MIN_LENGTH" \
+            --use-modules "$USE_MODULES" \
+            --seqtk-module "$SEQTK_MODULE"
+        else
+          mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz")"
+
+          if [[ "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" == *.gz ]]; then
+            ln -sf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz"
+          else
+            gzip -c "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/fastq_symlinks/I_L1_1.fastq.gz" > "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz"
+          fi
+        fi
+        
+Job 8 has been submitted with SLURM jobid 57839702 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filter_shell/I_L1_1/57839702.log).
+[Tue Jun 30 13:45:28 2026]
+Finished job 12.
+3 of 13 steps (23%) done
+[Tue Jun 30 13:45:28 2026]
+Finished job 15.
+4 of 13 steps (31%) done
+[Tue Jun 30 13:45:28 2026]
+Finished job 8.
+5 of 13 steps (38%) done
+Select jobs to execute...
+Execute 3 jobs...
+
+[Tue Jun 30 13:45:28 2026]
+rule prepare_bcwithqc_input:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/L_L1_1/L_L1_1.fastq.gz
+    jobid: 11
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz
+    wildcards: sample=L_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/L_L1_1/L_L1_1.fastq.gz)"
+        ln -sf "$(realpath "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/L_L1_1.fastq.gz")" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/L_L1_1/L_L1_1.fastq.gz"
+        
+Job 11 has been submitted with SLURM jobid 57839725 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/L_L1_1/57839725.log).
+
+[Tue Jun 30 13:45:28 2026]
+rule prepare_bcwithqc_input:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    jobid: 14
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz
+    wildcards: sample=U_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz)"
+        ln -sf "$(realpath "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/U_L1_1.fastq.gz")" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz"
+        
+Job 14 has been submitted with SLURM jobid 57839726 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/U_L1_1/57839726.log).
+
+[Tue Jun 30 13:45:28 2026]
+rule prepare_bcwithqc_input:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    jobid: 7
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz
+    wildcards: sample=I_L1_1
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        mkdir -p "$(dirname /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz)"
+        ln -sf "$(realpath "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/QC_filtered/I_L1_1.fastq.gz")" "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz"
+        
+Job 7 has been submitted with SLURM jobid 57839727 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/I_L1_1/57839727.log).
+[Tue Jun 30 13:45:58 2026]
+Finished job 11.
+6 of 13 steps (46%) done
+[Tue Jun 30 13:45:58 2026]
+Finished job 14.
+7 of 13 steps (54%) done
+[Tue Jun 30 13:45:58 2026]
+Finished job 7.
+8 of 13 steps (62%) done
+Select jobs to execute...
+Execute 3 jobs...
+
+[Tue Jun 30 13:45:58 2026]
+rule bcwithqc_one_sample:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done
+    jobid: 13
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1/U_L1_1.fastq.gz
+    wildcards: sample=U_L1_1
+    threads: 10
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1"
+        mkdir -p "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --threads="10" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --STAR-output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/U_L1_1" \
+          --threads="10" \
+          -vv
+          
+        mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done")"
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/U_L1_1.done"
+        
+Job 13 has been submitted with SLURM jobid 57839753 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/U_L1_1/57839753.log).
+
+[Tue Jun 30 13:45:58 2026]
+rule bcwithqc_one_sample:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/L_L1_1/L_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/L_L1_1.done
+    jobid: 10
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/L_L1_1/L_L1_1.fastq.gz
+    wildcards: sample=L_L1_1
+    threads: 10
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/L_L1_1"
+        mkdir -p "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/L_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/L_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/L_L1_1" \
+          --threads="10" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/L_L1_1" \
+          --STAR-output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/L_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/L_L1_1" \
+          --threads="10" \
+          -vv
+          
+        mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/L_L1_1.done")"
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/L_L1_1.done"
+        
+Job 10 has been submitted with SLURM jobid 57839754 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/L_L1_1/57839754.log).
+
+[Tue Jun 30 13:45:59 2026]
+rule bcwithqc_one_sample:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/I_L1_1.done
+    jobid: 6
+    reason: Input files updated by another job: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/I_L1_1/I_L1_1.fastq.gz
+    wildcards: sample=I_L1_1
+    threads: 10
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/I_L1_1"
+        mkdir -p "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/I_L1_1"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_symlinks/I_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/I_L1_1" \
+          --threads="10" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/I_L1_1" \
+          --STAR-output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/I_L1_1" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/bcwithqc_output/I_L1_1" \
+          --threads="10" \
+          -vv
+          
+        mkdir -p "$(dirname "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/I_L1_1.done")"
+        touch "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/bcwithqc_done/I_L1_1.done"
+        
+Job 6 has been submitted with SLURM jobid 57839755 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_bcwithqc_one_sample/I_L1_1/57839755.log).

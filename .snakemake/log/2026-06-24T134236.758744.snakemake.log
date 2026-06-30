@@ -1,0 +1,4 @@
+Building DAG of jobs...
+WildcardError in rule all in file /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile, line 39:
+Wildcards in input files cannot be determined from output files: (rule all, line 41, /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile)
+'sample'

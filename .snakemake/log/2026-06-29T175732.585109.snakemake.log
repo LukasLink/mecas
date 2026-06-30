@@ -1,0 +1,74 @@
+Building DAG of jobs...
+You are running snakemake in a SLURM job context. This is not recommended, as it may lead to unexpected behavior.Please run Snakemake directly on the login node.
+SLURM run ID: d14cb474-c160-4335-99c5-6abd226b3b41
+Using shell: /usr/bin/bash
+Provided remote nodes: 20
+Job stats:
+job               count
+--------------  -------
+MAUDE_and_plot        1
+all                   1
+bcwithqc_done         1
+setup                 1
+total                 4
+
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 17:57:39 2026]
+checkpoint setup:
+    input: config.yaml
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.yaml, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/fastq_manifest.tsv, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/01_setup.done
+    jobid: 2
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/01_setup.done, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.rds
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+DAG of jobs will be updated after completion.
+
+
+        module load R/4.5.2-gfbf-2025b
+        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_setup.R config.yaml
+        
+Job 2 has been submitted with SLURM jobid 57769189 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_setup/57769189.log).
+[Mon Jun 29 17:58:12 2026]
+Finished job 2.
+1 of 4 steps (25%) done
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 17:58:13 2026]
+rule QC_filtering_R:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    jobid: 10
+    reason: Missing output files: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.rds
+        
+Job 10 has been submitted with SLURM jobid 57769192 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filtering_R/57769192.log).
+[Mon Jun 29 17:58:42 2026]
+Error in rule QC_filtering_R:
+    message: SLURM-job '57769192' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 10
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.rds, /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/01_setup.done
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/QC_filtering_params.sh
+    log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_QC_filtering_R/57769192.log (check log file(s) for error details)
+    shell:
+        
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/.pipeline_state/resolved_config.rds
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    external_jobid: 57769192
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2026-06-29T175732.585109.snakemake.log
+WorkflowError:
+At least one job did not complete successfully.

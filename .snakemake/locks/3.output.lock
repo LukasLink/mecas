@@ -1,0 +1,9 @@
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df.rds
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/mapping_results.xlsx
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_guide_stats.rds
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_gene_stats.rds
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.yaml
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/fastq_manifest.tsv
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done

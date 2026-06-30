@@ -1,0 +1,66 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 13:28:27 2026]
+checkpoint QC_filtering_R:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=20, slurm_account=lsteinme
+DAG of jobs will be updated after completion.
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 13:28:30 2026]
+localcheckpoint QC_filtering_R:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57333617, runtime=20, slurm_account=lsteinme
+DAG of jobs will be updated after completion.
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+Waiting at most 60 seconds for missing files.
+WorkflowError in rule QC_filtering_R in file /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile, line 113:
+OSError: Missing files after 60 seconds. This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait:
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv (missing locally, parent dir contents: 02_make_reference.done, resolved_config.yaml, 01_setup.done, STAR_ref_params.sh, resolved_config.rds)
+srun: error: smeb02-1: task 0: Exited with exit code 1
+[Wed Jun 24 13:29:31 2026]
+Error in rule QC_filtering_R:
+    jobid: 0
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv
+    shell:
+        
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Storing output in storage.
+WorkflowError:
+At least one job did not complete successfully.

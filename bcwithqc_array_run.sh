@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -J BCWQC_PA                      # chmod +x ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/bcwithqc_array_run.sh
+#SBATCH -J BCWQC_star_troubleshoot                    # chmod +x ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/bcwithqc_array_run.sh
 #SBATCH -A lsteinme                       # sbatch ~/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/bcwithqc_array_run.sh
 #SBATCH --mem=65g                         #  --dependency=afterok:46151850
 #SBATCH -N 1
@@ -7,7 +7,7 @@
 #SBATCH --constraint=avx512
 #SBATCH -t 35:00:00
 #SBATCH --qos normal
-#SBATCH --array=0-11
+#SBATCH --array=0
 #SBATCH -o /g/steinmetz/link/logs/log_%x_%A_%a.out
 #SBATCH -e /g/steinmetz/link/logs/log_%x_%A_%a.err
 #SBATCH --mail-type=END,FAIL
@@ -19,14 +19,15 @@ set -euo pipefail
 # USER OPTIONS
 ################################################################################
 
-OUTPUT_FOLDER="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
+# OUTPUT_FOLDER="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+OUTPUT_FOLDER="/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/star_problem/"
 
 BCWITHQC_CONFIG="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
-STAR_INDEX="/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4"
+STAR_INDEX="/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4_sgRNA_only"
 BCWITHQC_BIN="/home/link/.conda/envs/py313/bin/bcwithqc"
 
 NUM_THREADS="${SLURM_CPUS_PER_TASK:-10}"
-KEEP_INTERMEDIARY=false
+KEEP_INTERMEDIARY=true
 OVERRIDE_OR_ABORT_OR_SKIP_WHEN_PREVIOUS_RESULTS="override"
 VERBOSITY="-vv"
 

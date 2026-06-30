@@ -37,10 +37,7 @@ run_count <- function(config_path, project_root_dir, cli_args) {
   # Create Symlinks
   #-----------------------------------------------------------------------------
   
-  manifest_output_path <- get_file_path(
-    cfg$paths$rds_output_folder,
-    paste0("standardized_fastq_manifest_", cfg$suffix$file_info_suffix, ".tsv")
-  )
+  manifest_output_path <- cfg$paths$manifest
   
   if (run_prepare_inputs_stage) {
     
@@ -50,7 +47,7 @@ run_count <- function(config_path, project_root_dir, cli_args) {
       fastq_dir = cfg$paths$input_folder,
       fastq_name_table_file_path = cfg$files$fastq_name_table_xlsx,
       output_symlink_dir = cfg$paths$fastq_symlinks_folder,
-      manifest_output_path = manifest_output_path,
+      manifest_output_path = cfg$paths$manifest,
       strict_file_match = cfg$files$strict_file_match
     )
     

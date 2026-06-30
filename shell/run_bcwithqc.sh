@@ -84,7 +84,6 @@ Usage:
     --manifest <bcwithqc_manifest.tsv> \\
     --output-dir <output_folder> \\
     --bcwithqc-config <config.json> \\
-    --star-index-folder <STAR_index_folder> \\
     --bcwithqc-bin <bcwithqc executable> \\
     --threads <int> \\
     --use-modules true|false \\
@@ -182,6 +181,11 @@ load_star_if_needed() {
   command -v STAR >/dev/null 2>&1 || die "STAR not found on PATH"
 }
 
+clean_python_env_for_bcwithqc() {
+  unset PYTHONPATH
+  unset PYTHONHOME
+  export PYTHONNOUSERSITE=1
+}
 ################################################################################
 # Determine array/local task settings
 ################################################################################
@@ -291,7 +295,18 @@ run_bcwithqc_one_input_dir() {
   ##############################################################################
 
   log "[$run_name] Starting bcwithqc preprocess"
-
+  
+  log "BCWITHQC_BIN: $BCWITHQC_BIN"
+  log "PYTHONPATH before cleanup: ${PYTHONPATH:-<unset>}"
+  log "PYTHONHOME before cleanup: ${PYTHONHOME:-<unset>}"
+  log "PYTHONNOUSERSITE before cleanup: ${PYTHONNOUSERSITE:-<unset>}"
+  
+  clean_python_env_for_bcwithqc
+  
+  log "PYTHONPATH after cleanup: ${PYTHONPATH:-<unset>}"
+  log "PYTHONHOME after cleanup: ${PYTHONHOME:-<unset>}"
+  log "PYTHONNOUSERSITE after cleanup: ${PYTHONNOUSERSITE:-<unset>}"
+  
   preprocess_cmd=(
     "$BCWITHQC_BIN" "preprocess"
     "$input_dir"
@@ -371,7 +386,18 @@ run_bcwithqc_one_input_dir() {
   ##############################################################################
 
   log "[$run_name] Starting bcwithqc count"
-
+  
+  log "BCWITHQC_BIN: $BCWITHQC_BIN"
+  log "PYTHONPATH before cleanup: ${PYTHONPATH:-<unset>}"
+  log "PYTHONHOME before cleanup: ${PYTHONHOME:-<unset>}"
+  log "PYTHONNOUSERSITE before cleanup: ${PYTHONNOUSERSITE:-<unset>}"
+  
+  clean_python_env_for_bcwithqc
+  
+  log "PYTHONPATH after cleanup: ${PYTHONPATH:-<unset>}"
+  log "PYTHONHOME after cleanup: ${PYTHONHOME:-<unset>}"
+  log "PYTHONNOUSERSITE after cleanup: ${PYTHONNOUSERSITE:-<unset>}"
+  
   count_cmd=(
     "$BCWITHQC_BIN" "count"
     "$run_output_dir"

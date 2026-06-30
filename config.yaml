@@ -30,20 +30,21 @@ run:
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/ref_test"
-  output_folder: "/scratch/link/Amplicon_barcode_analysis/PA_no_STAR_test"
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE"
+  # output_folder: "/g/steinmetz/linkAmplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
+  # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
   
   # Mandatory input directory for fastq files
-  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
+  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
   library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds"
   
-  # Mandatory reference star_index file.
+  # Mandatory reference star_index file. !!! NOT MANDATORY ANYMORE !!!
   # Can be generated via the make_reference.R script if the align_sequence column is included in the library file. 
-  star_index_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4_sgRNA_only"
+  # star_index_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4_sgRNA_only"
   
   # Optional but recommended input_fastq_name_parser.xlsx
   # For matching file names to pipeline specific names. 
@@ -82,7 +83,7 @@ slurm:
   qos: "normal"
   cpus: 10              # cpus per task
   mem: "80g"            # memory allocated to each Job
-  wall_time: "50:00:00" # Time-out limit before process is killed. hours:minutes:seconds
+  wall_time: "60:00:00" # Time-out limit before process is killed. hours:minutes:seconds
   partition: null       # Specific partition
   array: 12             # Resources consumed = Base_Resources * array 
                         # Runtime = Base_runtime / array 
@@ -270,7 +271,7 @@ filtering:
 # Due to subsampeling MAUDE has a small amount of internal randomness. 
 # This can be handled by consensus calling -> running MAUDE multiple times. 
 consensus:
-  run: false
+  run: true
   n_reps: 19 # repetitions IN ADDITION to the inital MAUDE run
 
   high_confidence:
@@ -298,7 +299,7 @@ plots:
 
   read_count_violin:
     
-    violin_y_limit: 4000 # limit for the Y axis: Number of reads per sgRNA
+    violin_y_limit: 8000 # limit for the Y axis: Number of reads per sgRNA
     
   waterfall:
   

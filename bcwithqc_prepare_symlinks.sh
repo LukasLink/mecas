@@ -17,8 +17,8 @@ set -euo pipefail
 # USER OPTIONS
 ################################################################################
 
-INPUT_FOLDER="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA/QC_filtered"
-OUTPUT_FOLDER="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+INPUT_FOLDER="/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/star_problem/input_files"
+OUTPUT_FOLDER="/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/star_problem/"
 
 FASTQ_PATTERNS=("*.fastq.gz" "*.fq.gz" "*.txt.gz" "*.fastq" "*.fq" "*.txt")
 

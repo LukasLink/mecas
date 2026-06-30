@@ -4,7 +4,7 @@
 #SBATCH --mem 128g               # Total memory required for the job #  --dependency=afterok:46151850
 #SBATCH -N 1                    # Number of nodes
 #SBATCH -n 12                   # Number of CPUs
-#SBATCH -t 04:00:00             # Runtime until the job is forcefully canceled
+#SBATCH -t 01:00:00             # Runtime until the job is forcefully canceled
 #SBATCH --qos normal 
 #SBATCH -o /g/steinmetz/link/logs/log_%x_%A.out
 #SBATCH -e /g/steinmetz/link/logs//log_%x_%A.err
@@ -27,7 +27,7 @@ MAX_MEM=100000000000           # The number of bytes available to STAR; should N
 # ==============================================================================
 
 REF_DIR="/g/steinmetz/link/Amplicon_barcode_analysis/library/ref_CM_specific_library"
-STAR_INDEX="/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_CM_specific_library_Rlenght_122"
+STAR_INDEX="/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4_with_prefix"
 
 REFERENCE_FASTA="${REF_DIR}/reference.fa"
 REFERENCE_GTF="${REF_DIR}/reference.gtf"

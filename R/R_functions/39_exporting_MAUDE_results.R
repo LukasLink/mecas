@@ -1,5 +1,4 @@
-handle_auto_combine_replicates_and_export <- function(file_info_suffix,
-                                                      maude_results,
+handle_auto_combine_replicates_and_export <- function(maude_results,
                                                       cfg,
                                                       file_suffix = cfg$suffix$file_suffix) {
   
@@ -11,7 +10,7 @@ handle_auto_combine_replicates_and_export <- function(file_info_suffix,
     if (length(unique(maude_results$maude_gene_stats$exp)) > 1) {
       
       genes_with_rep <- add_info_wrapper(
-        suffix = file_info_suffix,
+        file_suffix = file_suffix,
         cfg = cfg
       )
       
@@ -50,14 +49,14 @@ handle_auto_combine_replicates_and_export <- function(file_info_suffix,
       message("No replicates present, skipping replicate combination")
       
       export_df <- add_info_wrapper(
-        suffix = file_info_suffix,
+        file_suffix = file_suffix,
         cfg = cfg
       )
     }
     
   } else {
     export_df <- add_info_wrapper(
-      suffix = file_info_suffix,
+      file_suffix = file_suffix,
       cfg = cfg
     )
   }
@@ -92,6 +91,10 @@ handle_auto_combine_replicates_and_export <- function(file_info_suffix,
       paste0("MAUDE_Hits", file_suffix)
     )
   )
+  saveRDS(
+    export_df,
+    file.path(cfg$paths$results_output_folder, paste0("MAUDE_Hits", file_suffix))
+    )
   
   writexl::write_xlsx(export_df, excel_file_path)
   logger::log_info("Results of initial MAUDE run exported to: {excel_file_path}")

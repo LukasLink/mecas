@@ -1,0 +1,119 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 13:34:19 2026]
+rule QC_filtering_R:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=10, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Wed Jun 24 13:34:26 2026]
+localrule QC_filtering_R:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57334029, runtime=10, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+
+The following have been reloaded with a version change:
+  1) FFTW/3.3.10-GCC-12.3.0 => FFTW/3.3.10-GCC-14.3.0
+  2) FlexiBLAS/3.3.1-GCC-12.3.0 => FlexiBLAS/3.4.5-GCC-14.3.0
+  3) GCC/12.3.0 => GCC/14.3.0
+  4) GCCcore/12.3.0 => GCCcore/14.3.0
+  5) GMP/6.2.1-GCCcore-12.3.0 => GMP/6.3.0-GCCcore-14.3.0
+  6) OpenBLAS/0.3.23-GCC-12.3.0 => OpenBLAS/0.3.30-GCC-14.3.0
+  7) OpenSSL/1.1 => OpenSSL/3
+  8) Python/3.11.3-GCCcore-12.3.0 => Python/3.13.5-GCCcore-14.3.0
+  9) SQLite/3.42.0-GCCcore-12.3.0 => SQLite/3.50.1-GCCcore-14.3.0
+ 10) Tcl/8.6.13-GCCcore-12.3.0 => Tcl/9.0.1-GCCcore-14.3.0
+ 11) XZ/5.4.2-GCCcore-12.3.0 => XZ/5.8.1-GCCcore-14.3.0
+ 12) binutils/2.40-GCCcore-12.3.0 => binutils/2.44-GCCcore-14.3.0
+ 13) bzip2/1.0.8-GCCcore-12.3.0 => bzip2/1.0.8-GCCcore-14.3.0
+ 14) cURL/8.0.1-GCCcore-12.3.0 => cURL/8.14.1-GCCcore-14.3.0
+ 15) expat/2.5.0-GCCcore-12.3.0 => expat/2.7.1-GCCcore-14.3.0
+ 16) gettext/0.21.1-GCCcore-12.3.0 => gettext/0.25-GCCcore-14.3.0
+ 17) gfbf/2023a => gfbf/2025b
+ 18) libffi/3.4.4-GCCcore-12.3.0 => libffi/3.5.1-GCCcore-14.3.0
+ 19) libpciaccess/0.17-GCCcore-12.3.0 => libpciaccess/0.18.1-GCCcore-14.3.0
+ 20) libreadline/8.2-GCCcore-12.3.0 => libreadline/8.2-GCCcore-14.3.0
+ 21) libxml2/2.11.4-GCCcore-12.3.0 => libxml2/2.14.3-GCCcore-14.3.0
+ 22) ncurses/6.4-GCCcore-12.3.0 => ncurses/6.5-GCCcore-14.3.0
+ 23) util-linux/2.39-GCCcore-12.3.0 => util-linux/2.41-GCCcore-14.3.0
+ 24) zlib/1.2.13-GCCcore-12.3.0 => zlib/1.3.1-GCCcore-14.3.0
+
+
+2026-06-24 13:34:39 [INFO] Logger initialized. Find log file at: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/logs/2026-06-24_11-42-57_03_QC_filtering.log
+2026-06-24 13:34:39 [INFO] Resolved cfg: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+2026-06-24 13:34:39 [ERROR] Cannot resume pipeline: missing standardized FASTQ manifest.
+Expected file:
+  /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv
+
+Either run with an earlier `start_with` value or check your output folder/suffix settings.
+Error: Cannot resume pipeline: missing standardized FASTQ manifest.
+Expected file:
+  /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/fastq_manifest.tsv
+
+Either run with an earlier `start_with` value or check your output folder/suffix settings.
+Execution halted
+[Wed Jun 24 13:34:39 2026]
+Error in rule QC_filtering_R:
+    jobid: 0
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh
+    shell:
+        
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Storing output in storage.
+WorkflowError:
+At least one job did not complete successfully.
+srun: error: smeb01-3: task 0: Exited with exit code 1
+[Wed Jun 24 13:34:40 2026]
+Error in rule QC_filtering_R:
+    jobid: 0
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/01_setup.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/QC_filtering_params.sh
+    shell:
+        
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_QC_filtering.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/QC_filtering/.pipeline_state/resolved_config.rds
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Storing output in storage.
+WorkflowError:
+At least one job did not complete successfully.

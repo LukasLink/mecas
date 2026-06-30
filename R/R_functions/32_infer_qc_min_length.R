@@ -1,4 +1,5 @@
-infer_qc_min_length <- function(manifest,
+infer_qc_min_length <- function(cfg,
+                                manifest,
                                 fastq_col = "symlink_file",
                                 n_lines = 10000) {
   
@@ -60,8 +61,12 @@ infer_qc_min_length <- function(manifest,
       "\n\nSet `qc_filtering.min_length` manually in config.yaml, ",
       "or set `qc_filtering.run: false` and perform QC filtering yourself."
     )
-    
-    stop_log(msg)
+    if (isTRUE(cfg$qc_filtering$run)){
+      stop_log(msg)
+    } else {
+      log_warn("Error in QC_filtering, which was ignored due to QC filtering being turned off.")
+      log_warn(msg)
+    }
   }
   
   inferred <- unique_lengths[1]

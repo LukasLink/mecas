@@ -1,13 +1,13 @@
 # 61_run_create_plots.R
-
-run_create_plots <- function(cfg, file_info_suffix) {
+# THIS IS DEPRACTED AND REPLACED WITH run_plot
+run_create_plots <- function(cfg) {
   
   logger::log_info("Starting plot generation...")
   
   logger::log_info("Loading Results...")
   
   loaded_results <- load_results_for_plotting(
-    file_info_suffix = file_info_suffix,
+    file_suffix = cfg$suffix$file_suffix,
     cfg = cfg
   )
 

@@ -2,8 +2,7 @@
 # Load function for count_df_long, maude_counts_df and hits_current_settings
 #-------------------------------------------------------------------------------
 
-load_results_for_plotting <- function(file_info_suffix = cfg$suffix$file_info_suffix,
-                                      cfg) {
+load_results_for_plotting <- function(cfg,file_suffix = cfg$suffix$file_suffix){
   #-----------------------------------------------------------------------------
   # Make count_df_long
   #-----------------------------------------------------------------------------
@@ -109,7 +108,7 @@ load_results_for_plotting <- function(file_info_suffix = cfg$suffix$file_info_su
   }
   
   Hits_current_settings <- add_info_wrapper(
-    suffix = file_info_suffix,
+    file_suffix = file_suffix,
     cfg = cfg
   )
   
@@ -384,7 +383,7 @@ run_waterfall_plot <- function(cfg,
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
   
   Hits_df <- add_info_wrapper(
-    suffix = cfg$suffix$file_info_suffix,
+    file_suffix = cfg$suffix$file_suffix,
     cfg = cfg
   )
   

@@ -72,6 +72,25 @@ get_file_path <- function(folder_path, file_name) {
 #===============================================================================
 # logging functions
 #===============================================================================
+initialize_pipeline_logger <- function(log_file) {
+  log_dir <- dirname(log_file)
+  
+  if (!dir.exists(log_dir)) {
+    stop("Log directory does not exist: ", log_dir, call. = FALSE)
+  }
+  
+  logger::log_appender(logger::appender_tee(log_file))
+  logger::log_layout(
+    logger::layout_glue_generator(
+      format = "{format(time, '%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
+    )
+  )
+  
+  logger::log_info("Logger initialized. Find log file at: {log_file}")
+  
+  invisible(log_file)
+}
+
 stop_log <- function(..., call. = FALSE) {
   msg <- paste0(...)
   
@@ -114,4 +133,9 @@ load_existing_tsv_or_stop <- function(path, label) {
   }
   
   read.delim(path, stringsAsFactors = FALSE, check.names = FALSE)
+}
+get_file_info_suffix <- function(file_suffix) {
+  x <- sub("\\.rds$", "", file_suffix)
+  x <- sub("^_", "", x)
+  x
 }

@@ -1,0 +1,177 @@
+Building DAG of jobs...
+/g/easybuild/x86_64/Rocky/8/haswell/software/snakemake/8.16.0-foss-2023a/lib/python3.11/site-packages/snakemake/dag.py:1612: RuntimeWarning: coroutine 'DAG.sanitize_local_storage_copies' was never awaited
+  self.sanitize_local_storage_copies()
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Tue Jun 30 12:50:11 2026]
+rule MAUDE:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/mapping_results.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/Hits_explorative.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_guide_stats.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_gene_stats.rds
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=120, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_MAUDE.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+        
+Building DAG of jobs...
+/g/easybuild/x86_64/Rocky/8/haswell/software/snakemake/8.16.0-foss-2023a/lib/python3.11/site-packages/snakemake/dag.py:1612: RuntimeWarning: coroutine 'DAG.sanitize_local_storage_copies' was never awaited
+  self.sanitize_local_storage_copies()
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954
+Select jobs to execute...
+Execute 1 jobs...
+
+[Tue Jun 30 12:50:13 2026]
+localrule MAUDE:
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/mapping_results.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/Hits_explorative.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_guide_stats.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_gene_stats.rds
+    jobid: 0
+    reason: Forced execution
+    resources: mem_mb=4000, mem_mib=3815, disk_mb=1000, disk_mib=954, tmpdir=/scratch/jobs/57836822, runtime=120, slurm_account=lsteinme
+
+
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_MAUDE.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+        
+
+The following have been reloaded with a version change:
+  1) FFTW/3.3.10-GCC-12.3.0 => FFTW/3.3.10-GCC-14.3.0
+  2) FlexiBLAS/3.3.1-GCC-12.3.0 => FlexiBLAS/3.4.5-GCC-14.3.0
+  3) GCC/12.3.0 => GCC/14.3.0
+  4) GCCcore/12.3.0 => GCCcore/14.3.0
+  5) GMP/6.2.1-GCCcore-12.3.0 => GMP/6.3.0-GCCcore-14.3.0
+  6) OpenBLAS/0.3.23-GCC-12.3.0 => OpenBLAS/0.3.30-GCC-14.3.0
+  7) OpenSSL/1.1 => OpenSSL/3
+  8) Python/3.11.3-GCCcore-12.3.0 => Python/3.13.5-GCCcore-14.3.0
+  9) SQLite/3.42.0-GCCcore-12.3.0 => SQLite/3.50.1-GCCcore-14.3.0
+ 10) Tcl/8.6.13-GCCcore-12.3.0 => Tcl/9.0.1-GCCcore-14.3.0
+ 11) XZ/5.4.2-GCCcore-12.3.0 => XZ/5.8.1-GCCcore-14.3.0
+ 12) binutils/2.40-GCCcore-12.3.0 => binutils/2.44-GCCcore-14.3.0
+ 13) bzip2/1.0.8-GCCcore-12.3.0 => bzip2/1.0.8-GCCcore-14.3.0
+ 14) cURL/8.0.1-GCCcore-12.3.0 => cURL/8.14.1-GCCcore-14.3.0
+ 15) expat/2.5.0-GCCcore-12.3.0 => expat/2.7.1-GCCcore-14.3.0
+ 16) gettext/0.21.1-GCCcore-12.3.0 => gettext/0.25-GCCcore-14.3.0
+ 17) gfbf/2023a => gfbf/2025b
+ 18) libffi/3.4.4-GCCcore-12.3.0 => libffi/3.5.1-GCCcore-14.3.0
+ 19) libpciaccess/0.17-GCCcore-12.3.0 => libpciaccess/0.18.1-GCCcore-14.3.0
+ 20) libreadline/8.2-GCCcore-12.3.0 => libreadline/8.2-GCCcore-14.3.0
+ 21) libxml2/2.11.4-GCCcore-12.3.0 => libxml2/2.14.3-GCCcore-14.3.0
+ 22) ncurses/6.4-GCCcore-12.3.0 => ncurses/6.5-GCCcore-14.3.0
+ 23) util-linux/2.39-GCCcore-12.3.0 => util-linux/2.41-GCCcore-14.3.0
+ 24) zlib/1.2.13-GCCcore-12.3.0 => zlib/1.3.1-GCCcore-14.3.0
+
+
+2026-06-30 12:50:25 [INFO] Logger initialized. Find log file at: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/logs/2026-06-30_11-39-33_03_MAUDE.log
+2026-06-30 12:50:25 [INFO] Resolved cfg: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+2026-06-30 12:50:25 [INFO] Reading in read/UMI counts...
+2026-06-30 12:50:26 [INFO] Checking wrong alignments for: I_L1_1
+2026-06-30 12:50:26 [INFO] UMI/read count alignment stats:
+2026-06-30 12:50:26 [INFO]   Correct aligned to sgRNAs in sublibrary:     56703 (99.91%)
+2026-06-30 12:50:26 [INFO]   Wrong aligned to sgRNAs not in sublibrary:   51 (0.09%)
+2026-06-30 12:50:26 [INFO] sgRNA coverage: 84.29%
+2026-06-30 12:50:26 [INFO] --------------------------------------------
+2026-06-30 12:50:26 [INFO] Checking wrong alignments for: L_L1_1
+2026-06-30 12:50:26 [INFO] UMI/read count alignment stats:
+2026-06-30 12:50:26 [INFO]   Correct aligned to sgRNAs in sublibrary:     46889 (99.95%)
+2026-06-30 12:50:26 [INFO]   Wrong aligned to sgRNAs not in sublibrary:   25 (0.05%)
+2026-06-30 12:50:26 [INFO] sgRNA coverage: 80.68%
+2026-06-30 12:50:26 [INFO] --------------------------------------------
+2026-06-30 12:50:27 [INFO] Checking wrong alignments for: U_L1_1
+2026-06-30 12:50:27 [INFO] UMI/read count alignment stats:
+2026-06-30 12:50:27 [INFO]   Correct aligned to sgRNAs in sublibrary:     53195 (99.93%)
+2026-06-30 12:50:27 [INFO]   Wrong aligned to sgRNAs not in sublibrary:   36 (0.07%)
+2026-06-30 12:50:27 [INFO] sgRNA coverage: 84.06%
+2026-06-30 12:50:27 [INFO] --------------------------------------------
+2026-06-30 12:50:27 [INFO] Finished reading in read/UMI counts.
+2026-06-30 12:50:27 [INFO] sgRNAs aligned to the wrong sublibrary were excluded from the analysis.
+2026-06-30 12:50:27 [INFO] Combining Samples for MAUDE guide stat calculation. Saving pre-combining counts to /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df_long_pre_combining.rds
+2026-06-30 12:50:30 [INFO] Creating coverage file for read/UMI counts...
+2026-06-30 12:50:30 [INFO] Finished creating coverage file for read/UMI counts.
+2026-06-30 12:50:30 [INFO] The coverage file is: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/mapping_results.xlsx
+2026-06-30 12:50:30 [INFO] Read/UMI counts written to /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df.rds
+2026-06-30 12:50:30 [INFO] Preparing Data for MAUDE...
+2026-06-30 12:50:30 [INFO] Finished preparing Data for MAUDE.
+2026-06-30 12:50:30 [INFO] Starting initial MAUDE run ...
+2026-06-30 12:51:06 [INFO] Saving MAUDE guide stats to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_guide_stats.rds
+Building background with 579 non-targeting guides
+2026-06-30 12:51:08 [INFO] Saving MAUDE gene stats to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_gene_stats.rds
+2026-06-30 12:51:18 [INFO] Exporting results of initial MAUDE run...
+2026-06-30 12:51:19 [INFO] Results of initial MAUDE run exported to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/MAUDE_Hits.csv
+2026-06-30 12:51:20 [INFO] Results of initial MAUDE run exported to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/MAUDE_Hits.xlsx
+2026-06-30 12:51:20 [INFO] Entering plotting stage...
+2026-06-30 12:51:20 [INFO] Starting plot generation...
+2026-06-30 12:51:20 [INFO] Loading Results...
+2026-06-30 12:51:20 [INFO] Reading in read/UMI counts...
+2026-06-30 12:51:21 [INFO] Checking wrong alignments for: I_L1_1
+2026-06-30 12:51:21 [INFO] UMI/read count alignment stats:
+2026-06-30 12:51:21 [INFO]   Correct aligned to sgRNAs in sublibrary:     56703 (99.91%)
+2026-06-30 12:51:21 [INFO]   Wrong aligned to sgRNAs not in sublibrary:   51 (0.09%)
+2026-06-30 12:51:21 [INFO] sgRNA coverage: 84.29%
+2026-06-30 12:51:21 [INFO] --------------------------------------------
+2026-06-30 12:51:21 [INFO] Checking wrong alignments for: L_L1_1
+2026-06-30 12:51:21 [INFO] UMI/read count alignment stats:
+2026-06-30 12:51:21 [INFO]   Correct aligned to sgRNAs in sublibrary:     46889 (99.95%)
+2026-06-30 12:51:21 [INFO]   Wrong aligned to sgRNAs not in sublibrary:   25 (0.05%)
+2026-06-30 12:51:21 [INFO] sgRNA coverage: 80.68%
+2026-06-30 12:51:21 [INFO] --------------------------------------------
+2026-06-30 12:51:21 [INFO] Checking wrong alignments for: U_L1_1
+2026-06-30 12:51:21 [INFO] UMI/read count alignment stats:
+2026-06-30 12:51:21 [INFO]   Correct aligned to sgRNAs in sublibrary:     53195 (99.93%)
+2026-06-30 12:51:21 [INFO]   Wrong aligned to sgRNAs not in sublibrary:   36 (0.07%)
+2026-06-30 12:51:21 [INFO] sgRNA coverage: 84.06%
+2026-06-30 12:51:21 [INFO] --------------------------------------------
+2026-06-30 12:51:21 [INFO] Finished reading in read/UMI counts.
+2026-06-30 12:51:21 [INFO] sgRNAs aligned to the wrong sublibrary were excluded from the analysis.
+2026-06-30 12:51:29 [INFO] Preparing Data for MAUDE...
+2026-06-30 12:51:30 [INFO] Finished preparing Data for MAUDE.
+2026-06-30 12:51:30 [INFO] Creating read/UMI count violin plots in: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/plots/bcwithqc_reads_control_median_RI_comb_sample_comb_none/01_read_or_umi_count_plots
+2026-06-30 12:51:30 [INFO] Saved count summary tables to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/plots/bcwithqc_reads_control_median_RI_comb_sample_comb_none/01_read_or_umi_count_plots/count_summary.xlsx
+2026-06-30 12:51:35 [INFO] Finished creating read/UMI count violin plots.
+2026-06-30 12:51:35 [INFO] Creating MAUDE QC plots in: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/plots/bcwithqc_reads_control_median_RI_comb_sample_comb_none/02_MAUDE_QC_plots
+2026-06-30 12:51:37 [INFO] Finished MAUDE QC plots.
+2026-06-30 12:51:47 [INFO] Saved waterfall plot to: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/plots/bcwithqc_reads_control_median_RI_comb_sample_comb_none/03_waterfall_plots/waterfall_controls_top3_FDR0.05.png
+2026-06-30 12:51:47 [INFO] Finished plot generation.
+2026-06-30 12:51:47 [INFO] Finished plotting stage...
+2026-06-30 12:51:47 [INFO] DONE!
+Waiting at most 60 seconds for missing files.
+MissingOutputException in rule MAUDE in file /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile, line 275:
+Job 0 completed successfully, but some output files are missing. Missing files after 60 seconds. This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait:
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/Hits_explorative.xlsx (missing locally, parent dir contents: mapping_results.xlsx, MAUDE_Hits.csv, MAUDE_Hits.rds, MAUDE_Hits.xlsx, Hits_high_confidence.xlsx)
+Removing output files of failed job MAUDE since they might be corrupted:
+/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/mapping_results.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_guide_stats.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_gene_stats.rds
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Storing output in storage.
+WorkflowError:
+At least one job did not complete successfully.
+srun: error: smeb01-1: task 0: Exited with exit code 1
+[Tue Jun 30 12:52:47 2026]
+Error in rule MAUDE:
+    jobid: 0
+    input: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/01_setup.done, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/05_bcwithqc.done
+    output: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/count_df.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/mapping_results.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/results/Hits_explorative.xlsx, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_guide_stats.rds, /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/rds/MAUDE_gene_stats.rds
+    shell:
+        
+        module load R/4.5.2-gfbf-2025b
+        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        Rscript --vanilla R/cli_MAUDE.R /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE/.pipeline_state/resolved_config.rds
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Storing output in storage.
+WorkflowError:
+At least one job did not complete successfully.

@@ -1,0 +1,108 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided remote nodes: 1
+Provided resources: mem_mb=40000, mem_mib=38147, disk_mb=1437, disk_mib=1371
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:19:56 2026]
+rule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=L_L4_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1437, disk_mib=1371, tmpdir=<TBD>, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done"
+        
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=40000, mem_mib=38147, disk_mb=1437, disk_mib=1371
+Select jobs to execute...
+Execute 1 jobs...
+
+[Mon Jun 29 18:19:57 2026]
+localrule bcwithqc_one_sample:
+    input: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+    output: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=L_L4_2
+    threads: 2
+    resources: mem_mb=40000, mem_mib=38147, disk_mb=1437, disk_mib=1371, tmpdir=/scratch/jobs/57769913, runtime=2400, slurm_account=lsteinme
+
+
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+
+        rm -rf "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2"
+        mkdir -p "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2"
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" preprocess \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          --output-format-bam \
+          -vv
+
+        "/home/link/.conda/envs/py313/bin/bcwithqc" count \
+          "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --STAR-output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --config="/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json" \
+          --output-dir="/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2" \
+          --threads="2" \
+          -vv
+          
+        mkdir -p "$(dirname "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done")"
+        touch "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/.pipeline_state/bcwithqc_done/L_L4_2.done"
+        
+2026-06-29 18:20:14   Writing log to: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2/bcwithqc_preprocess.log
+2026-06-29 18:20:14   Files to process:
+2026-06-29 18:20:14     /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+2026-06-29 18:20:14   Processing file:
+2026-06-29 18:20:14     barcode fastq: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_symlinks/L_L4_2/L_L4_2.fastq.gz
+2026-06-29 18:20:14     sans-bc fastq: /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2/sans_bc_L_L4_2.fq
+2026-06-29 18:20:14     tags file:     /scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output/L_L4_2/rec_names_and_tags1_L_L4_2.txt
+2026-06-29 18:20:14   Building aligners and barcode decoders
+2026-06-29 18:20:17   Processing first 10,000 for score threshold...
+2026-06-29 18:20:35   Score threshold: 0.65
+2026-06-29 18:20:35   Continuing...
+2026-06-29 18:23:23     100,000 processed,  96,785 output
+2026-06-29 18:26:10     200,000 processed,  193,664 output
+2026-06-29 18:28:58     300,000 processed,  291,129 output
+2026-06-29 18:31:46     400,000 processed,  389,250 output
+2026-06-29 18:34:33     500,000 processed,  486,683 output
+[2026-06-29T18:36:33.139] error: *** JOB 57769913 ON smeb01-3 CANCELLED AT 2026-06-29T18:36:33 DUE to SIGNAL Terminated ***
+[2026-06-29T18:36:33.139] error: *** STEP 57769913.0 ON smeb01-3 CANCELLED AT 2026-06-29T18:36:33 DUE to SIGNAL Terminated ***
+Will exit after finishing currently running jobs (scheduler).
