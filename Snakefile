@@ -167,7 +167,7 @@ rule QC_filtering_R:
         export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
         Rscript --vanilla R/cli_QC_filtering.R {input.cfg_rds}
         """
-        
+
 rule QC_filter_shell:
     input:
         fastq = lambda wc: find_symlink_fastq(wc.sample),
@@ -216,7 +216,7 @@ rule prepare_bcwithqc_input:
 
 BCWITHQC_BIN = config["bcwithqc"]["bcwithqc_bin"]
 BCWITHQC_CONFIG = config["bcwithqc"]["bcwithqc_config_path"]
-        
+
 rule bcwithqc_one_sample:
     input:
         fastq = os.path.join(BCWITHQC_INPUT_FOLDER, "{sample}", "{sample}.fastq.gz")
@@ -228,7 +228,8 @@ rule bcwithqc_one_sample:
     threads: 10
     resources:
         mem_mb = 40000,
-        runtime = 2400
+        runtime = 2400,
+        constraint = "avx512"
     shell:
         r"""
         unset PYTHONPATH
@@ -253,11 +254,11 @@ rule bcwithqc_one_sample:
           --output-dir="{params.output_dir}" \
           --threads="{threads}" \
           -vv
-          
+
         mkdir -p "$(dirname "{output.done}")"
         touch "{output.done}"
         """
-        
+
 rule bcwithqc_done:
     input:
         get_bcwithqc_done_files

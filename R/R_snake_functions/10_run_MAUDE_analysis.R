@@ -51,19 +51,7 @@ run_MAUDE_analysis <- function(cfg){
       run_plots_stage = TRUE
     )
   }
-  
-  
-  #-----------------------------------------------------------------------------
-  # Run plots
-  #-----------------------------------------------------------------------------
-  
-  logger::log_info("Entering plotting stage...")
-  
-  run_create_plots(cfg = cfg)
-  
-  logger::log_info("Finished plotting stage...")
 
-  
   logger::log_info("DONE!")
   
   invisible(cfg)

@@ -555,11 +555,11 @@ GAL_count_diff_df <- compare_bcwithqc_align_UMI_tools(
 # CURRENTLY I HAVE THESE SET TO THE OLD FILES!
 xlsx_files <- c(
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc_old/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/mapping_results.xlsx",
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc_old/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/mapping_results.xlsx",
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/bcwithqc_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx"
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/mapping_results.xlsx"
 )
 
 names <- c(
@@ -586,11 +586,11 @@ plots <- plot_mapping_qc_boxes(
 
 xlsx_files <- c(
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/Hits_explorative_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/Hits_explorative_bcwithqc_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/Hits_explorative.xlsx",
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/Hits_explorative_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/Hits_explorative_bcwithqc_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/Hits_explorative.xlsx",
   "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/results/Hits_explorative_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
-  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/Hits_explorative_bcwithqc_reads_control_median_RI_comb_sample_comb_none.xlsx"
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/Hits_explorative.xlsx"
 )
 
 names <- c(
@@ -1235,15 +1235,15 @@ if(first_time){
   
   PA_means <- automate_calc_replicate_means(
     cfg,
-    file_info_suffix = "bcwithqc_reads_control_median_RI_comb_sample_comb_none",
+    file_suffix = ".rds",
     rds_output_folder="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds")
   DCA_means <- automate_calc_replicate_means(
     cfg,
-    file_info_suffix = "bcwithqc_reads_control_median_RI_comb_sample_comb_none",
+    file_suffix = ".rds",
     rds_output_folder="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/rds")
   GALNAC_means <- automate_calc_replicate_means(
     cfg,
-    file_info_suffix = "bcwithqc_reads_control_median_RI_comb_sample_comb_none",
+    file_suffix = ".rds",
     rds_output_folder="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds")
   
   dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
@@ -2715,12 +2715,12 @@ saveRDS(best_sgRNA_confirmed_hits,"/g/steinmetz/link/sharing/nico/best_guides_co
 
 
 ```{r top_guide_mean_Z, eval=FALSE}
-dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
-all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+# dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+# all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
 merged_sgRNA_df <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds")
-PA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align"
-DCA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align"
-GAL_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align"
+PA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
+DCA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+GAL_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
 
 guide_z_ranks <- build_maude_guide_z_rank_df(
   merged_sgRNA_df = merged_sgRNA_df,
@@ -2758,15 +2758,17 @@ guide_z_definitive_ranks <- guide_z_ranks %>%
   ungroup() %>%
   arrange(gene, definitive_rank, sgRNA)
 
-saveRDS(guide_z_ranks,"/g/steinmetz/link/sharing/nico/align_UMI_tools_guides_ranked_by_Z_score_full.rds")
-writexl::write_xlsx(guide_z_ranks, "/g/steinmetz/link/sharing/nico/align_UMI_tools_guides_ranked_by_Z_score_full.xlsx")
-saveRDS(guide_z_definitive_ranks,"/g/steinmetz/link/sharing/nico/align_UMI_tools_guides_ranked_by_Z_score.rds")
-writexl::write_xlsx(guide_z_definitive_ranks, "/g/steinmetz/link/sharing/nico/align_UMI_tools_guides_ranked_by_Z_score.xlsx")
+saveRDS(guide_z_ranks,"/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score_full.rds")
+writexl::write_xlsx(guide_z_ranks, "/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score_full.xlsx")
+saveRDS(guide_z_definitive_ranks,"/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score.rds")
+writexl::write_xlsx(guide_z_definitive_ranks, "/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score.xlsx")
+
+guide_z_ranks_old <- readRDS("/g/steinmetz/link/sharing/nico/best_guides/by_Z_score/align_UMI_tools_guides_ranked_by_Z_score_full.rds")
 ```
 
 
 ```{r cleanup, eval=FALSE}
-delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
+delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
 delete_bam_and_reads(root = delete_this, dry_run = FALSE)
 ```
 
@@ -2795,3 +2797,13 @@ PA_mean_hits_bcwithqc <- automate_calc_replicate_means(
     rds_output_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds"
 ) 
 ```
+
+```{r load_guide_stats, eval=FALSE}
+pa_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds/MAUDE_gene_stats.rds"
+check_pa_bc_gene_fpath <- readRDS(pa_bc_gene_fpath)
+dca_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/rds/MAUDE_gene_stats.rds"
+check_dca_bc_gene_fpath <- readRDS(dca_bc_gene_fpath)
+gal_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds/MAUDE_gene_stats.rds"
+check_gal_bc_gene_fpath <- readRDS(gal_bc_gene_fpath)
+```
+

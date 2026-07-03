@@ -1255,3 +1255,79 @@ CM_specific_library <- CM_specific_library %>%
 CM_specific_library <- CM_specific_library %>% 
   mutate(align_seq = paste0("TCTTGTGGAAAGGACGAAACACCG", sgRNA_seq, "GTTTAAGAGCTATGCTGGANNANNNGNNAACAGCATAGCAAGTTTAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"))
 ```
+
+
+```{r Jia_request}
+desired_entrez_ids <- c(
+  "25782", "51203", "4245", "7389", "22930", "57215", "22931",
+  "51608", "10559", "27161", "285282", "84705", "8239", "54059",
+  "63893", "4221", "54802", "10972", "432", "128637", "79811",
+  "5902", "8225", "9690"
+)
+data_dir <- cfg$paths$data_dir
+six_sublib_whole_genome_file_path <- file.path(data_dir, "six_sublib_whole_genome_sgRNA_library_science.abj3013_table_s4.xlsx")
+
+six_sublib_whole_genome_counts_file_path <- file.path(data_dir, "six_sublib_whole_genome_plasmid_counts_science.abj3013_table_s6.xlsx")
+sgRNA_df <- read_excel(six_sublib_whole_genome_file_path)  # Reads the first sheet by default
+sgRNA_df_counts <- read_excel(six_sublib_whole_genome_counts_file_path)
+
+
+Jia_select <- full_join(sgRNA_df, sgRNA_df_counts, by = c("sgrna_id" = "sgRNA")) %>%
+  select(-ics_sublib) %>% 
+  filter(entrez %in% desired_entrez_ids)
+
+nosite_path <- "/g/steinmetz/link/sharing/Jia/2026_06_30_GAL_gene_list/sgrna-negcontrols-nosite-9606-GRCh38-SpyoCas9-top2000-from2000000.txt"
+
+onesite_path <- "/g/steinmetz/link/sharing/Jia/2026_06_30_GAL_gene_list/sgrna-negcontrols-onesite-9606-GRCh38-SpyoCas9-top2000-from40000.txt"
+
+nosite_seqs <- readLines(nosite_path, n = 18)
+onesite_seqs <- readLines(onesite_path, n = 18)
+
+control_rows <- bind_rows(
+  tibble(
+    sgrna_id = paste0("CONTROL_neg_nosite_", seq_along(nosite_seqs)),
+    seq = nosite_seqs
+  ),
+  tibble(
+    sgrna_id = paste0("CONTROL_neg_onesite_", seq_along(onesite_seqs)),
+    seq = onesite_seqs
+  )
+)
+
+Jia_select <- bind_rows(Jia_select, control_rows)
+
+Jia_select <- Jia_select %>% 
+  mutate(full_oligo = paste0(
+    "TTTCAGACCCACCTCCCAACCCCGAGGGGACCCAGAGNNNNNNNNNNNNNNNGATCAGTCGCAGGTGGCGCCACCTGCATGCCGCGNNNNNNNNNNNNNNNCGGGGCCCTTTACCCAGGGTGCCCCGGGCGCTCATTTGCATGTCCCACCCGTCACCGTAAGTAGAATAGGTGAAAGACTCCCGTGCCTTATAAGGCCTGTGGGTGACTTCTTCTCAACG",
+    seq,
+    "GTTTAAGAGCTATGCTGGAAACAGCA"
+  ))
+
+Jia_seq <- Jia_select %>% select(sgrna_id,seq)
+Jia_full_oligo <- Jia_select %>% select(sgrna_id,full_oligo)
+Jia_select_checked <- Jia_seq %>%
+  mutate(
+    has_PaqCI_site = str_detect(seq, "CACCTGC|GTGGACG"),
+    PaqCI_site = case_when(
+      str_detect(seq, "CACCTGC") & str_detect(seq, "GTGGACG") ~ "both",
+      str_detect(seq, "CACCTGC") ~ "CACCTGC",
+      str_detect(seq, "GTGGACG") ~ "GTGGACG",
+      TRUE ~ NA_character_
+    )
+  )
+
+if ("TRUE" %in% Jia_select_checked$has_PaqCI_site){
+  stop("PaqCI site found.")
+}
+share_path <- "/g/steinmetz/link/sharing/Jia/2026_06_30_GAL_gene_list"
+# Tab-separated txt files
+write_tsv(Jia_seq, file.path(share_path,"GAL_top24_36-CONTROL_guide.txt"))
+write_tsv(Jia_full_oligo, file.path(share_path,"GAL_top24_36-CONTROL_full_oligo.txt"))
+
+# Separate xlsx files
+write_xlsx(Jia_seq, file.path(share_path,"GAL_top24_36-CONTROL_guide.xlsx"))
+write_xlsx(Jia_full_oligo, file.path(share_path,"GAL_top24_36-CONTROL_full_oligo.xlsx"))
+
+
+```
+
