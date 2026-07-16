@@ -84,7 +84,6 @@ cfg <- project_setup(
   project_root_dir = project_root_dir,
   config_path = config_path,
   setup_mode = "setup",
-  use_old_suffix_construction = FALSE,
   only_one_logger = FALSE
 )
 

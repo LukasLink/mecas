@@ -613,6 +613,83 @@ hit_compare_results <- compare_hit_xlsx_pairs(
 
 ``` 
 
+``` {r qq_rectangle_plot, eval=TRUE}
+
+pa_align_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/align/mean_results_PA.rds"
+dca_align_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/align/mean_results_DCA.rds"
+gal_align_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/align/mean_results_GALNAC.rds"
+pa_bcwithqc_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/bcwithqc/PA_mean_hits_bcwithqc.rds"
+dca_bcwithqc_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/bcwithqc/DCA_mean_hits_bcwithqc.rds"
+gal_bcwithqc_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/bcwithqc/GAL_mean_hits_bcwithqc.rds"
+nico_dir <- "/g/steinmetz/link/sharing/nico/qq_rectangle_plots"
+
+
+p <- qq_rectangle_plot(
+  align_rds_fpath = pa_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = pa_bcwithqc_mean_rds_fpath,
+  title = "PA bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 20, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "PA_squish.png")
+)
+print(p)
+p <- qq_rectangle_plot(
+  align_rds_fpath = dca_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = dca_bcwithqc_mean_rds_fpath,
+  title = "DCA bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 20, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "DCA_squish.png")
+)
+print(p)
+p <- qq_rectangle_plot(
+  align_rds_fpath = gal_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = gal_bcwithqc_mean_rds_fpath,
+  title = "GalNAc bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 20, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "GAL_squish.png")
+)
+print(p)
+p <- qq_rectangle_plot(
+  align_rds_fpath = pa_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = pa_bcwithqc_mean_rds_fpath,
+  title = "PA bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 1, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "PA_linear.png")
+)
+p <- qq_rectangle_plot(
+  align_rds_fpath = dca_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = dca_bcwithqc_mean_rds_fpath,
+  title = "DCA bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 1, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "DCA_linear.png")
+)
+p <- qq_rectangle_plot(
+  align_rds_fpath = gal_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = gal_bcwithqc_mean_rds_fpath,
+  title = "GalNAc bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 1, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "GAL_linear.png")
+)
+
+``` 
+
 
 ```{r further_analysis_read_count_diff, eval=TRUE}
 df <- PA_count_diff_df
@@ -2768,7 +2845,7 @@ guide_z_ranks_old <- readRDS("/g/steinmetz/link/sharing/nico/best_guides/by_Z_sc
 
 
 ```{r cleanup, eval=FALSE}
-delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_2"
 delete_bam_and_reads(root = delete_this, dry_run = FALSE)
 ```
 

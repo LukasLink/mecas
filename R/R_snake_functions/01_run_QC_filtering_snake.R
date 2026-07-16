@@ -20,9 +20,7 @@ run_QC_filtering_snake <- function(cfg, project_root_dir) {
       paste0("QC_FILTERED_FOLDER=", shQuote(cfg$paths$qc_filtered_folder)),
       paste0("QC_MIN_QUAL=", shQuote(as.character(cfg$qc_filtering$min_qual))),
       paste0("QC_QUAL_OFFSET=", shQuote(as.character(cfg$qc_filtering$qual_offset))),
-      paste0("QC_MIN_LENGTH=", shQuote(as.character(cfg$qc_filtering$min_length))),
-      paste0("USE_MODULES=", if (isTRUE(cfg$modules$use_modules)) "true" else "false"),
-      paste0("SEQTK_MODULE=", shQuote(cfg$modules$seqtk))
+      paste0("QC_MIN_LENGTH=", shQuote(as.character(cfg$qc_filtering$min_length)))
     ),
     cfg$paths$snake$QC_filtering_params_sh
   )

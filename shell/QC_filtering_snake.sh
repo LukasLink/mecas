@@ -10,8 +10,6 @@ OUTPUT_FASTQ=""
 MIN_QUAL=""
 QUAL_OFFSET=""
 MIN_LENGTH=""
-USE_MODULES="false"
-SEQTK_MODULE="seqtk/1.3-GCC-11.2.0"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,14 +33,6 @@ while [[ $# -gt 0 ]]; do
       MIN_LENGTH="${2:-}"
       shift 2
       ;;
-    --use-modules)
-      USE_MODULES="${2:-}"
-      shift 2
-      ;;
-    --seqtk-module)
-      SEQTK_MODULE="${2:-}"
-      shift 2
-      ;;
     *)
       die "Unknown argument: $1"
       ;;
@@ -62,12 +52,6 @@ done
 [[ "$MIN_LENGTH" =~ ^[0-9]+$ ]] || die "--min-length must be an integer"
 
 mkdir -p "$(dirname "$OUTPUT_FASTQ")"
-
-if [[ "$USE_MODULES" == "true" ]]; then
-  log "Loading seqtk module: $SEQTK_MODULE"
-  command -v module >/dev/null 2>&1 || die "USE_MODULES=true but module command is not available"
-  module load "$SEQTK_MODULE"
-fi
 
 command -v seqtk >/dev/null 2>&1 || die "seqtk not found on PATH"
 

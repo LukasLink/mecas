@@ -8,41 +8,12 @@ load_results_for_plotting <- function(cfg,file_suffix = cfg$suffix$file_suffix){
   #-----------------------------------------------------------------------------
   
   logger::log_info("Reading in read/UMI counts...")
-  
-  if (identical(cfg$counting$read_counting, "bcwithqc")) {
     
-    count_df_long <- process_bcwithqc_data(
-      cfg = cfg,
-      data_type = cfg$counting$data_type,
-      skip_list = cfg$skip$files
-    )
-    
-  } else if (identical(cfg$counting$read_counting, "align_UMI_tools")) {
-    
-    if (identical(cfg$counting$data_type, "umis")) {
-      count_df_long <- process_folder_files(
-        cfg = cfg,
-        folder_path = cfg$paths$dedup_output_folder,
-        skip_list = cfg$skip$files
-      )
-    }
-    
-    if (identical(cfg$counting$data_type, "reads")) {
-      count_df_long <- process_folder_files(
-        cfg = cfg,
-        folder_path = cfg$paths$mapped_output_folder,
-        skip_list = cfg$skip$files
-      )
-    }
-    
-  } else {
-    stop(
-      cfg$counting$read_counting,
-      " is not a valid read_counting value. ",
-      "read_counting must be 'bcwithqc' or 'align_UMI_tools'.",
-      call. = FALSE
-    )
-  }
+  count_df_long <- process_bcwithqc_data(
+    cfg = cfg,
+    data_type = cfg$counting$data_type,
+    skip_list = cfg$skip$files
+  )
   
   logger::log_info("Finished reading in read/UMI counts.")
   logger::log_info("sgRNAs aligned to the wrong sublibrary were excluded from the analysis.")

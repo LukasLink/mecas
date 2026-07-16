@@ -1,0 +1,122 @@
+# Apptainer definition for the binned PCR amplicon / UMI Snakemake pipeline.
+# Build with:
+#   apptainer build --fakeroot containers/bcwithqc_maude.sif apptainer/bcwithqc_maude.def
+#
+# v7 changes:
+# - no longer deleting all temp files to avoid cluster complaints.
+
+Bootstrap: docker
+From: ghcr.io/bioconductor/bioc2u-user:24.04-bioc-3.22-r-4.5.2
+
+%labels
+    Author Lukas-Link
+    Description "R/MAUDE + seqtk + bcwithqc container for Snakemake pipeline"
+
+%post -c /bin/bash
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    export BUILD_TMP=/opt/build-tmp
+    export TMPDIR="${BUILD_TMP}"
+    export PIP_CACHE_DIR="${BUILD_TMP}/pip-cache"
+    export XDG_CACHE_HOME="${BUILD_TMP}/xdg-cache"
+    mkdir -p "${BUILD_TMP}" "${PIP_CACHE_DIR}" "${XDG_CACHE_HOME}"
+
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+        curl \
+        git \
+        wget \
+        build-essential \
+        pkg-config \
+        zlib1g-dev \
+        libbz2-dev \
+        liblzma-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libtiff-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libgit2-dev \
+        r-cran-matrix \
+        r-cran-codetools \
+        seqtk
+
+    # Install Miniforge and create a Python 3.10 environment specifically for bcwithqc.
+    # The base image is Ubuntu 24.04 / Python 3.12, but bcwithqc declares <3.12.
+    curl -L -o "${BUILD_TMP}/Miniforge3.sh" \
+        https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+    bash "${BUILD_TMP}/Miniforge3.sh" -b -p /opt/conda
+    rm -f "${BUILD_TMP}/Miniforge3.sh"
+
+    /opt/conda/bin/conda config --system --set channel_priority strict
+    /opt/conda/bin/conda create -y -p /opt/bcwithqc-env -c conda-forge python=3.10 pip setuptools wheel packaging cython
+    
+    BC_PY=/opt/bcwithqc-env/bin/python
+    "${BC_PY}" --version
+    "${BC_PY}" -m pip install --no-cache-dir --upgrade 'pip<26' setuptools wheel packaging Cython
+    
+    # Install bcwithqc runtime/build dependencies explicitly.
+    "${BC_PY}" -m pip install --no-cache-dir \
+        'numpy>=2.0.0' \
+        'docopt-ng' \
+        'biopython==1.79' \
+        'matplotlib>=3.5.2' \
+        'pysam>=0.23.0' \
+        'scipy>=1.10.1' \
+        'regex>=2024.11.6'
+    
+    "${BC_PY}" -m pip install --no-cache-dir --no-build-isolation \
+        'freebarcodes @ git+https://github.com/lukaslink/freebarcodes.git@master'
+    
+    "${BC_PY}" -m pip install --no-cache-dir --no-build-isolation \
+        'pywfa @ git+https://github.com/kcleal/pywfa.git@master'
+    
+    # Install bcwithqc itself without dependencies, because we installed the declared dependencies above.
+    "${BC_PY}" -m pip install --no-cache-dir --no-deps --no-build-isolation \
+        git+https://github.com/hawkjo/bcwithqc.git@reopen-lukas-branch
+    
+    # R packages used by the active Snakefile/R scripts.
+    Rscript --vanilla -e 'install.packages(c("tidyverse", "conflicted", "ggplot2", "ggrepel", "writexl", "stringr", "ggbreak", "yaml", "logger", "remotes"), repos="https://cloud.r-project.org", Ncpus=max(1, parallel::detectCores()-1))'
+    Rscript --vanilla -e 'BiocManager::install(c("AnnotationDbi", "org.Hs.eg.db"), ask=FALSE, update=FALSE, Ncpus=max(1, parallel::detectCores()-1))'
+    Rscript --vanilla -e 'remotes::install_github("de-Boer-Lab/MAUDE", upgrade="never")'
+
+    # Keep the final image smaller.
+    /opt/conda/bin/conda clean -a -y || true
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    rm -rf /opt/build-tmp
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export PATH=/opt/bcwithqc-env/bin:/opt/conda/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    unset PYTHONPATH
+    unset PYTHONHOME
+    unset R_LIBS
+    unset R_LIBS_USER
+
+%test
+    set -eu
+    python --version
+    python - <<'PY'
+import sys
+assert sys.version_info[:2] == (3, 10), sys.version
+import numpy, Bio, pysam, scipy, regex
+import freebarcodes
+print("Python deps OK")
+PY
+    Rscript --vanilla -e 'library(tidyverse); library(conflicted); library(ggplot2); library(ggrepel); library(writexl); library(stringr); library(ggbreak); library(yaml); library(logger); library(AnnotationDbi); library(org.Hs.eg.db); library(MAUDE); cat("R packages OK\n")'
+    seqtk 2>&1 | head -n 1 || true
+    bcwithqc --help >/dev/null
+
+%runscript
+    echo "This container is meant to be used by Snakemake/Apptainer rules."
+    echo "Available tools: Rscript, seqtk, bcwithqc"

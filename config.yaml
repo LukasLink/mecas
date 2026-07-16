@@ -5,46 +5,25 @@
 # Values here can later be overridden via CLI arguments if desired.
 # ==============================================================================
 
-
-# ------------------------------------------------------------------------------
-# Run behavior
-# ------------------------------------------------------------------------------
-run:
-  # Defines at which Stage the Pipeline begins, only relevant for count command.
-  # Assumes that there are results from previous pipeline runs. 
-  # Allowed values:
-  #   - "beginning"             : run entire pipeline start to finish
-  #   - "read_counting"         : start with the read counting step
-  #   - "MAUDE_analysis"        : start with running MAUDE 
-  #   - "generate_plots"        : start with creating the plots (see plots options further below)
-  start_with: "beginning"
-  
-  # Decides if we are running on a local machine or a slurm cluster
-  # When running on a slurm cluster the the slurm section of this yaml (further below)
-  # should be filled out. 
-  machine: "slurm" #local or slurm 
-
-
 # ------------------------------------------------------------------------------
 # Input and output paths
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/MAUDE"
-  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_2"
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/config_update"
+  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_2"
   # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
   
   # Mandatory input directory for fastq files
-  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
+  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
   library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds"
   
-  # Mandatory reference star_index file. !!! NOT MANDATORY ANYMORE !!!
-  # Can be generated via the make_reference.R script if the align_sequence column is included in the library file. 
-  # star_index_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4_sgRNA_only"
+  # Mandatory bcwithqc config.yaml path
+  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
   
   # Optional but recommended input_fastq_name_parser.xlsx
   # For matching file names to pipeline specific names. 
@@ -60,86 +39,20 @@ paths:
 # Read counting settings
 # ------------------------------------------------------------------------------
 counting:
-  # Method used to count reads or UMIs.
-  # Allowed values:
-  #   - "bcwithqc" (This will use bcwithqc to count reads and UMIs)  #         
-  #   - "align_UMI_tools" (This will use simple STAR alignment to count reads,
-  #                        and UMI-tools to identify UMIs (requires regex expression)
-  #                       )
-  read_counting: "bcwithqc"
 
   # Type of count data used downstream.
   # Allowed values:
   #   - "reads"
   #   - "umis"
   data_type: "reads"
-  
-  
-# ------------------------------------------------------------------------------
-# SLURM cluster settings
-# ------------------------------------------------------------------------------
-slurm:
-  account: "lsteinme"   # Name of the Slurm cluster account
-  qos: "normal"
-  cpus: 10              # cpus per task
-  mem: "80g"            # memory allocated to each Job
-  wall_time: "60:00:00" # Time-out limit before process is killed. hours:minutes:seconds
-  partition: null       # Specific partition
-  array: 12             # Resources consumed = Base_Resources * array 
-                        # Runtime = Base_runtime / array 
-                        # must be at least 1
-  email: null           # E-Mail is sent to user when job starts, completes, or fails
-
-
-# ------------------------------------------------------------------------------
-# align_UMI_tools Options
-# ------------------------------------------------------------------------------
-align_UMI_tools:
-  # Regular expression used to extract UMIs from reads (see UMI tools documentation).
-  # Required only when read counting with align_UMI_tools.
-  # I recommend putting everything except your guide sequence and umi in discard blocks, and build the star_index accordingly.
-  umi_regex: "^(?P<discard_1>.{0,5})(?P<umi_1>.{1})(?P<discard_2>(?:CTTGTGGAAAGGACGAAACACCG){e<=1})(?:[ACGTN]+?)(?P<discard_3>(?:GTTTAAGAGCTATGCTGGA){e<=1}.*)"
-  # Example pattern for extracting UMIs from our HepG2 screen
-  # "^(?P<discard_1>.{0,5})(?P<umi_1>.{10})(?P<discard_2>[AGC]{2})(?P<discard_3>GTGGAAAGGACGAAACACCG){e<=1}"
-  # Discard stagger of 0-5 nt, extract 10 nt UMI, discard 3 nt spacer, discard constantRegion
-  # Regex Pattern for CM library
-  # "^(?P<discard_1>.{0,5})(?:TCTTGTGGAAAGGACGAAACACCG){e<=1}(?:[ACGTN]+?)(?:GTTTAAGAGCTATGCTGGA){e<=1}(?P<umi_1>.{9})(?:AACAGCATAG){e<=1}"
-  
-# ------------------------------------------------------------------------------
-# bcwithqc Options
-# ------------------------------------------------------------------------------
-bcwithqc:
-  # Path to bcwithqc, only necessary when bcwithqc is not on PATH. 
-  # Absolut path to executable is still recommended on clusters. run which bcwithqc on your cluster to find the path. 
-  bcwithqc_bin: "/home/link/.conda/envs/py313/bin/bcwithqc"
-  # Path to a bcwithqc config.json file.
-  # Required only when using bcwithqc for read counting.
-  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
-  
-  # Optional directory containing pre-existing results from a bcwithqc count run.
-  # Leave empty if bcwithqc results should not be reused.
-  bcwithqc_dir: ""
-  
-# ------------------------------------------------------------------------------
-# Modules for slurm Cluster
-# ------------------------------------------------------------------------------
-modules:
-  # If true, will try to use module load for the specified modules.
-  # If false, the specified modules need to be in PATH. (you can use export path/to/module to achieve that)
-  # only seqtk is required when read_counting = align_UMI_tools. 
-  use_modules: true
-  star_module: "STAR/2.7.11b-GCC-13.2.0"
-  samtools_module: "SAMtools/1.21-GCC-13.3.0"
-  umi_tools_module: "UMI-tools/1.1.2-foss-2021b-Python-3.9.6"
-  seqtk_module: "seqtk/1.3-GCC-11.2.0"
-  
+ 
 # ------------------------------------------------------------------------------
 # QC filtering with seqtk
 # ------------------------------------------------------------------------------
 qc_filtering:
   # If true, FASTQ files are quality-filtered before read counting.
   # If false, the pipeline skips QC filtering.
-  run: false
+  run: true
 
   # Minimum base quality passed to `seqtk seq -q`.
   # Default: 20

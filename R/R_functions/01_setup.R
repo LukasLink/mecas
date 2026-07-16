@@ -167,140 +167,6 @@ require_yaml_config <- function(x) {
   invisible(x)
 }
 
-#-------------------------------------------------------------------------------
-# Optional legacy global export
-#-------------------------------------------------------------------------------
-# This is only a temporary migration helper.
-# It does not export `opt`.
-
-cfg_to_legacy_globals <- function(cfg) {
-  list(
-    # run
-    first_time = cfg$run$first_time,
-    start_with = cfg$run$start_with,
-    machine = cfg$run$machine,
-    setup_mode = cfg$run$setup_mode,
-    
-    # paths
-    project_root_dir = cfg$paths$project_root_dir,
-    output_folder = cfg$paths$output_folder,
-    input_folder = cfg$paths$input_folder,
-    library_path = cfg$paths$library_path,
-    star_index_folder = cfg$paths$star_index_folder,
-    fastq_name_table_xlsx = cfg$paths$fastq_name_table_xlsx,
-    
-    data_dir = cfg$paths$data_dir,
-    genome_output_folder = cfg$paths$genome_output_folder,
-    qc_filtered_folder = cfg$paths$qc_filtered_folder,
-    dedup_output_folder = cfg$paths$dedup_output_folder,
-    bcwithqc_output_folder = cfg$paths$bcwithqc_output_folder,
-    mapped_output_folder = cfg$paths$mapped_output_folder,
-    rds_output_folder = cfg$paths$rds_output_folder,
-    results_output_folder = cfg$paths$results_output_folder,
-    plots_output_folder = cfg$paths$plots_output_folder,
-    symlinks_folder = cfg$paths$symlinks_folder,
-    fastq_symlinks_folder = cfg$paths$fastq_symlinks_folder,
-    bcwithqc_symlinks_folder = cfg$paths$bcwithqc_symlinks_folder,
-    log_folder = cfg$paths$log_folder,
-    log_file = cfg$paths$log_file,
-    
-    # files
-    strict_file_match = cfg$files$strict_file_match,
-    
-    # bcwithqc
-    bcwithqc_bin = cfg$bcwithqc$bcwithqc_bin,
-    bcwithqc_dir = cfg$bcwithqc$bcwithqc_dir,
-    bcwithqc_config_path = cfg$bcwithqc$bcwithqc_config_path,
-    
-    # align_UMI_tools
-    UMI_regex = cfg$align_UMI_tools$UMI_regex,
-    
-    # skip
-    skip_list = cfg$skip$files,
-    skip_list_sublib = cfg$skip$sublibraries,
-    skip_list_sample = cfg$skip$samples,
-    
-    # controls
-    include_controls_list = cfg$controls$include_controls,
-    use_only_these_controls_list = cfg$controls$use_only_these_controls,
-    same_controls_in_all_sublibraries = cfg$controls$same_controls_in_all_sublibraries,
-    subsample_controls = cfg$controls$subsample_controls,
-    
-    # counting
-    read_counting = cfg$counting$read_counting,
-    data_type = cfg$counting$data_type,
-    
-    # slurm
-    slurm_account = cfg$slurm$account,
-    slurm_qos = cfg$slurm$qos,
-    slurm_cpus = cfg$slurm$cpus,
-    slurm_mem = cfg$slurm$mem,
-    slurm_wall_time = cfg$slurm$wall_time,
-    slurm_partition = cfg$slurm$partition,
-    slurm_array = cfg$slurm$array,
-    slurm_email = cfg$slurm$email,
-    
-    # modules
-    use_modules = cfg$modules$use_modules,
-    seqtk_module = cfg$modules$seqtk,
-    star_module = cfg$modules$star,
-    samtools_module = cfg$modules$samtools,
-    umi_tools_module = cfg$modules$umi_tools,
-    
-    # QC filtering
-    qc_filtering_run = cfg$qc_filtering$run,
-    qc_min_qual = cfg$qc_filtering$min_qual,
-    qc_qual_offset = cfg$qc_filtering$qual_offset,
-    qc_min_length = cfg$qc_filtering$min_length,
-    
-    # replicates
-    method = cfg$replicates$method,
-    combine_for_guide_stats = cfg$replicates$combine_for_guide_stats,
-    combine_for_gene_stats = cfg$replicates$combine_for_gene_stats,
-    auto_combine_replicates = cfg$replicates$auto_combine_replicates,
-    
-    # normalization
-    norm_method = cfg$normalization$norm_method,
-    recover_input = cfg$normalization$recover_input,
-    use_custom_bins = cfg$normalization$use_custom_bins,
-    upper_lower_percentage = cfg$normalization$upper_lower_percentage,
-    
-    # filtering
-    drop_0s = cfg$filtering$drop_0s,
-    strict_mode = cfg$filtering$strict_mode,
-    min_guides_per_gene = cfg$filtering$min_guides_per_gene,
-    
-    # suffixes
-    recover_input_suffix = cfg$suffix$recover_input_suffix,
-    subsample_controls_suffix = cfg$suffix$subsample_controls_suffix,
-    custom_bins_suffix = cfg$suffix$custom_bins_suffix,
-    drop_0s_suffix = cfg$suffix$drop_0s_suffix,
-    strict_mode_suffix = cfg$suffix$strict_mode_suffix,
-    auto_combine_replicates_suffix = cfg$suffix$auto_combine_replicates_suffix,
-    min_guides_per_gene_suffix = cfg$suffix$min_guides_per_gene_suffix,
-    combine_for_guide_stats_suffix = cfg$suffix$combine_for_guide_stats_suffix,
-    combine_for_gene_stats_suffix = cfg$suffix$combine_for_gene_stats_suffix,
-    skip_suffix = cfg$suffix$skip_suffix,
-    file_suffix = cfg$suffix$file_suffix,
-    file_info_suffix = cfg$suffix$file_info_suffix,
-    
-    # loaded data
-    merged_sgRNA_df = cfg$merged_sgRNA_df
-  )
-}
-
-export_cfg_legacy_globals <- function(cfg, envir = .GlobalEnv) {
-  globals <- cfg_to_legacy_globals(cfg)
-  list2env(globals, envir = envir)
-  
-  # Preserve old behavior: absent explicit subset means the object should not exist.
-  if (length(cfg$controls$use_only_these_controls) == 0 &&
-      exists("use_only_these_controls_list", envir = envir, inherits = FALSE)) {
-    rm(use_only_these_controls_list, envir = envir)
-  }
-  
-  invisible(cfg)
-}
 
 #-------------------------------------------------------------------------------
 # Logging
@@ -310,26 +176,18 @@ log_project_setup <- function(cfg) {
   logger::log_info("==========================================================")
   logger::log_info("Project setup options")
   logger::log_info("==========================================================")
-  
-  logger::log_info("start_with:                        {cfg$run$start_with}")
-  logger::log_info("machine:                           {cfg$run$machine}")
+
   logger::log_info("setup_mode:                        {cfg$run$setup_mode}")
   logger::log_info("----------------------------------------------------------")
   
   logger::log_info("output_folder:                     {cfg$paths$output_folder}")
   logger::log_info("input_folder:                      {cfg$paths$input_folder}")
   logger::log_info("library_path:                      {cfg$paths$library_path}")
-  logger::log_info("star_index_folder:                 {cfg$paths$star_index_folder}")
+  logger::log_info("bcwithqc_config_path:              {cfg$paths$bcwithqc_config_path}")
   logger::log_info("fastq_name_table_xlsx:             {cfg$paths$fastq_name_table_xlsx}")
   logger::log_info("strict_file_match:                 {cfg$files$strict_file_match}")
   logger::log_info("----------------------------------------------------------")
-  
-  logger::log_info("bcwithqc_bin:                      {cfg$bcwithqc$bcwithqc_bin}")
-  logger::log_info("bcwithqc_dir:                      {cfg$bcwithqc$bcwithqc_dir}")
-  logger::log_info("bcwithqc_config_path:              {cfg$bcwithqc$bcwithqc_config_path}")
-  logger::log_info("UMI_regex:                         {cfg$align_UMI_tools$UMI_regex}")
-  logger::log_info("----------------------------------------------------------")
-  
+
   logger::log_info("skip_list:                         {paste(cfg$skip$files, collapse = ', ')}")
   logger::log_info("skip_list_sublib:                  {paste(cfg$skip$sublibraries, collapse = ', ')}")
   logger::log_info("skip_list_sample:                  {paste(cfg$skip$samples, collapse = ', ')}")
@@ -344,7 +202,6 @@ log_project_setup <- function(cfg) {
   )
   logger::log_info("----------------------------------------------------------")
   
-  logger::log_info("read_counting:                     {cfg$counting$read_counting}")
   logger::log_info("data_type:                         {cfg$counting$data_type}")
   logger::log_info("method:                            {cfg$replicates$method}")
   logger::log_info("norm_method:                       {cfg$normalization$norm_method}")
@@ -362,16 +219,6 @@ log_project_setup <- function(cfg) {
   logger::log_info("strict_mode:                       {cfg$filtering$strict_mode}")
   logger::log_info("min_guides_per_gene:               {cfg$filtering$min_guides_per_gene}")
   logger::log_info("auto_combine_replicates:           {cfg$replicates$auto_combine_replicates}")
-  logger::log_info("----------------------------------------------------------")
-  
-  logger::log_info("slurm_account:                     {cfg$slurm$account}")
-  logger::log_info("slurm_qos:                         {cfg$slurm$qos}")
-  logger::log_info("slurm_cpus:                        {cfg$slurm$cpus}")
-  logger::log_info("slurm_mem:                         {cfg$slurm$mem}")
-  logger::log_info("slurm_wall_time:                   {cfg$slurm$wall_time}")
-  logger::log_info("slurm_partition:                   {cfg$slurm$partition}")
-  logger::log_info("slurm_array:                       {cfg$slurm$array}")
-  logger::log_info("slurm_email:                       {cfg$slurm$email}")
   logger::log_info("----------------------------------------------------------")
   
   logger::log_info("file_suffix:                       {cfg$suffix$file_suffix}")
@@ -392,18 +239,13 @@ project_setup <- function(project_root_dir,
                           setup_mode = "count",
                           overrides = list(),
                           envir = .GlobalEnv,
-                          use_old_suffix_construction = FALSE,
-                          export_legacy_globals = FALSE,
                           only_one_logger = TRUE) {
   stopifnot(is.character(project_root_dir), length(project_root_dir) == 1)
   
   allowed_setup_modes <- c(
     "setup",
-    "make_reference",
     "QC_filtering",
-    "count",
-    "load_reads",
-    "run_MAUDE",
+    "MAUDE",
     "plot"
   )
   
@@ -445,11 +287,7 @@ project_setup <- function(project_root_dir,
   #=============================================================================
   
   cfg <- list()
-  
   cfg$run <- list(
-    first_time = check_input(TRUE, "run.first_time"), # Hotfix, properly remove first_time later
-    start_with = check_input(config$run$start_with %||% "beginning", "run.start_with"),
-    machine = check_input(config$run$machine %||% "local", "run.machine"),
     setup_mode = setup_mode,
     run_id = format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
   )
@@ -463,6 +301,10 @@ project_setup <- function(project_root_dir,
     fastq_name_table_xlsx = check_input(
       config$paths$fastq_name_table_xlsx %||% "",
       "paths.fastq_name_table_xlsx"
+    ),
+    bcwithqc_config_path = check_input(
+      config$paths$bcwithqc_config_path %||% "",
+      "paths.bcwithqc_config_path"
     )
   )
   
@@ -476,29 +318,7 @@ project_setup <- function(project_root_dir,
       "paths.strict_file_match"
     )
   )
-  
-  cfg$bcwithqc <- list(
-    bcwithqc_bin = check_input(
-      config$bcwithqc$bcwithqc_bin %||% "bcwithqc",
-      "bcwithqc.bcwithqc_bin"
-    ),
-    bcwithqc_dir = check_input(
-      config$bcwithqc$bcwithqc_dir %||% "",
-      "bcwithqc.bcwithqc_dir"
-    ),
-    bcwithqc_config_path = check_input(
-      config$bcwithqc$bcwithqc_config_path %||% "",
-      "bcwithqc.bcwithqc_config_path"
-    )
-  )
-  
-  cfg$align_UMI_tools <- list(
-    UMI_regex = check_input(
-      config$align_UMI_tools$UMI_regex %||% "",
-      "align_UMI_tools.UMI_regex"
-    )
-  )
-  
+
   cfg$skip <- list(
     files = check_input(
       parse_comma_list(config$skip$files %||% c()),
@@ -534,35 +354,12 @@ project_setup <- function(project_root_dir,
   )
   
   cfg$counting <- list(
-    read_counting = check_input(
-      config$counting$read_counting %||% "align_UMI_tools",
-      "counting.read_counting"
-    ),
     data_type = check_input(
       config$counting$data_type %||% "reads",
       "counting.data_type"
     )
   )
-  
-  cfg$slurm <- list(
-    account = check_input(config$slurm$account %||% "", "slurm.account"),
-    qos = check_input(config$slurm$qos %||% "", "slurm.qos"),
-    cpus = check_input(config$slurm$cpus %||% 1, "slurm.cpus"),
-    mem = check_input(config$slurm$mem %||% "4g", "slurm.mem"),
-    wall_time = check_input(config$slurm$wall_time %||% "01:00:00", "slurm.wall_time"),
-    partition = check_input(config$slurm$partition %||% "", "slurm.partition"),
-    array = check_input(config$slurm$array %||% 1, "slurm.array"),
-    email = check_input(config$slurm$email %||% "", "slurm.email")
-  )
-  
-  cfg$modules <- list(
-    use_modules = check_input(config$modules$use_modules %||% FALSE, "modules.use_modules"),
-    seqtk = check_input(config$modules$seqtk %||% "", "modules.seqtk"),
-    star = check_input(config$modules$star %||% "", "modules.star"),
-    samtools = check_input(config$modules$samtools %||% "", "modules.samtools"),
-    umi_tools = check_input(config$modules$umi_tools %||% "", "modules.umi_tools")
-  )
-  
+
   cfg$qc_filtering <- list(
     run = check_input(config$qc_filtering$run %||% TRUE, "qc_filtering.run"),
     min_qual = check_input(config$qc_filtering$min_qual %||% 20, "qc_filtering.min_qual"),
@@ -738,18 +535,6 @@ project_setup <- function(project_root_dir,
     )
   )
   
-  if (identical(setup_mode, "make_reference")){
-    if (cfg$slurm$array > 1){
-      warning("Slurm array will always be set to 1 for STAR genome generation.")
-      cfg$slurm$array <- 1
-    }
-  }
-
-  # Check dependencies
-  if (exists("check_config_dependencies", mode = "function")) {
-    check_config_dependencies(cfg, setup_mode)
-  }
-  
   #=============================================================================
   # Construct suffixes
   #=============================================================================
@@ -787,52 +572,24 @@ project_setup <- function(project_root_dir,
   cfg$skip$files <- skip_list_and_suffix[[1]]
   cfg$suffix$skip_suffix <- skip_list_and_suffix[[2]]
   
-  if (use_old_suffix_construction) {
-    if (cfg$counting$read_counting == "align_UMI_tools") {
-      read_counting_old_name <- "lukas"
-    } else if (cfg$counting$read_counting == "bcwithqc") {
-      read_counting_old_name <- "john"
-    } else {
-      stop(
-        cfg$counting$read_counting,
-        " is not a valid read_counting value. Please enter either 'align_UMI_tools' or 'bcwithqc'.",
-        call. = FALSE
-      )
-    }
-    
-    fs_parts <- c(
-      read_counting_old_name,
-      cfg$counting$data_type,
-      cfg$replicates$method,
-      cfg$normalization$norm_method,
-      cfg$suffix$recover_input_suffix,
-      cfg$suffix$drop_0s_suffix,
-      cfg$suffix$strict_mode_suffix,
-      cfg$suffix$min_guides_per_gene_suffix,
-      cfg$suffix$combine_for_guide_stats_suffix,
-      cfg$suffix$auto_combine_replicates_suffix,
-      cfg$suffix$skip_suffix,
-      cfg$output$extra_suffix
-    )
-  } else {
-    fs_parts <- c(
-      cfg$counting$read_counting,
-      cfg$counting$data_type,
-      cfg$replicates$method,
-      cfg$normalization$norm_method,
-      cfg$suffix$recover_input_suffix,
-      cfg$suffix$subsample_controls_suffix,
-      cfg$suffix$drop_0s_suffix,
-      cfg$suffix$strict_mode_suffix,
-      cfg$suffix$custom_bins_suffix,
-      cfg$suffix$min_guides_per_gene_suffix,
-      cfg$suffix$combine_for_guide_stats_suffix,
-      cfg$suffix$combine_for_gene_stats_suffix,
-      cfg$suffix$auto_combine_replicates_suffix,
-      cfg$suffix$skip_suffix,
-      cfg$output$extra_suffix
-    )
-  }
+
+  fs_parts <- c(
+    cfg$counting$data_type,
+    cfg$replicates$method,
+    cfg$normalization$norm_method,
+    cfg$suffix$recover_input_suffix,
+    cfg$suffix$subsample_controls_suffix,
+    cfg$suffix$drop_0s_suffix,
+    cfg$suffix$strict_mode_suffix,
+    cfg$suffix$custom_bins_suffix,
+    cfg$suffix$min_guides_per_gene_suffix,
+    cfg$suffix$combine_for_guide_stats_suffix,
+    cfg$suffix$combine_for_gene_stats_suffix,
+    cfg$suffix$auto_combine_replicates_suffix,
+    cfg$suffix$skip_suffix,
+    cfg$output$extra_suffix
+  )
+ 
   
   fs_parts <- fs_parts[!is.na(fs_parts) & fs_parts != ""]
   
@@ -845,18 +602,13 @@ project_setup <- function(project_root_dir,
   
   cfg$paths$data_dir <- get_file_path(project_root_dir, "data")
   
-  cfg$paths$genome_output_folder <- make_clean_dir(cfg$paths$output_folder, "ref")
-  cfg$paths$dedup_output_folder <- make_clean_dir(cfg$paths$output_folder, "dedup")
   cfg$paths$bcwithqc_output_folder <- make_clean_dir(cfg$paths$output_folder, "bcwithqc_output")
-  cfg$paths$mapped_output_folder <- make_clean_dir(cfg$paths$output_folder, "mapped")
   cfg$paths$qc_filtered_folder <- make_clean_dir(cfg$paths$output_folder, "QC_filtered")
   cfg$paths$rds_output_folder <- make_clean_dir(cfg$paths$output_folder, "rds")
   cfg$paths$results_output_folder <- make_clean_dir(cfg$paths$output_folder, "results")
-  cfg$paths$star_index_folder <- make_clean_dir(cfg$paths$output_folder, "star_index")
   
   cfg$paths$plots_output_folder <- make_clean_dir(cfg$paths$output_folder, "plots")
- 
-  cfg$paths$symlinks_folder <- get_file_path(cfg$paths$output_folder, "symlinks") # Check if this is used anywhere and delete it if not
+  
   cfg$paths$fastq_symlinks_folder <- make_clean_dir(cfg$paths$output_folder, "fastq_symlinks")
   cfg$paths$bcwithqc_symlinks_folder <- make_clean_dir(cfg$paths$output_folder, "bcwithqc_symlinks")
   
@@ -871,17 +623,9 @@ project_setup <- function(project_root_dir,
   cfg$paths$manifest <- file.path(cfg$paths$snake$state_dir,"fastq_manifest.tsv")
   cfg$paths$snake$resolved_config_rds <- file.path(cfg$paths$snake$state_dir, "resolved_config.rds")
   cfg$paths$snake$resolved_config_yaml <- file.path(cfg$paths$snake$state_dir, "resolved_config.yaml")
-  cfg$paths$snake$STAR_ref_params_sh <- file.path(cfg$paths$snake$state_dir,"STAR_ref_params.sh")
   cfg$paths$snake$QC_filtering_params_sh <- file.path(cfg$paths$snake$state_dir,"QC_filtering_params.sh")
   
   cfg$paths$snake$setup_done <- file.path(cfg$paths$snake$state_dir, "01_setup.done")
-  cfg$paths$snake$make_reference_done <- file.path(cfg$paths$snake$state_dir, "02_make_reference.done")
-  cfg$paths$snake$QC_filtering_done <- file.path(cfg$paths$snake$state_dir, "03_QC_filtering.done")
-  cfg$paths$snake$count_done <- file.path(cfg$paths$snake$state_dir, "04_read_count.done")
-  cfg$paths$snake$load_reads_done <- file.path(cfg$paths$snake$state_dir, "05_load_reads.done")
-  cfg$paths$snake$run_MAUDE_done <- file.path(cfg$paths$snake$state_dir, "06_run_MAUDE.done")
-  cfg$paths$snake$plot_done <- file.path(cfg$paths$snake$state_dir, "07_plot.done")
-  cfg$paths$snake$all_done <- file.path(cfg$paths$snake$state_dir, "99_all.done")
   
   #=============================================================================
   # Logging 
@@ -906,13 +650,9 @@ project_setup <- function(project_root_dir,
     # This is for the new snakemake log version. 
     cfg$paths$log_files <- list(
       setup = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_01_setup.log")),
-      # make_reference = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_make_reference.log")),
       QC_filtering = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_QC_filtering.log")),
-      # count = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_04_read_count.log")),
-      # load_reads = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_05_load_reads.log")),
-      # run_MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_06_run_MAUDE.log")),
-      plot = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_04_plot.log")),
-      MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_03_MAUDE.log"))
+      MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_03_MAUDE.log")),
+      plot = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_04_plot.log"))
     )
     if (is.null(cfg$paths$log_files[[setup_mode]])) {
       stop("No log file configured for setup_mode: ", setup_mode, call. = FALSE)
@@ -933,14 +673,6 @@ project_setup <- function(project_root_dir,
   #=============================================================================
   
   log_project_setup(cfg)
-  
-  #=============================================================================
-  # Optional legacy global export
-  #=============================================================================
-  
-  if (isTRUE(export_legacy_globals)) {
-    export_cfg_legacy_globals(cfg, envir = envir)
-  }
   
   invisible(cfg)
 }

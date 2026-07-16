@@ -7,17 +7,11 @@ get_count_df_long_and_make_coverage_file <- function(cfg){
   
   logger::log_info("Reading in read/UMI counts...")
   
-  if (identical(cfg$counting$read_counting, "bcwithqc")) {
-    
-    count_df_long <- process_bcwithqc_data(
-      cfg = cfg,
-      data_type = cfg$counting$data_type,
-      skip_list = cfg$skip$files
-    )
-    
-  } else {
-    stop_log("only bcwithqc is supported for snakemake.")
-  }
+  count_df_long <- process_bcwithqc_data(
+    cfg = cfg,
+    data_type = cfg$counting$data_type,
+    skip_list = cfg$skip$files
+  )
   
   logger::log_info("Finished reading in read/UMI counts.")
   logger::log_info("sgRNAs aligned to the wrong sublibrary were excluded from the analysis.")

@@ -3109,3 +3109,222 @@ build_maude_guide_z_rank_df <- function(
   
   ranked_df
 }
+
+
+qq_rectangle_plot <- function(
+    align_rds_fpath,
+    bcwithqc_rds_fpath,
+    title = "QQ Rectangle Plot",
+    FDR_thresh = 0.05,
+    quantile_probs = c(0, 0.05, 0.5, 0.95, 1),
+    alpha_both_sig = 0.85,
+    alpha_other = 0.15,
+    point_size = 1.2,
+    return_data = FALSE,
+    rank_gamma = 2
+) {
+  
+  prep_df <- function(fpath) {
+    readRDS(fpath) %>%
+      select(symbol, entrez, significanceZ, FDR) %>%
+      filter(!is.na(entrez), !is.na(significanceZ)) %>%
+      arrange(FDR, desc(abs(significanceZ))) %>%
+      distinct(entrez, .keep_all = TRUE) %>%
+      mutate(
+        rank_sigZ = rank(significanceZ, ties.method = "average")
+      )
+  }
+  
+  get_fdr_cutoffs <- function(df) {
+    sig_df <- df %>%
+      filter(!is.na(FDR), FDR <= FDR_thresh)
+    
+    neg_ranks <- sig_df %>%
+      filter(significanceZ < 0) %>%
+      pull(rank_sigZ)
+    
+    pos_ranks <- sig_df %>%
+      filter(significanceZ > 0) %>%
+      pull(rank_sigZ)
+    
+    neg_cutoff <- if (length(neg_ranks) > 0) max(neg_ranks, na.rm = TRUE) else NA_real_
+    pos_cutoff <- if (length(pos_ranks) > 0) min(pos_ranks, na.rm = TRUE) else NA_real_
+    
+    c(negative = neg_cutoff, positive = pos_cutoff)
+  }
+  
+  make_quantile_axis <- function(n, probs) {
+    breaks <- round(1 + probs * (n - 1))
+    
+    tibble(
+      prob = probs,
+      breaks = breaks,
+      labels = paste0(probs * 100, "%")
+    ) %>%
+      distinct(breaks, .keep_all = TRUE)
+  }
+  
+  centered_rank_transform <- function(rank, n, gamma = 2) {
+    mid <- (n + 1) / 2
+    sign(rank - mid) * abs(rank - mid)^gamma
+  }
+  
+  align_df <- prep_df(align_rds_fpath) %>%
+    rename(
+      symbol_align = symbol,
+      significanceZ_align = significanceZ,
+      FDR_align = FDR,
+      rank_align = rank_sigZ
+    )
+  
+  bcwithqc_df <- prep_df(bcwithqc_rds_fpath) %>%
+    rename(
+      symbol_bcwithqc = symbol,
+      significanceZ_bcwithqc = significanceZ,
+      FDR_bcwithqc = FDR,
+      rank_bcwithqc = rank_sigZ
+    )
+  
+  align_cutoffs <- get_fdr_cutoffs(align_df %>%
+                                     rename(
+                                       symbol = symbol_align,
+                                       significanceZ = significanceZ_align,
+                                       FDR = FDR_align,
+                                       rank_sigZ = rank_align
+                                     ))
+  
+  bcwithqc_cutoffs <- get_fdr_cutoffs(bcwithqc_df %>%
+                                        rename(
+                                          symbol = symbol_bcwithqc,
+                                          significanceZ = significanceZ_bcwithqc,
+                                          FDR = FDR_bcwithqc,
+                                          rank_sigZ = rank_bcwithqc
+                                        ))
+  
+  n_align <- nrow(align_df)
+  n_bcwithqc <- nrow(bcwithqc_df)
+  
+  plot_df <- inner_join(
+    align_df,
+    bcwithqc_df,
+    by = "entrez"
+  ) %>%
+    mutate(
+      symbol = coalesce(symbol_align, symbol_bcwithqc),
+      delta_significanceZ = significanceZ_bcwithqc - significanceZ_align,
+      both_FDR_sig = coalesce(FDR_align <= FDR_thresh, FALSE) |
+        coalesce(FDR_bcwithqc <= FDR_thresh, FALSE),
+      point_alpha = if_else(both_FDR_sig, alpha_both_sig, alpha_other),
+      rank_align_trans = centered_rank_transform(rank_align, n_align, gamma = rank_gamma),
+      rank_bcwithqc_trans = centered_rank_transform(rank_bcwithqc, n_bcwithqc, gamma = rank_gamma)
+    )
+  
+  x_axis <- make_quantile_axis(n_align, quantile_probs)
+  y_axis <- make_quantile_axis(n_bcwithqc, quantile_probs)
+  
+  x_axis <- x_axis %>%
+    mutate(breaks_trans = centered_rank_transform(breaks, n_align, gamma = rank_gamma))
+  
+  y_axis <- y_axis %>%
+    mutate(breaks_trans = centered_rank_transform(breaks, n_bcwithqc, gamma = rank_gamma))
+  
+  max_abs_delta <- max(abs(plot_df$delta_significanceZ), na.rm = TRUE)
+  if (!is.finite(max_abs_delta) || max_abs_delta == 0) {
+    max_abs_delta <- 1
+  }
+  
+  x_lines <- align_cutoffs[!is.na(align_cutoffs)]
+  y_lines <- bcwithqc_cutoffs[!is.na(bcwithqc_cutoffs)]
+  
+  x_lines_trans <- centered_rank_transform(x_lines, n_align, gamma = rank_gamma)
+  y_lines_trans <- centered_rank_transform(y_lines, n_bcwithqc, gamma = rank_gamma)
+  
+  grey_frac <- 0.08
+  grey_half_width <- max_abs_delta * grey_frac
+  
+  p <- ggplot(
+    plot_df,
+    aes(
+      x = rank_align_trans,
+      y = rank_bcwithqc_trans,
+      colour = delta_significanceZ,
+      alpha = point_alpha
+    )
+  ) +
+    geom_point(size = point_size) +
+    
+    geom_vline(
+      xintercept = x_lines_trans,
+      colour = "red",
+      linetype = "dotted",
+      linewidth = 0.7
+    ) +
+    geom_hline(
+      yintercept = y_lines_trans,
+      colour = "red",
+      linetype = "dotted",
+      linewidth = 0.7
+    ) +
+    scale_x_continuous(
+      breaks = x_axis$breaks_trans,
+      labels = x_axis$labels,
+      expand = expansion(mult = 0.02)
+    ) +
+    scale_y_continuous(
+      breaks = y_axis$breaks_trans,
+      labels = y_axis$labels,
+      expand = expansion(mult = 0.02)
+    ) +
+  
+  scale_colour_gradientn(
+    colours = c(
+      "#2B6CB0",  # strong blue
+      "#2B6CB0",  # keep blue until close to center
+      "#48494B",  # narrow grey center
+      "#E69F00",  # quickly shift to orange
+      "#E69F00"   # strong orange
+    ),
+    values = scales::rescale(
+      c(
+        -max_abs_delta,
+        -grey_half_width,
+        0,
+        grey_half_width,
+        max_abs_delta
+      ),
+      from = c(-max_abs_delta, max_abs_delta)
+    ),
+    limits = c(-max_abs_delta, max_abs_delta),
+    name = expression(Delta * " significanceZ\nbcwithqc - align")
+  ) +
+    scale_alpha_identity() +
+    
+    labs(
+      title = title,
+      x = "align rank by significanceZ\nquantile / rank",
+      y = "bcwithqc rank by significanceZ\nquantile / rank"
+    ) +
+    theme_classic() +
+    theme(
+      axis.text.x = element_text(size = 9),
+      axis.text.y = element_text(size = 9)
+    )
+  
+  if (return_data) {
+    return(list(
+      plot = p,
+      data = plot_df,
+      align_cutoffs = align_cutoffs,
+      bcwithqc_cutoffs = bcwithqc_cutoffs
+    ))
+  }
+  
+  return(p)
+}
+  
+  
+  
+  
+  
+  
+  

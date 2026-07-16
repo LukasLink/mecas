@@ -2,11 +2,14 @@ configfile: "config.yaml"
 
 import os
 
+
+shell.executable("/usr/bin/bash")
+
+container: "containers/bcwithqc_maude.sif"
+
 #-------------------------------------------------------------------------------
 # Define paths based on config
 #-------------------------------------------------------------------------------  
-shell.executable("/usr/bin/bash")
-
 OUTPUT_FOLDER = config["paths"]["output_folder"]
 STATE_DIR = os.path.join(OUTPUT_FOLDER, ".pipeline_state")
 
@@ -20,6 +23,8 @@ QC_FILTERED_FOLDER = os.path.join(OUTPUT_FOLDER, "QC_filtered")
 RDS_OUTPUT_FOLDER = os.path.join(OUTPUT_FOLDER, "rds")
 RESULTS_OUTPUT_FOLDER = os.path.join(OUTPUT_FOLDER, "results")
 PLOTS_OUTPUT_FOLDER = os.path.join(OUTPUT_FOLDER, "plots")
+
+BCWITHQC_CONFIG = config["paths"]["bcwithqc_config_path"]
 #-------------------------------------------------------------------------------
 # Helper functions
 #-------------------------------------------------------------------------------  
@@ -89,68 +94,11 @@ checkpoint setup:
         runtime = 10
     shell:
         r"""
-        module load R/4.5.2-gfbf-2025b
-        # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
-        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        unset R_LIBS
+        unset R_LIBS_USER
         Rscript --vanilla R/cli_setup.R {input.config}
         """
 
-# I AM DEPRECATING THE ENTIRE ALIGN UMI TOOLS BRANCH        
-# rule make_reference_R:
-#     input:
-#         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
-#         setup_done = os.path.join(STATE_DIR, "01_setup.done")
-#     output:
-#         fasta = os.path.join(GENOME_OUTPUT_FOLDER, "ref.fa"),
-#         gtf = os.path.join(GENOME_OUTPUT_FOLDER, "ref.gtf"),
-#         STAR_ref_params = os.path.join(STATE_DIR, "STAR_ref_params.sh")
-#     threads: 1
-#     resources:
-#         mem_mb = 4000,
-#         runtime = 20
-#     shell:
-#         r"""
-#         module load R/4.5.2-gfbf-2025b
-#         # export R_LIBS=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-24.04/4.5.2:/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/jupyterhub-ubuntu-22.04/4.4.1
-#         export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
-#         Rscript --vanilla R/cli_make_reference.R {input.cfg_rds} --snakemake
-#         """
-#         
-# rule make_reference_shell:
-#     input:
-#         fasta = os.path.join(GENOME_OUTPUT_FOLDER, "ref.fa"),
-#         gtf = os.path.join(GENOME_OUTPUT_FOLDER, "ref.gtf"),
-#         STAR_ref_params = os.path.join(STATE_DIR, "STAR_ref_params.sh")
-#     output:
-#         done = os.path.join(STATE_DIR, "02_make_reference.done")
-#     threads: 12
-#     resources:
-#         mem_mb = 128000,
-#         runtime = 5760
-#     shell:
-#         r"""
-#         module load STAR/2.7.11b
-# 
-#         source {input.STAR_ref_params}
-# 
-#         LIMIT_GENOME_GENERATE_RAM=$(( {resources.mem_mb} * 1000000 * 90 / 100 ))
-# 
-#         mkdir -p "$STAR_INDEX_OUTPUT_DIR"
-# 
-#         STAR \
-#           --runThreadN {threads} \
-#           --runMode genomeGenerate \
-#           --genomeDir "$STAR_INDEX_OUTPUT_DIR" \
-#           --genomeFastaFiles "$REF_FASTA_PATH" \
-#           --sjdbGTFfile "$REF_GTF_PATH" \
-#           --limitGenomeGenerateRAM "$LIMIT_GENOME_GENERATE_RAM" \
-#           --genomeSAindexNbases "$GENOME_SA_INDEX_N_BASES" \
-#           --sjdbOverhang "$SJDB_OVERHANG" \
-#           --genomeChrBinNbits "$GENOME_CHR_BIN_N_BITS"
-# 
-#         touch {output.done}
-#         """
-        
 rule QC_filtering_R:
     input:
         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
@@ -163,8 +111,8 @@ rule QC_filtering_R:
         runtime = 10
     shell:
         r"""
-        module load R/4.5.2-gfbf-2025b
-        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        unset R_LIBS
+        unset R_LIBS_USER
         Rscript --vanilla R/cli_QC_filtering.R {input.cfg_rds}
         """
 
@@ -179,15 +127,16 @@ rule QC_filter_shell:
         r"""
         source {input.params}
 
+        # We are inside the Apptainer container; seqtk is already available.
+        USE_MODULES=false
+
         if [[ "$QC_FILTERING_RUN" == "true" ]]; then
           bash shell/QC_filtering_snake.sh \
             --input-fastq {input.fastq} \
             --output-fastq {output.fastq} \
             --min-qual "$QC_MIN_QUAL" \
             --qual-offset "$QC_QUAL_OFFSET" \
-            --min-length "$QC_MIN_LENGTH" \
-            --use-modules "$USE_MODULES" \
-            --seqtk-module "$SEQTK_MODULE"
+            --min-length "$QC_MIN_LENGTH" 
         else
           mkdir -p "$(dirname "{output.fastq}")"
 
@@ -214,8 +163,8 @@ rule prepare_bcwithqc_input:
         ln -sf "$(realpath "{input.fastq}")" "{output.fastq}"
         """
 
-BCWITHQC_BIN = config["bcwithqc"]["bcwithqc_bin"]
-BCWITHQC_CONFIG = config["bcwithqc"]["bcwithqc_config_path"]
+
+
 
 rule bcwithqc_one_sample:
     input:
@@ -239,7 +188,7 @@ rule bcwithqc_one_sample:
         rm -rf "{params.output_dir}"
         mkdir -p "{params.output_dir}"
 
-        "{BCWITHQC_BIN}" preprocess \
+        bcwithqc preprocess \
           "{params.input_dir}" \
           --config="{BCWITHQC_CONFIG}" \
           --output-dir="{params.output_dir}" \
@@ -247,14 +196,25 @@ rule bcwithqc_one_sample:
           --output-format-bam \
           -vv
 
-        "{BCWITHQC_BIN}" count \
+        mapfile -t bam_files < <(find "{params.output_dir}" -maxdepth 1 -type f -name "*.bam" | sort)
+
+        if [[ "${{#bam_files[@]}}" -ne 1 ]]; then
+          echo "ERROR: Expected exactly one BAM from bcwithqc preprocess, found ${{#bam_files[@]}}" >&2
+          echo "Files in {params.output_dir}:" >&2
+          find "{params.output_dir}" -maxdepth 2 -type f >&2
+          exit 1
+        fi
+
+        bam_file="${{bam_files[0]}}"
+
+        bcwithqc count \
           "{params.output_dir}" \
           --STAR-output-dir="{params.output_dir}" \
           --config="{BCWITHQC_CONFIG}" \
           --output-dir="{params.output_dir}" \
           --threads="{threads}" \
           -vv
-
+          
         mkdir -p "$(dirname "{output.done}")"
         touch "{output.done}"
         """
@@ -289,8 +249,8 @@ rule MAUDE:
         runtime = 120
     shell:
         r"""
-        module load R/4.5.2-gfbf-2025b
-        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        unset R_LIBS
+        unset R_LIBS_USER
         Rscript --vanilla R/cli_MAUDE.R {input.cfg_rds}
         """
         
@@ -311,22 +271,9 @@ rule plot:
         runtime = 120
     shell:
         r"""
-        module load R/4.5.2-gfbf-2025b
-        export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
+        unset R_LIBS
+        unset R_LIBS_USER
         Rscript --vanilla R/cli_plot.R {input.cfg_rds}
         touch "{output.done}"
-        """        
-#         
-# rule prepare_count_inputs_R:
-#   input:
-#       cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
-#       qc_done = os.path.join(STATE_DIR, "03_QC_filtering.done")
-#   output:
-#       done = os.path.join(STATE_DIR, "04_prepare_count_inputs.done")
-#   shell:
-#       r"""
-#       module load R/4.5.2-gfbf-2025b
-#       export R_LIBS_USER=/g/steinmetz/link/R-libs/x86_64-pc-linux-gnu/4.5.2
-#       Rscript --vanilla R/cli_prepare_count_inputs.R {input.cfg_rds}
-#       touch {output.done}
-#       """
+        """    
+

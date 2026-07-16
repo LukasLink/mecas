@@ -1,0 +1,82 @@
+# Starter Apptainer definition for the binned PCR amplicon / UMI Snakemake pipeline.
+# Build with:
+#   apptainer build --fakeroot containers/bcwithqc_maude.sif apptainer/bcwithqc_maude.def
+#
+# Notes:
+# - This image is intended for Snakemake rule execution, not for running Snakemake itself.
+# - The bcwithqc install line may need adjustment if you use a local/private fork or branch.
+
+Bootstrap: docker
+From: ghcr.io/bioconductor/bioc2u-user:24.04-bioc-3.22-r-4.5.2
+
+%labels
+    Author Lukas-Pipeline
+    Description "R/MAUDE + seqtk + bcwithqc container for Snakemake pipeline"
+
+%post
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+        curl \
+        git \
+        wget \
+        build-essential \
+        pkg-config \
+        python3 \
+        python3-pip \
+        python3-venv \
+        zlib1g-dev \
+        libbz2-dev \
+        liblzma-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libtiff-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libgit2-dev \
+        seqtk \
+        rna-star
+
+    python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+    # bcwithqc / freebarcodes candidate install.
+    # Adjust these lines if your working version is a local fork or a different branch.
+    python3 -m pip install --no-cache-dir git+https://github.com/hawkjo/freebarcodes.git
+    python3 -m pip install --no-cache-dir git+https://github.com/hawkjo/bcwithqc.git@reopen-lukas-branch
+
+    # R packages used by the active Snakefile/R scripts.
+    Rscript --vanilla -e 'install.packages(c("tidyverse", "Matrix", "conflicted", "ggplot2", "ggrepel", "writexl", "stringr", "ggbreak", "yaml", "logger", "remotes"), repos="https://cloud.r-project.org", Ncpus=max(1, parallel::detectCores()-1))'
+    Rscript --vanilla -e 'BiocManager::install(c("AnnotationDbi", "org.Hs.eg.db"), ask=FALSE, update=FALSE, Ncpus=max(1, parallel::detectCores()-1))'
+    Rscript --vanilla -e 'remotes::install_github("de-Boer-Lab/MAUDE", upgrade="never")'
+
+    # Keep the final image smaller.
+    apt-get clean
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export PYTHONNOUSERSITE=1
+    unset PYTHONPATH
+    unset PYTHONHOME
+    unset R_LIBS
+    unset R_LIBS_USER
+
+%test
+    Rscript --vanilla -e 'library(tidyverse); library(Matrix); library(conflicted); library(ggplot2); library(ggrepel); library(writexl); library(stringr); library(ggbreak); library(yaml); library(logger); library(AnnotationDbi); library(org.Hs.eg.db); library(MAUDE); cat("R packages OK\n")'
+    seqtk 2>&1 | head -n 1 || true
+    STAR --version
+    bcwithqc --help >/dev/null
+
+%runscript
+    echo "This container is meant to be used by Snakemake/Apptainer rules."
+    echo "Available tools: Rscript, seqtk, STAR, bcwithqc"
