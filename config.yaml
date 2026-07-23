@@ -10,25 +10,27 @@
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/config_update"
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/paired_end_pe"
   # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_2"
   # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
   
   # Mandatory input directory for fastq files
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
+  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial_downsampled"
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
-  library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds"
+  library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds"
   
   # Mandatory bcwithqc config.yaml path
-  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
+  # bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
+  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_CM_specific_library.json"
   
   # Optional but recommended input_fastq_name_parser.xlsx
-  # For matching file names to pipeline specific names. 
+  # For matching file names to pipeline specific names.
   # fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/input_fastq_name_table_template.xlsx"
-  fastq_name_table_xlsx: ""
+  fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/library/input_fastq_name_table_pe_test.xlsx"
   # strict_file_match: true
   #   -> Every file in fastq_name_table_xlsx needs a match in input_folder 
   # strict_file_match: false
@@ -44,7 +46,7 @@ counting:
   # Allowed values:
   #   - "reads"
   #   - "umis"
-  data_type: "reads"
+  data_type: "umis"
  
 # ------------------------------------------------------------------------------
 # QC filtering with seqtk
@@ -67,6 +69,9 @@ qc_filtering:
   # Suggested automatic behavior: use sjdbOverhang + 1 if available,
   # or infer from read length / STAR settings.
   min_length: null
+      # can also be provided seperately for Forward and Reverse Reads
+      # R1: 150
+      # R2: 100
   
 # ------------------------------------------------------------------------------
 # Files, sublibraries, or samples to exclude

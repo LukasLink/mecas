@@ -92,12 +92,26 @@ cfg <- project_setup(
 #-----------------------------------------------------------------------------
 logger::log_info("Creating symlinks of input files...")
 
+strict_file_match_value <- cfg$paths$strict_file_match
+
+log_info(
+  paste0(
+    "`cfg$paths$strict_file_match`: ",
+    "typeof = ", typeof(strict_file_match_value),
+    "; class = ", paste(class(strict_file_match_value), collapse = ", "),
+    "; length = ", length(strict_file_match_value),
+    "; value = ",
+    paste(capture.output(dput(strict_file_match_value)), collapse = "")
+  )
+)
+
+
 manifest <- prepare_fastq_inputs(
   fastq_dir = cfg$paths$input_folder,
-  fastq_name_table_file_path = cfg$files$fastq_name_table_xlsx,
+  fastq_name_table_file_path = cfg$paths$fastq_name_table_xlsx,
   output_symlink_dir = cfg$paths$fastq_symlinks_folder,
   manifest_output_path = cfg$paths$manifest,
-  strict_file_match = cfg$files$strict_file_match
+  strict_file_match = cfg$paths$strict_file_match
 )
 if (!file.exists(cfg$paths$manifest)) {
   stop("FASTQ manifest was not created: ", cfg$paths$manifest, call. = FALSE)
@@ -115,7 +129,7 @@ yaml::write_yaml(
 
 writeLines(
   paste("Setup finished at", Sys.time()),
-  cfg$paths$snake$setup_done
+  cfg$paths$snake$done$setup
 )
 
 log_info("Setup complete.")

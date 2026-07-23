@@ -190,6 +190,115 @@ check_raw_reads_dir <- function(
 
   return(results_df)
 }
+count_staggers <- function(
+    fastq_fpath,
+    motif = "GTGGAAAGGACGAAACACCG",
+    load_first_n = 10000,
+    include_reads_without_motif = FALSE
+) {
+  if (!file.exists(fastq_fpath)) {
+    stop("File not found: ", fastq_fpath)
+  }
+
+  cat("Processing file:", fastq_fpath, "\n")
+
+  # Read the first N reads
+  fastq_reader <- FastqStreamer(
+    fastq_fpath,
+    n = load_first_n
+  )
+
+  fastq_data <- yield(fastq_reader)
+  close(fastq_reader)
+
+  sequences <- as.character(sread(fastq_data))
+
+  # Find the first exact occurrence of the motif in each read
+  motif_position <- regexpr(
+    pattern = motif,
+    text = sequences,
+    fixed = TRUE
+  )
+
+  motif_found <- motif_position > 0
+
+  cat("Reads loaded:", length(sequences), "\n")
+  cat("Reads containing motif:", sum(motif_found), "\n")
+  cat("Reads without motif:", sum(!motif_found), "\n")
+  cat(
+    "Percentage containing motif:",
+    round(100 * mean(motif_found), 2),
+    "%\n"
+  )
+
+  # Keep everything before the motif
+  staggers <- ifelse(
+    motif_found,
+    substr(
+      sequences,
+      start = 1,
+      stop = motif_position - 1
+    ),
+    NA_character_
+  )
+
+  # A motif at position 1 means there is no stagger
+  staggers[motif_found & motif_position == 1] <- ""
+
+  if (include_reads_without_motif) {
+    staggers[!motif_found] <- "<MOTIF_NOT_FOUND>"
+  } else {
+    staggers <- staggers[motif_found]
+  }
+
+  # Count and sort from most frequent to least frequent
+  stagger_counts <- sort(
+    table(staggers, useNA = "no"),
+    decreasing = TRUE
+  )
+
+  stagger_table <- data.frame(
+    stagger = names(stagger_counts),
+    count = as.integer(stagger_counts),
+    fraction = as.integer(stagger_counts) / sum(stagger_counts),
+    percentage = 100 * as.integer(stagger_counts) / sum(stagger_counts),
+    stringsAsFactors = FALSE
+  )
+
+  # Make empty staggers easier to recognize
+  stagger_table$stagger[
+    stagger_table$stagger == ""
+  ] <- "<NO_STAGGER>"
+
+  # Add stagger length
+  stagger_table$stagger_length <- ifelse(
+    stagger_table$stagger == "<NO_STAGGER>",
+    0L,
+    ifelse(
+      stagger_table$stagger == "<MOTIF_NOT_FOUND>",
+      NA_integer_,
+      nchar(stagger_table$stagger)
+    )
+  )
+
+  # Reorder columns
+  stagger_table <- stagger_table[
+    ,
+    c(
+      "stagger",
+      "stagger_length",
+      "count",
+      "fraction",
+      "percentage"
+    )
+  ]
+
+  rownames(stagger_table) <- NULL
+  stagger_table <- stagger_table %>% 
+    filter(count > load_first_n/100)
+  return(stagger_table)
+}
+
 check_raw_reads(raw_path, show_start = 50)
 check_raw_reads(raw_path, show_start = 800)
 check_raw_reads(raw_path, show_start = 700)
@@ -198,10 +307,18 @@ check_raw_reads(raw_path, show_start = 5000)
 check_raw_reads(raw_path, show_start = 8000)
 sjdb_table <- check_raw_reads_dir(
   #dir_path = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered",
-  dir_path  = "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/UMI_extracted",
-  recursive = FALSE
+  dir_path  = "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial",
+  recursive = FALSE,
+  show_5_blocks = 5
 )
 
+stagger_table <- count_staggers(
+  fastq_fpath = "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial/gRNA_Lib_CardioV2_R1.fastq.gz",
+  motif = "GTGGAAAGGACGAAACACCG",
+  load_first_n = 10000
+)
+
+print(stagger_table, row.names = FALSE)
 #sjdb_table
 ```
 ## Loading
@@ -1303,8 +1420,8 @@ Jia_select <- Jia_select %>%
     "GTTTAAGAGCTATGCTGGAAACAGCA"
   ))
 
-Jia_seq <- Jia_select %>% select(sgrna_id,seq)
-Jia_full_oligo <- Jia_select %>% select(sgrna_id,full_oligo)
+Jia_seq <- Jia_select %>% select(sgrna_id,symbol, entrez, seq)
+Jia_full_oligo <- Jia_select %>% select(sgrna_id,symbol, entrez, full_oligo)
 Jia_select_checked <- Jia_seq %>%
   mutate(
     has_PaqCI_site = str_detect(seq, "CACCTGC|GTGGACG"),
@@ -1323,7 +1440,6 @@ share_path <- "/g/steinmetz/link/sharing/Jia/2026_06_30_GAL_gene_list"
 # Tab-separated txt files
 write_tsv(Jia_seq, file.path(share_path,"GAL_top24_36-CONTROL_guide.txt"))
 write_tsv(Jia_full_oligo, file.path(share_path,"GAL_top24_36-CONTROL_full_oligo.txt"))
-
 # Separate xlsx files
 write_xlsx(Jia_seq, file.path(share_path,"GAL_top24_36-CONTROL_guide.xlsx"))
 write_xlsx(Jia_full_oligo, file.path(share_path,"GAL_top24_36-CONTROL_full_oligo.xlsx"))

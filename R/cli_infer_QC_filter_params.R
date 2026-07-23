@@ -1,4 +1,4 @@
-# R/cli_MAUDE_and_plots.R
+# R/cli_infer_QC_filter_params.R
 
 #-------------------------------------------------------------------------------
 # Identify paths
@@ -22,7 +22,7 @@ project_root_dir <- normalizePath(file.path(script_dir, ".."))
 cli_args <- commandArgs(trailingOnly = TRUE)
 
 if (length(cli_args) < 1) {
-  stop("MAUDE_and_plots requires an input file <resolved_config.rds>.\n", call. = FALSE)
+  stop("QC filtering requires an input file <resolved_config.rds>.\n", call. = FALSE)
 }
 
 input_path <- normalizePath(cli_args[1], mustWork = TRUE)
@@ -54,18 +54,18 @@ cfg <- tryCatch(
 #-------------------------------------------------------------------------------
 # Logging
 #-------------------------------------------------------------------------------
-if (is.null(cfg$paths$log_files$MAUDE)) {
-  stop("No MAUDE_and_plot log file configured in cfg$paths$log_files.", call. = FALSE)
+if (is.null(cfg$paths$log_files$infer_QC_filter_params)) {
+  stop("No QC_filter log file configured in cfg$paths$infer_QC_filter_params", call. = FALSE)
 }
 
-initialize_pipeline_logger(cfg$paths$log_files$MAUDE)
+initialize_pipeline_logger(cfg$paths$log_files$infer_QC_filter_params)
 
-logger::log_info("Starting MAUDE...")
+logger::log_info("Starting infer_QC_filter_params...")
 
-run_MAUDE_analysis(cfg = cfg)
+run_infer_QC_filter_params(cfg = cfg, project_root_dir = project_root_dir)
 
 writeLines(
-  paste("MAUDE finished at", Sys.time()),
-  cfg$paths$snake$done$MAUDE
+  paste("infer_QC_filter_params finished at", Sys.time()),
+  cfg$paths$snake$done$infer_QC_filter_params
 )
-log_info("MAUDE complete.")
+log_info("infer_QC_filter_params complete.")

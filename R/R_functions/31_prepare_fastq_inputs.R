@@ -1,3 +1,72 @@
+# One manifest row represents one FASTQ file.
+# Single-end sample: one row with read = NA.
+# Paired-end sample: two rows with the same pipeline_name and read = R1/R2.
+
+validate_fastq_manifest_layout <- function(manifest) {
+  required_cols <- c("pipeline_name", "read", "fastq_id")
+  missing_cols <- setdiff(required_cols, colnames(manifest))
+  
+  if (length(missing_cols) > 0) {
+    stop_log(
+      "Manifest is missing columns required to validate FASTQ grouping: ",
+      paste(missing_cols, collapse = ", ")
+    )
+  }
+  
+  groups <- split(seq_len(nrow(manifest)), manifest$pipeline_name)
+  invalid_groups <- character(0)
+  
+  for (pipeline_name in names(groups)) {
+    idx <- groups[[pipeline_name]]
+    reads <- manifest$read[idx]
+    
+    valid_single_end <-
+      length(idx) == 1 &&
+      (is.na(reads[1]) || !nzchar(reads[1]))
+    
+    valid_paired_end <-
+      length(idx) == 2 &&
+      !any(is.na(reads)) &&
+      !anyDuplicated(reads) &&
+      setequal(reads, c("R1", "R2"))
+    
+    if (!valid_single_end && !valid_paired_end) {
+      read_description <- paste(
+        ifelse(is.na(reads) | !nzchar(reads), "<single-end>", reads),
+        collapse = ", "
+      )
+      
+      invalid_groups <- c(
+        invalid_groups,
+        paste0(
+          pipeline_name,
+          ": ", length(idx), " file(s); read values = ", read_description
+        )
+      )
+    }
+  }
+  
+  if (length(invalid_groups) > 0) {
+    stop_log(
+      "Invalid FASTQ grouping in the manifest. Each pipeline sample must have either:\n",
+      "  - exactly one row with an empty `read` value (single-end), or\n",
+      "  - exactly two rows with `read` values R1 and R2 (paired-end).\n\n",
+      paste0("  - ", invalid_groups, collapse = "\n")
+    )
+  }
+  
+  if (anyDuplicated(manifest$fastq_id)) {
+    duplicated_ids <- unique(manifest$fastq_id[duplicated(manifest$fastq_id)])
+    stop_log(
+      "Manifest contains duplicate `fastq_id` values:\n",
+      paste0("  - ", duplicated_ids, collapse = "\n")
+    )
+  }
+  
+  invisible(TRUE)
+}
+
+
 prepare_fastq_inputs <- function(
     fastq_dir,
     fastq_name_table_file_path = NULL,
@@ -9,7 +78,7 @@ prepare_fastq_inputs <- function(
   # -----------------------------
   # Helper functions
   # -----------------------------
-
+  
   normalize_optional_path <- function(x) {
     if (is.null(x)) return(NULL)
     if (length(x) == 0) return(NULL)
@@ -48,6 +117,14 @@ prepare_fastq_inputs <- function(
     )
   }
   
+  normalize_read <- function(x) {
+    x <- trimws(toupper(as.character(x)))
+    x[x %in% c("", "NA", "N/A", "NULL", "NONE", "SE", "SINGLE")] <- NA_character_
+    x[x %in% c("1", "READ1", "READ_1")] <- "R1"
+    x[x %in% c("2", "READ2", "READ_2")] <- "R2"
+    x
+  }
+  
   validate_bin <- function(x) {
     !is.na(x) & x %in% c("I", "L", "U")
   }
@@ -60,19 +137,40 @@ prepare_fastq_inputs <- function(
     !is.na(x) & nzchar(x) & !grepl("_", x)
   }
   
-  validate_pipeline_name <- function(x) {
-    grepl("^(I|L|U)_(L[0-9]+)_[^_]+$", x)
+  validate_read <- function(x) {
+    is.na(x) | x %in% c("R1", "R2")
   }
   
-  parse_pipeline_name <- function(pipeline_name) {
-    parts <- strsplit(pipeline_name, "_", fixed = TRUE)
+  # Accepted names without an xlsx parser:
+  #   I_L1_sample.fastq.gz
+  #   I_L1_sample_R1.fastq.gz
+  #   I_L1_sample_R2.fastq.gz
+  validate_input_name <- function(x) {
+    grepl("^(I|L|U)_(L[0-9]+)_[^_]+(_R[12])?$", x)
+  }
+  
+  parse_input_name <- function(input_name) {
+    parsed <- lapply(strsplit(input_name, "_", fixed = TRUE), function(parts) {
+      if (length(parts) == 3) {
+        data.frame(
+          bin = parts[1],
+          sublibrary = parts[2],
+          sample = parts[3],
+          read = NA_character_,
+          stringsAsFactors = FALSE
+        )
+      } else {
+        data.frame(
+          bin = parts[1],
+          sublibrary = parts[2],
+          sample = parts[3],
+          read = parts[4],
+          stringsAsFactors = FALSE
+        )
+      }
+    })
     
-    data.frame(
-      bin = vapply(parts, `[`, character(1), 1),
-      sublibrary = vapply(parts, `[`, character(1), 2),
-      sample = vapply(parts, `[`, character(1), 3),
-      stringsAsFactors = FALSE
-    )
+    do.call(rbind, parsed)
   }
   
   make_error_list <- function(x, bullet = "  - ") {
@@ -150,6 +248,8 @@ prepare_fastq_inputs <- function(
   # -----------------------------
   # Case 1: xlsx parser provided
   # -----------------------------
+  log_info("xlxs parser file with: filename <-> pipline information association provided.\n",
+           "Proceeding...")
   
   if (!is.null(fastq_name_table_file_path)) {
     if (!file.exists(fastq_name_table_file_path)) {
@@ -208,16 +308,23 @@ prepare_fastq_inputs <- function(
         "The parser xlsx is missing required columns:\n",
         make_error_list(missing_cols),
         "\n\nRequired columns are:\n",
-        make_error_list(required_cols)
+        make_error_list(required_cols),
+        "\n\nFor paired-end samples, also add a `read` column containing R1 or R2."
       )
     }
     
-    parser <- parser[, required_cols, drop = FALSE]
+    # `read` is optional for backward-compatible single-end parser sheets.
+    if (!"read" %in% colnames(parser)) {
+      parser$read <- NA_character_
+    }
+    
+    parser <- parser[, c(required_cols, "read"), drop = FALSE]
     
     parser$original_file <- trimws(as.character(parser$original_file))
     parser$bin <- trimws(as.character(parser$bin))
     parser$sublibrary <- trimws(as.character(parser$sublibrary))
     parser$sample <- trimws(as.character(parser$sample))
+    parser$read <- normalize_read(parser$read)
     
     if (any(is.na(parser$original_file) | parser$original_file == "")) {
       stop_log("The parser xlsx contains empty values in `original_file`.")
@@ -234,6 +341,7 @@ prepare_fastq_inputs <- function(
     invalid_bin <- parser$original_file[!validate_bin(parser$bin)]
     invalid_sublibrary <- parser$original_file[!validate_sublibrary(parser$sublibrary)]
     invalid_sample <- parser$original_file[!validate_sample(parser$sample)]
+    invalid_read <- parser$original_file[!validate_read(parser$read)]
     
     if (length(invalid_bin) > 0) {
       stop_log(
@@ -262,6 +370,15 @@ prepare_fastq_inputs <- function(
       )
     }
     
+    if (length(invalid_read) > 0) {
+      stop_log(
+        "Invalid `read` values in parser xlsx.\n\n",
+        "Use an empty value for single-end data, or R1/R2 for paired-end data.\n\n",
+        "Affected files:\n",
+        make_error_list(invalid_read)
+      )
+    }
+    
     parser$pipeline_name <- paste(
       parser$bin,
       parser$sublibrary,
@@ -269,17 +386,7 @@ prepare_fastq_inputs <- function(
       sep = "_"
     )
     
-    if (anyDuplicated(parser$pipeline_name)) {
-      duplicated_pipeline_names <- unique(parser$pipeline_name[duplicated(parser$pipeline_name)])
-      stop_log(
-        "The parser xlsx generates duplicate pipeline names:\n",
-        make_error_list(duplicated_pipeline_names),
-        "\n\nEach combination of bin, sublibrary, and sample must be unique."
-      )
-    }
-    
     # Match xlsx entries to files in the input directory.
-    # We require original_file to match the basename of the files.
     files_in_dir <- input_file_basename
     files_in_xlsx <- parser$original_file
     
@@ -310,6 +417,7 @@ prepare_fastq_inputs <- function(
       bin = parser$bin,
       sublibrary = parser$sublibrary,
       sample = parser$sample,
+      read = parser$read,
       pipeline_name = parser$pipeline_name,
       stringsAsFactors = FALSE
     )
@@ -317,32 +425,31 @@ prepare_fastq_inputs <- function(
   } else {
     # -----------------------------
     # Case 2: no xlsx parser provided
-    # Validate existing filenames directly
     # -----------------------------
-    
-    valid_name <- validate_pipeline_name(input_file_stem)
+    log_info("No xlxs parser file with: filename <-> pipline information association provided.\n",
+    "Proceeding by using filenames.")
+    valid_name <- validate_input_name(input_file_stem)
     
     if (!all(valid_name)) {
       invalid_files <- input_file_basename[!valid_name]
       
       stop_log(
         "Some input files do not match the required naming pattern.\n\n",
-        "Required pattern:\n",
+        "Required single-end pattern:\n",
         "  BIN_SUBLIBRARY_SAMPLE.fastq.gz\n\n",
+        "Required paired-end patterns:\n",
+        "  BIN_SUBLIBRARY_SAMPLE_R1.fastq.gz\n",
+        "  BIN_SUBLIBRARY_SAMPLE_R2.fastq.gz\n\n",
         "Where:\n",
         "  BIN        = I, L, or U\n",
         "  SUBLIBRARY = L followed by digits, e.g. L1, L01, L002\n",
         "  SAMPLE     = any string without underscores\n\n",
-        "Examples:\n",
-        "  I_L1_control.fastq.gz\n",
-        "  L_L1_treated.fastq.gz\n",
-        "  U_L1_treated.fastq.gz\n\n",
         "Invalid files:\n",
         make_error_list(invalid_files)
       )
     }
     
-    parsed <- parse_pipeline_name(input_file_stem)
+    parsed <- parse_input_name(input_file_stem)
     
     manifest <- data.frame(
       original_file = input_files,
@@ -351,10 +458,25 @@ prepare_fastq_inputs <- function(
       bin = parsed$bin,
       sublibrary = parsed$sublibrary,
       sample = parsed$sample,
-      pipeline_name = input_file_stem,
+      read = parsed$read,
+      pipeline_name = paste(
+        parsed$bin,
+        parsed$sublibrary,
+        parsed$sample,
+        sep = "_"
+      ),
       stringsAsFactors = FALSE
     )
   }
+  
+  # Unique identifier for an individual FASTQ/QC job.
+  manifest$fastq_id <- ifelse(
+    is.na(manifest$read) | !nzchar(manifest$read),
+    manifest$pipeline_name,
+    paste(manifest$pipeline_name, manifest$read, sep = "_")
+  )
+  
+  validate_fastq_manifest_layout(manifest)
   
   # -----------------------------
   # Create symlink names
@@ -367,7 +489,7 @@ prepare_fastq_inputs <- function(
   )
   
   manifest$symlink_file_basename <- paste0(
-    manifest$pipeline_name,
+    manifest$fastq_id,
     manifest$symlink_extension
   )
   
@@ -402,7 +524,10 @@ prepare_fastq_inputs <- function(
     )
   }
   
-  existing_symlinks <- manifest$symlink_file[file.exists(manifest$symlink_file)]
+  existing_symlinks <- manifest$symlink_file[
+    file.exists(manifest$symlink_file) |
+      nzchar(Sys.readlink(manifest$symlink_file))
+  ]
   
   if (length(existing_symlinks) > 0) {
     if (!overwrite_symlinks) {
@@ -451,31 +576,35 @@ prepare_fastq_inputs <- function(
       file = manifest_output_path,
       sep = "\t",
       quote = FALSE,
-      row.names = FALSE
+      row.names = FALSE,
+      na = ""
     )
   }
   
-  # -----------------------------
-  # Return manifest invisibly/visibly
-  # -----------------------------
-  
   log_info(paste("Using standardized FASTQ folder: ", output_symlink_dir))
-  log_info(paste("FASTQ manifest written to: ", manifest_output_path))
-
+  
+  if (!is.null(manifest_output_path)) {
+    log_info(paste("FASTQ manifest written to: ", manifest_output_path))
+  }
+  
   return(manifest)
 }
 
-prepare_bcwithqc_inputs <- function(manifest,
-                                    output_symlink_dir,
-                                    overwrite_symlinks = TRUE,
-                                    manifest_output_path = NULL) {
-  
+
+prepare_bcwithqc_inputs <- function(
+    manifest,
+    output_symlink_dir,
+    overwrite_symlinks = TRUE,
+    manifest_output_path = NULL
+) {
   if (is.null(manifest) || !is.data.frame(manifest)) {
     stop_log("`manifest` must be a data.frame.")
   }
   
   required_cols <- c(
     "pipeline_name",
+    "read",
+    "fastq_id",
     "symlink_file_basename",
     "qc_filtered_paths"
   )
@@ -488,6 +617,8 @@ prepare_bcwithqc_inputs <- function(manifest,
       paste(missing_cols, collapse = ", ")
     )
   }
+  
+  validate_fastq_manifest_layout(manifest)
   
   if (!dir.exists(output_symlink_dir)) {
     dir.create(output_symlink_dir, recursive = TRUE, showWarnings = FALSE)
@@ -507,47 +638,49 @@ prepare_bcwithqc_inputs <- function(manifest,
     manifest$symlink_file_basename
   )
   
+  # Rebuild every sample directory once. This avoids stale files when a sample
+  # changes from single-end to paired-end or vice versa.
+  sample_dirs <- unique(manifest$bcwithqc_input_dir)
+  
+  for (sample_dir in sample_dirs) {
+    sample_dir_exists <- dir.exists(sample_dir) || nzchar(Sys.readlink(sample_dir))
+    
+    if (sample_dir_exists) {
+      if (!overwrite_symlinks) {
+        stop_log(
+          "bcwithqc sample directory already exists: ", sample_dir,
+          "\nSet overwrite_symlinks = TRUE to rebuild it."
+        )
+      }
+      
+      unlink(sample_dir, recursive = TRUE, force = TRUE)
+    }
+    
+    dir.create(sample_dir, recursive = TRUE, showWarnings = FALSE)
+    
+    if (!dir.exists(sample_dir)) {
+      stop_log("Could not create bcwithqc sample directory: ", sample_dir)
+    }
+  }
+  
   for (i in seq_len(nrow(manifest))) {
-    sample_dir <- manifest$bcwithqc_input_dir[i]
     target_file <- manifest$bcwithqc_fastq_path[i]
     source_file <- manifest$qc_filtered_paths[i]
     
     if (is.na(source_file) || !nzchar(source_file)) {
       stop_log(
-        "Missing QC-filtered FASTQ path for sample: ",
-        manifest$pipeline_name[i]
+        "Missing QC-filtered FASTQ path for FASTQ: ",
+        manifest$fastq_id[i]
       )
     }
     
     if (!file.exists(source_file)) {
       stop_log(
-        "QC-filtered FASTQ file does not exist for sample ",
-        manifest$pipeline_name[i],
+        "QC-filtered FASTQ file does not exist for ",
+        manifest$fastq_id[i],
         ":\n  ",
         source_file
       )
-    }
-    
-    if (!dir.exists(sample_dir)) {
-      dir.create(sample_dir, recursive = TRUE, showWarnings = FALSE)
-    }
-    
-    if (!dir.exists(sample_dir)) {
-      stop_log("Could not create bcwithqc sample directory: ", sample_dir)
-    }
-    
-    target_exists <- file.exists(target_file)
-    target_is_symlink <- !is.na(Sys.readlink(target_file)) && nzchar(Sys.readlink(target_file))
-    
-    if (target_exists || target_is_symlink) {
-      if (!overwrite_symlinks) {
-        stop_log(
-          "bcwithqc symlink already exists: ", target_file,
-          "\nSet overwrite_symlinks = TRUE to replace it."
-        )
-      }
-      
-      unlink(target_file)
     }
     
     ok <- file.symlink(
@@ -563,9 +696,6 @@ prepare_bcwithqc_inputs <- function(manifest,
       )
     }
   }
-  # -----------------------------
-  # Write manifest
-  # -----------------------------
   
   if (!is.null(manifest_output_path)) {
     manifest_dir <- dirname(manifest_output_path)
@@ -579,7 +709,8 @@ prepare_bcwithqc_inputs <- function(manifest,
       file = manifest_output_path,
       sep = "\t",
       quote = FALSE,
-      row.names = FALSE
+      row.names = FALSE,
+      na = ""
     )
   }
   

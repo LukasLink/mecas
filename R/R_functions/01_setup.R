@@ -73,14 +73,16 @@ suppressPackageStartupMessages({
 })
 
 suppressMessages({
-  conflicts_prefer(dplyr::rename)
-  conflicts_prefer(dplyr::filter)
-  conflicts_prefer(dplyr::select)
-  conflicts_prefer(dplyr::slice)
-  conflicts_prefer(dplyr::first)
-  conflicts_prefer(dplyr::desc)
-  conflicts_prefer(base::setdiff)
-  conflicts_prefer(base::intersect)
+  conflicted::conflicts_prefer(dplyr::rename)
+  conflicted::conflicts_prefer(dplyr::filter)
+  conflicted::conflicts_prefer(dplyr::select)
+  conflicted::conflicts_prefer(dplyr::slice)
+  conflicted::conflicts_prefer(dplyr::first)
+  conflicted::conflicts_prefer(dplyr::desc)
+  conflicted::conflicts_prefer(base::setdiff)
+  conflicted::conflicts_prefer(base::intersect)
+  conflicted::conflicts_prefer(base::unname)
+  conflicted::conflicts_prefer(base::setequal)
 })
 
 #-------------------------------------------------------------------------------
@@ -185,7 +187,7 @@ log_project_setup <- function(cfg) {
   logger::log_info("library_path:                      {cfg$paths$library_path}")
   logger::log_info("bcwithqc_config_path:              {cfg$paths$bcwithqc_config_path}")
   logger::log_info("fastq_name_table_xlsx:             {cfg$paths$fastq_name_table_xlsx}")
-  logger::log_info("strict_file_match:                 {cfg$files$strict_file_match}")
+  logger::log_info("strict_file_match:                 {cfg$paths$strict_file_match}")
   logger::log_info("----------------------------------------------------------")
 
   logger::log_info("skip_list:                         {paste(cfg$skip$files, collapse = ', ')}")
@@ -245,6 +247,7 @@ project_setup <- function(project_root_dir,
   allowed_setup_modes <- c(
     "setup",
     "QC_filtering",
+    "count",
     "MAUDE",
     "plot"
   )
@@ -299,25 +302,22 @@ project_setup <- function(project_root_dir,
     input_folder = check_input(config$paths$input_folder %||% "", "paths.input_folder"),
     library_path = check_input(config$paths$library_path %||% "", "paths.library_path"),
     fastq_name_table_xlsx = check_input(
-      config$paths$fastq_name_table_xlsx %||% "",
+      config$paths$fastq_name_table_xlsx %||% NULL,
       "paths.fastq_name_table_xlsx"
     ),
     bcwithqc_config_path = check_input(
       config$paths$bcwithqc_config_path %||% "",
       "paths.bcwithqc_config_path"
+    ),
+    strict_file_match = check_input(
+      config$paths$strict_file_match %||% TRUE,
+      "paths.strict_file_match"
     )
   )
   
   if (is.null(cfg$paths$output_folder) || !nzchar(cfg$paths$output_folder)) {
     stop("`paths.output_folder` must be provided in the YAML config.", call. = FALSE)
   }
-  
-  cfg$files <- list(
-    strict_file_match = check_input(
-      config$paths$strict_file_match %||% TRUE,
-      "paths.strict_file_match"
-    )
-  )
 
   cfg$skip <- list(
     files = check_input(
@@ -613,6 +613,8 @@ project_setup <- function(project_root_dir,
   cfg$paths$bcwithqc_symlinks_folder <- make_clean_dir(cfg$paths$output_folder, "bcwithqc_symlinks")
   
   cfg$paths$config_path <- config_path %||% ""
+  
+  cfg$paths$count_df_fpath <- file.path(cfg$paths$rds_output_folder, "count_df.rds")
   #=============================================================================
   # Snakemake handeling
   #=============================================================================
@@ -625,8 +627,13 @@ project_setup <- function(project_root_dir,
   cfg$paths$snake$resolved_config_yaml <- file.path(cfg$paths$snake$state_dir, "resolved_config.yaml")
   cfg$paths$snake$QC_filtering_params_sh <- file.path(cfg$paths$snake$state_dir,"QC_filtering_params.sh")
   
-  cfg$paths$snake$setup_done <- file.path(cfg$paths$snake$state_dir, "01_setup.done")
-  
+  cfg$paths$snake$done <- list(
+    setup = file.path(cfg$paths$snake$state_dir, "01_setup.done"),
+    infer_QC_filter_params = file.path(cfg$paths$snake$state_dir, "02_infer_QC_filter_params.done"),
+    count = file.path(cfg$paths$snake$state_dir, "06_count.done"),
+    MAUDE = file.path(cfg$paths$snake$state_dir, "07_MAUDE.done"),
+    plot = file.path(cfg$paths$snake$state_dir, "08_plot.done")
+  )
   #=============================================================================
   # Logging 
   #=============================================================================
@@ -650,9 +657,10 @@ project_setup <- function(project_root_dir,
     # This is for the new snakemake log version. 
     cfg$paths$log_files <- list(
       setup = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_01_setup.log")),
-      QC_filtering = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_QC_filtering.log")),
-      MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_03_MAUDE.log")),
-      plot = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_04_plot.log"))
+      infer_QC_filter_params = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_infer_QC_filter_params.log")),
+      count = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_06_count.log")),
+      MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_07_MAUDE.log")),
+      plot = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_08_plot.log"))
     )
     if (is.null(cfg$paths$log_files[[setup_mode]])) {
       stop("No log file configured for setup_mode: ", setup_mode, call. = FALSE)

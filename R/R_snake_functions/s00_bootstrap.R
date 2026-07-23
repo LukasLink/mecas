@@ -82,8 +82,11 @@ bootstrap_pipeline <- function(project_root_dir) {
     conflicted::conflicts_prefer(dplyr::select)
     conflicted::conflicts_prefer(dplyr::slice)
     conflicted::conflicts_prefer(dplyr::first)
+    conflicted::conflicts_prefer(dplyr::desc)
     conflicted::conflicts_prefer(base::setdiff)
     conflicted::conflicts_prefer(base::intersect)
+    conflicted::conflicts_prefer(base::unname)
+    conflicted::conflicts_prefer(base::setequal)
   })
   
   # Source all pipeline functions

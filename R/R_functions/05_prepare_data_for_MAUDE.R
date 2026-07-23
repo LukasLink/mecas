@@ -1,69 +1,5 @@
 # 05_prepare_data_for_MAUDE
 
-subsample_controls_func_old <- function(count_df_long,
-                                        cfg,
-                                        merged_sgRNA_df = cfg$merged_sgRNA_df,
-                                        percentage_kept_controls = 0.1) {
-  
-  percentage_used_controls <- 1 - percentage_kept_controls
-  
-  count_df_long_merged <- merge(
-    count_df_long,
-    merged_sgRNA_df[, c("sgrna_id", "entrez")],
-    by.x = "sgRNA",
-    by.y = "sgrna_id",
-    all.x = TRUE
-  )
-  
-  count_df_long_merged <- count_df_long_merged %>%
-    dplyr::filter(group_category != "targeting") %>%
-    dplyr::distinct(sgRNA) %>% 
-    dplyr::mutate(
-      unique_names = dplyr::case_when(
-        grepl("CONTROL_C_[A-Za-z0-9]+_", sgRNA) &
-          !grepl("CONTROL_C_NONTARG", sgRNA) ~
-          sub("CONTROL_C_([A-Za-z0-9]+)_.*", "\\1", sgRNA),
-        grepl("CONTROL_C_NONTARG", sgRNA) ~ sgRNA,
-        TRUE ~ NA_character_
-      )
-    )
-  
-  unique_entries <- unique(count_df_long_merged$unique_names)
-  
-  assignments <- sample(
-    c(TRUE, FALSE),
-    length(unique_entries),
-    prob = c(percentage_kept_controls, percentage_used_controls),
-    replace = TRUE
-  )
-  
-  assignment_map <- data.frame(
-    unique_names = unique_entries,
-    keep = assignments
-  )
-  
-  count_df_long_merged <- count_df_long_merged %>%
-    dplyr::left_join(assignment_map, by = "unique_names")
-  
-  return_df <- count_df_long %>%
-    dplyr::left_join(
-      count_df_long_merged %>% dplyr::select(sgRNA, keep),
-      by = "sgRNA"
-    ) %>%
-    dplyr::mutate(
-      keep = ifelse(is.na(keep), FALSE, keep),
-      group_category = ifelse(
-        keep == TRUE,
-        "kept_control",
-        group_category
-      )
-    ) %>%
-    dplyr::select(-keep)
-  
-  return(return_df)
-}
-
-
 subsample_controls_func <- function(count_df_long,
                                     cfg,
                                     merged_sgRNA_df = cfg$merged_sgRNA_df,
@@ -198,4 +134,52 @@ count_df_long_to_wide <- function(count_df_long,
     )
   
   return(maude_counts_df)
+}
+
+check_all_bins_present <- function(count_df_long, cfg){
+  required_conditions <- c("input", "upper", "lower")
+  
+  missing_conditions_df <- count_df_long %>%
+    dplyr::distinct(sublib, sample, condition) %>%
+    dplyr::group_by(sublib, sample) %>%
+    dplyr::summarise(
+      present_conditions = list(
+        unique(stats::na.omit(as.character(condition)))
+      ),
+      .groups = "drop"
+    ) %>%
+    dplyr::mutate(
+      missing_conditions = purrr::map(
+        present_conditions,
+        ~ setdiff(required_conditions, .x)
+      )
+    ) %>%
+    dplyr::filter(lengths(missing_conditions) > 0)
+  
+  if (nrow(missing_conditions_df) > 0) {
+    missing_details <- missing_conditions_df %>%
+      dplyr::mutate(
+        message = purrr::map_chr(
+          missing_conditions,
+          ~ paste(.x, collapse = ", ")
+        ),
+        message = paste0(
+          "  - sample='", sample,
+          "', sublib='", sublib,
+          "': missing ", message
+        )
+      ) %>%
+      dplyr::pull(message)
+    
+    stop_log(
+      paste0(
+        "MAUDE requires all relevant bins to be provided for each sample.\n",
+        "Required conditions: ",
+        paste(required_conditions, collapse = ", "),
+        "\n\n",
+        "Missing conditions by sample and sublibrary:\n",
+        paste(missing_details, collapse = "\n")
+      )
+    )
+  }  
 }

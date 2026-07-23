@@ -87,7 +87,7 @@ get_count_df_long_and_make_coverage_file <- function(cfg){
   
   logger::log_info("Creating coverage file for read/UMI counts...")
   
-  mapping_results_df <- parse_coverage_file(cfg$paths$log_files$MAUDE)
+  mapping_results_df <- parse_coverage_file(cfg$paths$log_files$count)
 
   overall_targeting <- count_df_long %>%
     dplyr::summarise(

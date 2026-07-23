@@ -1,4 +1,4 @@
-# R/cli_QC_filtering.R
+# R/cli_count.R
 
 #-------------------------------------------------------------------------------
 # Identify paths
@@ -22,7 +22,7 @@ project_root_dir <- normalizePath(file.path(script_dir, ".."))
 cli_args <- commandArgs(trailingOnly = TRUE)
 
 if (length(cli_args) < 1) {
-  stop("QC filtering requires an input file <resolved_config.rds>.\n", call. = FALSE)
+  stop("MAUDE_and_plots requires an input file <resolved_config.rds>.\n", call. = FALSE)
 }
 
 input_path <- normalizePath(cli_args[1], mustWork = TRUE)
@@ -54,12 +54,18 @@ cfg <- tryCatch(
 #-------------------------------------------------------------------------------
 # Logging
 #-------------------------------------------------------------------------------
-if (is.null(cfg$paths$log_files$QC_filtering)) {
-  stop("No QC_filter log file configured in cfg$paths$log_files.", call. = FALSE)
+if (is.null(cfg$paths$log_files$count)) {
+  stop("No MAUDE_and_plot log file configured in cfg$paths$log_files.", call. = FALSE)
 }
 
-initialize_pipeline_logger(cfg$paths$log_files$QC_filtering)
+initialize_pipeline_logger(cfg$paths$log_files$count)
 
-logger::log_info("Resolved cfg: {input_path}")
+logger::log_info("Starting count...")
 
-run_QC_filtering_snake(cfg = cfg, project_root_dir = project_root_dir)
+run_count(cfg = cfg)
+
+writeLines(
+  paste("count finished at", Sys.time()),
+  cfg$paths$snake$done$count
+)
+log_info("count complete.")

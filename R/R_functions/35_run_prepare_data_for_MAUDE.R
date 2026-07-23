@@ -7,7 +7,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
   logger::log_info("Preparing Data for MAUDE...")
   
   pseudocount_added <- FALSE
-  
+  check_all_bins_present(count_df_long = count_df_long, cfg = cfg)
   #-----------------------------------------------------------------------------
   # Optional: subsample controls
   #-----------------------------------------------------------------------------

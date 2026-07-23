@@ -660,33 +660,24 @@ p <- qq_rectangle_plot(
   save_fpath = file.path(nico_dir, "GAL_squish.png")
 )
 print(p)
-p <- qq_rectangle_plot(
+combined_delta_pa <- make_combined_delta_df(
   align_rds_fpath = pa_align_mean_rds_fpath,
   bcwithqc_rds_fpath = pa_bcwithqc_mean_rds_fpath,
-  title = "PA bcwithqc vs align rank comparison",
-  FDR_thresh = 0.05,
-  rank_gamma = 1, # rank_gamma = 1 is linear scalling
-  grey_frac = 0.2,
-  save_fpath = file.path(nico_dir, "PA_linear.png")
+  FDR_thresh = 0.05
 )
-p <- qq_rectangle_plot(
+saveRDS(combined_delta_pa, file.path(nico_dir, "PA_changed_hits.rds"))
+combined_delta_dca <- make_combined_delta_df(
   align_rds_fpath = dca_align_mean_rds_fpath,
   bcwithqc_rds_fpath = dca_bcwithqc_mean_rds_fpath,
-  title = "DCA bcwithqc vs align rank comparison",
-  FDR_thresh = 0.05,
-  rank_gamma = 1, # rank_gamma = 1 is linear scalling
-  grey_frac = 0.2,
-  save_fpath = file.path(nico_dir, "DCA_linear.png")
+  FDR_thresh = 0.05
 )
-p <- qq_rectangle_plot(
+saveRDS(combined_delta_dca, file.path(nico_dir, "DCA_changed_hits.rds"))
+combined_delta_gal <- make_combined_delta_df(
   align_rds_fpath = gal_align_mean_rds_fpath,
   bcwithqc_rds_fpath = gal_bcwithqc_mean_rds_fpath,
-  title = "GalNAc bcwithqc vs align rank comparison",
-  FDR_thresh = 0.05,
-  rank_gamma = 1, # rank_gamma = 1 is linear scalling
-  grey_frac = 0.2,
-  save_fpath = file.path(nico_dir, "GAL_linear.png")
+  FDR_thresh = 0.05
 )
+saveRDS(combined_delta_gal, file.path(nico_dir, "GAL_changed_hits.rds"))
 
 ``` 
 

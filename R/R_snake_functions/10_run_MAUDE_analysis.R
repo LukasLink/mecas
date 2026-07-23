@@ -1,12 +1,20 @@
 # R/R_functions_snake/10_run_MAUDE.R
 
 run_MAUDE_analysis <- function(cfg){
-  count_df_long <- get_count_df_long_and_make_coverage_file(cfg = cfg)
   
-  count_df_fpath <- file.path(cfg$paths$rds_output_folder, "count_df.rds")
-  saveRDS(count_df_long, count_df_fpath)
-  log_info("Read/UMI counts written to {count_df_fpath}")
-  
+  count_df_long <- tryCatch(
+    {readRDS(cfg$paths$count_df_fpath)},
+    error = function(e) {
+      stop_log(
+        paste0(
+          "Failed to load count dataframe from: ",
+          cfg$paths$count_df_fpath,
+          "\nOriginal error: ",
+          conditionMessage(e)
+        )
+      )
+    }
+  )
   
   # Quick Hack for nicer output names
   cfg$suffix$file_suffix <- ".rds"

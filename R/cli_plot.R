@@ -60,6 +60,12 @@ if (is.null(cfg$paths$log_files$plot)) {
 
 initialize_pipeline_logger(cfg$paths$log_files$plot)
 
-logger::log_info("Resolved cfg: {input_path}")
+logger::log_info("Starting plot...")
 
 run_plot(cfg = cfg)
+
+writeLines(
+  paste("plot finished at", Sys.time()),
+  cfg$paths$snake$done$plot
+)
+log_info("plot complete.")

@@ -3121,7 +3121,9 @@ qq_rectangle_plot <- function(
     alpha_other = 0.15,
     point_size = 1.2,
     return_data = FALSE,
-    rank_gamma = 2
+    rank_gamma = 2,
+    grey_frac = 0.08,
+    save_fpath = NULL
 ) {
   
   prep_df <- function(fpath) {
@@ -3238,8 +3240,7 @@ qq_rectangle_plot <- function(
   
   x_lines_trans <- centered_rank_transform(x_lines, n_align, gamma = rank_gamma)
   y_lines_trans <- centered_rank_transform(y_lines, n_bcwithqc, gamma = rank_gamma)
-  
-  grey_frac <- 0.08
+
   grey_half_width <- max_abs_delta * grey_frac
   
   p <- ggplot(
@@ -3301,27 +3302,115 @@ qq_rectangle_plot <- function(
     
     labs(
       title = title,
-      x = "align rank by significanceZ\nquantile / rank",
-      y = "bcwithqc rank by significanceZ\nquantile / rank"
+      x = "align rank by significanceZ [quantile / rank]",
+      y = "bcwithqc rank by significanceZ [quantile / rank]"
     ) +
     theme_classic() +
     theme(
       axis.text.x = element_text(size = 9),
       axis.text.y = element_text(size = 9)
     )
-  
-  if (return_data) {
-    return(list(
+
+  if (!is.null(save_fpath)) {
+    dir.create(dirname(save_fpath), recursive = TRUE, showWarnings = FALSE)
+    
+    ggsave(
+      filename = save_fpath,
       plot = p,
-      data = plot_df,
-      align_cutoffs = align_cutoffs,
-      bcwithqc_cutoffs = bcwithqc_cutoffs
-    ))
+      width = 10,
+      height = 6,
+      units = "in",
+      dpi = 300,
+      bg = "transparent"
+    )
   }
-  
   return(p)
 }
+
+make_combined_delta_df <- function(
+    align_rds_fpath,
+    bcwithqc_rds_fpath,
+    FDR_thresh = 0.05,
+    only_one_screen_sig = TRUE
+) {
   
+  prep_df <- function(fpath) {
+    readRDS(fpath) %>%
+      select(symbol, entrez, significanceZ, FDR) %>%
+      filter(!is.na(entrez), !is.na(significanceZ)) %>%
+      arrange(FDR, desc(abs(significanceZ))) %>%
+      distinct(entrez, .keep_all = TRUE) %>%
+      mutate(
+        rank_sigZ = rank(significanceZ, ties.method = "average")
+      )
+  }
+  
+  align_df <- prep_df(align_rds_fpath) %>%
+    rename(
+      symbol = symbol,
+      significanceZ_align = significanceZ,
+      FDR_align = FDR,
+      rank_align = rank_sigZ
+    )
+  
+  bcwithqc_df <- prep_df(bcwithqc_rds_fpath) %>%
+    rename(
+      significanceZ_bcwithqc = significanceZ,
+      FDR_bcwithqc = FDR,
+      rank_bcwithqc = rank_sigZ
+    ) %>%
+    select(-symbol)
+  
+  combined_delta <- inner_join(
+    align_df,
+    bcwithqc_df,
+    by = "entrez"
+  ) %>%
+    mutate(
+      deltaZ = significanceZ_bcwithqc - significanceZ_align,
+      
+      sig_align = coalesce(FDR_align <= FDR_thresh, FALSE),
+      sig_bcwithqc = coalesce(FDR_bcwithqc <= FDR_thresh, FALSE),
+      
+      sig_only_one_screen = xor(sig_align, sig_bcwithqc),
+      
+      significant_screen = case_when(
+        sig_align & !sig_bcwithqc ~ "align_only",
+        !sig_align & sig_bcwithqc ~ "bcwithqc_only",
+        sig_align & sig_bcwithqc ~ "both",
+        TRUE ~ "neither"
+      ),
+      
+      deltaZ_direction = case_when(
+        deltaZ > 0 ~ "higher_in_bcwithqc",
+        deltaZ < 0 ~ "higher_in_align",
+        TRUE ~ "same"
+      )
+    ) %>%
+    select(
+      entrez,
+      symbol,
+      rank_align,
+      rank_bcwithqc,
+      significanceZ_align,
+      significanceZ_bcwithqc,
+      deltaZ,
+      FDR_align,
+      FDR_bcwithqc,
+      sig_align,
+      sig_bcwithqc,
+      sig_only_one_screen,
+      significant_screen,
+      deltaZ_direction
+    )
+  
+  if (only_one_screen_sig) {
+    combined_delta <- combined_delta %>%
+      filter(sig_only_one_screen)
+  }
+  
+  return(combined_delta)
+}
   
   
   
