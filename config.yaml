@@ -10,13 +10,13 @@
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/paired_end_pe"
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_2"
+  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/paired_end_infer"
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim"
   # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
   
   # Mandatory input directory for fastq files
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial_downsampled"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial"
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
@@ -49,29 +49,26 @@ counting:
   data_type: "umis"
  
 # ------------------------------------------------------------------------------
-# QC filtering with seqtk
+# QC filtering with cutadapt
 # ------------------------------------------------------------------------------
 qc_filtering:
   # If true, FASTQ files are quality-filtered before read counting.
   # If false, the pipeline skips QC filtering.
   run: true
 
-  # Minimum base quality passed to `seqtk seq -q`.
+  # Minimum base quality passed to cutadapt.
   # Default: 20
   min_qual: 20
 
-  # Quality offset passed to `seqtk seq -Q`.
-  # Default: 20
-  qual_offset: 20
-
-  # Minimum read length passed to `seqtk seq -L`.
-  # If null, the pipeline will determine this automatically.
-  # Suggested automatic behavior: use sjdbOverhang + 1 if available,
+  # Minimum read length passed to cutadapt.
+  # If null, the pipeline will determine this automatically by most common read length * 0.8.
+  # bcwithqc will seperately filter out any reads that can no longer match the constant sequences. 
   # or infer from read length / STAR settings.
   min_length: null
       # can also be provided seperately for Forward and Reverse Reads
+      # You need to remove the value from min length in that case (even null).
       # R1: 150
-      # R2: 100
+      # R2: 161
   
 # ------------------------------------------------------------------------------
 # Files, sublibraries, or samples to exclude
@@ -98,13 +95,13 @@ controls:
   # any gene that matches an entry in include_controls will be treated as 
   # targeting, even if it is a control. 
   include_controls:
-    - "EGFP"
-    - "AAVS1_9"
-    - "AAVS1_13"
-    - "AAVS1_18"
-    - "AAVS1_19"
-    - "AAVS1_25"
-    - "AAVS1_35"
+    # - "EGFP"
+    # - "AAVS1_9"
+    # - "AAVS1_13"
+    # - "AAVS1_18"
+    # - "AAVS1_19"
+    # - "AAVS1_25"
+    # - "AAVS1_35"
 
   # Optional: restrict analysis to use only specified controls.
   use_only_these_controls: []

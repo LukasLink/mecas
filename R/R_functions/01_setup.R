@@ -169,7 +169,96 @@ require_yaml_config <- function(x) {
   invisible(x)
 }
 
-
+parse_qc_min_length <- function(option, name = "qc_filtering.min_length") {
+  empty_result <- list(
+    min_length_state = "infer",
+    min_length_single = NA_integer_,
+    min_length_R1 = NA_integer_,
+    min_length_R2 = NA_integer_
+  )
+  
+  # NULL or NA means infer from FASTQ files.
+  if (is.null(option) || length(option) == 0L || (!is.list(option) && length(option) == 1L && is.na(option))) {
+    return(empty_result)
+  }
+  
+  # One scalar integer applies to all reads.
+  if (!is.list(option) && length(option) == 1L) {
+    .validate_integer(option = option, name = name, required = TRUE, min = 1)
+    
+    return(list(
+      min_length_state = "provided_single",
+      min_length_single = as.integer(option),
+      min_length_R1 = NA_integer_,
+      min_length_R2 = NA_integer_
+    ))
+  }
+  
+  # Separate R1/R2 configuration.
+  if (!is.list(option)) {.fail_input(name, option, paste0(
+        "Expected NULL, one integer, or a named mapping with ",
+        "`R1` and `R2`."
+      )
+    )
+  }
+  
+  option_names <- names(option)
+  
+  if (is.null(option_names) || any(is.na(option_names)) || any(!nzchar(option_names))) {
+    .fail_input(name, option, "Separate paired-end lengths must be named `R1` and `R2`.")
+  }
+  
+  allowed_names <- c("R1", "R2")
+  unknown_names <- setdiff(option_names, allowed_names)
+  
+  if (length(unknown_names) > 0L) {
+    .fail_input(
+      name,
+      option,
+      paste0(
+        "Unknown minimum-length field(s): ",
+        paste(unknown_names, collapse = ", "),
+        ". Expected only `R1` and `R2`."
+      )
+    )
+  }
+  
+  missing_names <- setdiff(allowed_names, option_names)
+  
+  if (length(missing_names) > 0L) {
+    .fail_input(
+      name,
+      option,
+      paste0(
+        "Separate paired-end minimum lengths require both `R1` and `R2`. ",
+        "Missing: ",
+        paste(missing_names, collapse = ", "),
+        "."
+      )
+    )
+  }
+  
+  .validate_integer(
+    option = option$R1,
+    name = paste0(name, ".R1"),
+    required = TRUE,
+    min = 1
+  )
+  
+  .validate_integer(
+    option = option$R2,
+    name = paste0(name, ".R2"),
+    required = TRUE,
+    min = 1
+  )
+  
+  list(
+    min_length_state = "provided_R1R2",
+    min_length_single = NA_integer_,
+    min_length_R1 = as.integer(option$R1),
+    min_length_R2 = as.integer(option$R2)
+  )
+}
 #-------------------------------------------------------------------------------
 # Logging
 #-------------------------------------------------------------------------------
@@ -359,12 +448,19 @@ project_setup <- function(project_root_dir,
       "counting.data_type"
     )
   )
-
+  
+  qc_min_length <- parse_qc_min_length(
+    config$qc_filtering$min_length %||% NA
+  )
+  
   cfg$qc_filtering <- list(
     run = check_input(config$qc_filtering$run %||% TRUE, "qc_filtering.run"),
     min_qual = check_input(config$qc_filtering$min_qual %||% 20, "qc_filtering.min_qual"),
-    qual_offset = check_input(config$qc_filtering$qual_offset %||% 20, "qc_filtering.qual_offset"),
-    min_length = check_input(config$qc_filtering$min_length %||% NA, "qc_filtering.min_length")
+    min_length = check_input(config$qc_filtering$min_length %||% NA, "qc_filtering.min_length"),
+    min_length_state = qc_min_length$min_length_state,
+    min_length_single = qc_min_length$min_length_single,
+    min_length_R1 = qc_min_length$min_length_R1,
+    min_length_R2 = qc_min_length$min_length_R2
   )
   
   cfg$replicates <- list(

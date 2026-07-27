@@ -581,15 +581,8 @@
   "qc_filtering.min_qual" = function(option, name) {
     .validate_integer(option, name, required = TRUE, min = 0)
   },
-  
-  "qc_filtering.qual_offset" = function(option, name) {
-    .validate_integer(option, name, required = TRUE, min = 0)
-  },
-  
-  "qc_filtering.min_length" = function(option, name) {
-    .validate_integer(option, name, required = FALSE, min = 1, allow_na = TRUE)
-  },
-  
+
+
   # Skip lists
   "skip.files" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)

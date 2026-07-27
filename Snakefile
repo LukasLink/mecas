@@ -3,6 +3,7 @@ configfile: "config.yaml"
 import csv
 import os
 import shutil
+import math
 from pathlib import Path
 
 
@@ -66,21 +67,6 @@ def read_fastq_manifest():
     return rows
 
 
-def manifest_row_for_fastq_id(fastq_id):
-    matches = [
-        row for row in read_fastq_manifest()
-        if row["fastq_id"] == fastq_id
-    ]
-
-    if len(matches) != 1:
-        raise ValueError(
-            f"Expected exactly one manifest row for fastq_id {fastq_id}, "
-            f"found {len(matches)}"
-        )
-
-    return matches[0]
-
-
 def manifest_rows_for_sample(sample):
     rows = [
         row for row in read_fastq_manifest()
@@ -91,35 +77,115 @@ def manifest_rows_for_sample(sample):
         raise ValueError(f"No manifest rows found for sample {sample}")
 
     return rows
+def normalize_manifest_read_value(value):
+    read_type = (value or "").strip().upper()
 
-def get_read_type_for_fastq_id(wildcards):
-    row = manifest_row_for_fastq_id(wildcards.fastq_id)
-
-    read_type = row["read"].strip().upper()
-
-    # Empty read field means single-end
     if read_type == "":
         return "SE"
 
     if read_type not in {"R1", "R2"}:
-        raise ValueError(
-            f"Invalid read value for fastq_id {wildcards.fastq_id}: "
-            f"{row['read']!r}. Expected an empty value, R1, or R2."
-        )
+        raise ValueError(f"Invalid manifest read value: {value!r}. Expected empty, R1, or R2.")
 
     return read_type
-  
-def find_symlink_fastq(wildcards):
-    row = manifest_row_for_fastq_id(wildcards.fastq_id)
-    path = row["symlink_file"]
+
+
+def get_sample_layout(sample):
+    rows = manifest_rows_for_sample(sample)
+    rows_by_read = {}
+
+    for row in rows:
+        read_type = normalize_manifest_read_value(row["read"])
+
+        if read_type in rows_by_read:
+            raise ValueError(f"Sample {sample} contains more than one manifest row for read type {read_type}")
+
+        rows_by_read[read_type] = row
+
+    if set(rows_by_read) == {"SE"}:
+        return {
+            "mode": "SE",
+            "rows": rows,
+            "SE": rows_by_read["SE"],
+        }
+
+    if set(rows_by_read) == {"R1", "R2"}:
+        return {
+            "mode": "PE",
+            "rows": rows,
+            "R1": rows_by_read["R1"],
+            "R2": rows_by_read["R2"],
+        }
+
+    observed = ", ".join(sorted(rows_by_read))
+
+    raise ValueError(
+        f"Invalid FASTQ layout for sample {sample}. Found read types: {observed}. "
+        "Expected exactly one SE row or exactly one R1 and one R2 row."
+    )
+
+
+def get_se_samples_after_setup(wildcards):
+    return sorted(
+        sample for sample in get_samples_after_setup(wildcards)
+        if get_sample_layout(sample)["mode"] == "SE"
+    )
+
+
+def get_pe_samples_after_setup(wildcards):
+    return sorted(
+        sample for sample in get_samples_after_setup(wildcards)
+        if get_sample_layout(sample)["mode"] == "PE"
+    )
+
+
+def get_manifest_fastq(sample, read_type):
+    layout = get_sample_layout(sample)
+
+    if read_type not in layout:
+        raise ValueError(f"Sample {sample} does not contain read type {read_type}")
+
+    path = layout[read_type]["symlink_file"]
 
     if not os.path.exists(path):
-        raise ValueError(
-            f"Manifest symlink FASTQ does not exist for {wildcards.fastq_id}: {path}"
-        )
+        raise ValueError(f"Manifest FASTQ does not exist for sample {sample}, read {read_type}: {path}")
 
     return path
 
+
+def get_se_input_fastq(wildcards):
+    return get_manifest_fastq(wildcards.sample, "SE")
+
+
+def get_pe_input_fastq_r1(wildcards):
+    return get_manifest_fastq(wildcards.sample, "R1")
+
+
+def get_pe_input_fastq_r2(wildcards):
+    return get_manifest_fastq(wildcards.sample, "R2")
+
+
+def get_qc_fastq_path(sample, read_type):
+    if read_type == "SE":
+        return os.path.join(QC_FILTERED_FOLDER, "SE", sample + ".fastq.gz")
+
+    if read_type in {"R1", "R2"}:
+        return os.path.join(QC_FILTERED_FOLDER, "PE", sample + "_" + read_type + ".fastq.gz")
+
+    raise ValueError(f"Unsupported read type: {read_type}")
+
+
+def get_qc_fastqs_for_sample(wildcards):
+    layout = get_sample_layout(wildcards.sample)
+
+    return [
+        get_qc_fastq_path(wildcards.sample, normalize_manifest_read_value(row["read"]))
+        for row in layout["rows"]
+    ]
+
+
+def get_qc_read_count_for_sample(wildcards):
+    mode = get_sample_layout(wildcards.sample)["mode"]
+    return os.path.join(STATE_DIR, "QC_filter_read_counts", mode, wildcards.sample + ".txt")
 
 def get_samples_after_setup(wildcards):
     samples = sorted({row["pipeline_name"] for row in read_fastq_manifest()})
@@ -133,23 +199,18 @@ def get_samples_after_setup(wildcards):
     return samples
 
 
-def get_qc_fastqs_for_sample(wildcards):
-    return [
-        os.path.join(QC_FILTERED_FOLDER, row["fastq_id"] + ".fastq.gz")
-        for row in manifest_rows_for_sample(wildcards.sample)
-    ]
-
-
-
-def get_fastq_ids_after_setup(wildcards):
-    return sorted(row["fastq_id"] for row in read_fastq_manifest())
-
-
 def get_qc_job_done_files(wildcards):
-    return expand(
-        os.path.join(STATE_DIR, "QC_filter_jobs", "{fastq_id}.done"),
-        fastq_id=get_fastq_ids_after_setup(wildcards),
+    se_done = expand(
+        os.path.join(STATE_DIR, "QC_filter_jobs", "SE", "{sample}.done"),
+        sample=get_se_samples_after_setup(wildcards),
     )
+
+    pe_done = expand(
+        os.path.join(STATE_DIR, "QC_filter_jobs", "PE", "{sample}.done"),
+        sample=get_pe_samples_after_setup(wildcards),
+    )
+
+    return se_done + pe_done
 
 
 def get_prepare_bcwithqc_input_done_files(wildcards):
@@ -163,6 +224,39 @@ def get_bcwithqc_done_files(wildcards):
     return expand(
         os.path.join(STATE_DIR, "bcwithqc_done", "{sample}.done"),
         sample=get_samples_after_setup(wildcards),
+    )
+
+    
+def estimate_qc_filter_runtime(paths):
+    input_size_gb = sum(os.path.getsize(str(path)) for path in paths) / (1024 ** 3)
+
+    observed_minutes_per_gb = 0.6
+    safety_factor = 1.5
+    startup_buffer_minutes = 10
+
+    estimated_runtime = input_size_gb * observed_minutes_per_gb * safety_factor + startup_buffer_minutes
+
+    return math.ceil(estimated_runtime)
+
+
+def get_qc_filter_se_runtime(wildcards, input):
+    return estimate_qc_filter_runtime([input.fastq])
+
+
+def get_qc_filter_pe_runtime(wildcards, input):
+    return estimate_qc_filter_runtime([input.fastq_r1, input.fastq_r2])
+  
+def get_bcwithqc_runtime(wildcards, input):
+    fastq_size_gb = sum(
+        os.path.getsize(str(path))
+        for path in input.fastqs
+    ) / (1024 ** 3)
+
+    estimated_minutes = 240 + fastq_size_gb * 30
+
+    return min(
+        10080,  # maximum 7 days
+        max(300, math.ceil(estimated_minutes))
     )
 #-------------------------------------------------------------------------------
 # SNAKEMAKE RULES
@@ -208,8 +302,8 @@ rule infer_QC_filter_params:
         done = os.path.join(STATE_DIR, "02_infer_QC_filter_params.done")
     threads: 1
     resources:
-        mem_mb = 4000,
-        runtime = 10
+        mem_mb = 1000,
+        runtime = 3
     shell:
         r"""
         unset R_LIBS
@@ -223,66 +317,127 @@ rule infer_QC_filter_params:
 # Single-end files use QC_MIN_LENGTH_SE.
 # Paired-end R1 and R2 files are filtered independently and may use
 # different minimum read lengths.
-rule QC_filter_prep:
+rule QC_filter_SE_worker:
     input:
-        fastq = find_symlink_fastq,
+        fastq = get_se_input_fastq,
         params = os.path.join(STATE_DIR, "QC_filtering_params.sh"),
         setup_done = os.path.join(STATE_DIR, "01_setup.done"),
         infer_QC_filter_params_done = os.path.join(STATE_DIR, "02_infer_QC_filter_params.done")
     output:
-        fastq = os.path.join(QC_FILTERED_FOLDER, "{fastq_id}.fastq.gz"),
-        done = os.path.join(STATE_DIR, "QC_filter_jobs", "{fastq_id}.done")
-    params:
-        read_type = get_read_type_for_fastq_id
+        fastq = os.path.join(QC_FILTERED_FOLDER, "SE", "{sample}.fastq.gz"),
+        report = os.path.join(STATE_DIR, "QC_filter_reports", "SE", "{sample}.cutadapt.json"),
+        read_count = os.path.join(STATE_DIR, "QC_filter_read_counts", "SE", "{sample}.txt"),
+        done = os.path.join(STATE_DIR, "QC_filter_jobs", "SE", "{sample}.done")
+    threads: 4
+    resources:
+        mem_mb = 2000,
+        runtime = get_qc_filter_se_runtime
     shell:
         r"""
         source "{input.params}"
 
         if [[ "$QC_FILTERING_RUN" == "true" ]]; then
-
-          case "{params.read_type}" in
-            SE)
-              QC_MIN_LENGTH_SELECTED="$QC_MIN_LENGTH_SE"
-              ;;
-            R1)
-              QC_MIN_LENGTH_SELECTED="$QC_MIN_LENGTH_R1"
-              ;;
-            R2)
-              QC_MIN_LENGTH_SELECTED="$QC_MIN_LENGTH_R2"
-              ;;
-            *)
-              echo "ERROR: Unknown read type: {params.read_type}" >&2
-              exit 1
-              ;;
-          esac
-
-          if [[ -z "$QC_MIN_LENGTH_SELECTED" ]]; then
-            echo \
-              "ERROR: No QC minimum length was defined for read type {params.read_type}" \
-              >&2
+          if [[ -z "$QC_MIN_LENGTH_SE" ]]; then
+            echo "ERROR: No QC minimum length was defined for single-end reads" >&2
             exit 1
           fi
 
           bash shell/QC_filtering_snake.sh \
+            --mode SE \
             --input-fastq "{input.fastq}" \
             --output-fastq "{output.fastq}" \
             --min-qual "$QC_MIN_QUAL" \
-            --qual-offset "$QC_QUAL_OFFSET" \
-            --min-length "$QC_MIN_LENGTH_SELECTED"
-
+            --min-length "$QC_MIN_LENGTH_SE" \
+            --json-report "{output.report}" \
+            --read-count-output "{output.read_count}" \
+            --threads "{threads}"
         else
           mkdir -p "$(dirname "{output.fastq}")"
+          mkdir -p "$(dirname "{output.report}")"
+          mkdir -p "$(dirname "{output.read_count}")"
 
           if [[ "{input.fastq}" == *.gz ]]; then
-            ln -sf \
-              "$(realpath "{input.fastq}")" \
-              "{output.fastq}"
+            ln -sf "$(realpath "{input.fastq}")" "{output.fastq}"
           else
             gzip -c "{input.fastq}" > "{output.fastq}"
           fi
+
+          printf '%s\n' '{{"qc_filtering_run": false, "read_counts": {{"output": null}}}}' > "{output.report}"
+          printf 'NA\n' > "{output.read_count}"
         fi
-        
+
         test -e "{output.fastq}"
+        test -s "{output.report}"
+        test -s "{output.read_count}"
+
+        mkdir -p "$(dirname "{output.done}")"
+        touch "{output.done}"
+        """
+        
+rule QC_filter_PE_worker:
+    input:
+        fastq_r1 = get_pe_input_fastq_r1,
+        fastq_r2 = get_pe_input_fastq_r2,
+        params = os.path.join(STATE_DIR, "QC_filtering_params.sh"),
+        setup_done = os.path.join(STATE_DIR, "01_setup.done"),
+        infer_QC_filter_params_done = os.path.join(STATE_DIR, "02_infer_QC_filter_params.done")
+    output:
+        fastq_r1 = os.path.join(QC_FILTERED_FOLDER, "PE", "{sample}_R1.fastq.gz"),
+        fastq_r2 = os.path.join(QC_FILTERED_FOLDER, "PE", "{sample}_R2.fastq.gz"),
+        report = os.path.join(STATE_DIR, "QC_filter_reports", "PE", "{sample}.cutadapt.json"),
+        read_count = os.path.join(STATE_DIR, "QC_filter_read_counts", "PE", "{sample}.txt"),
+        done = os.path.join(STATE_DIR, "QC_filter_jobs", "PE", "{sample}.done")
+    threads: 4
+    resources:
+        mem_mb = 2000,
+        runtime = get_qc_filter_pe_runtime
+    shell:
+        r"""
+        source "{input.params}"
+
+        if [[ "$QC_FILTERING_RUN" == "true" ]]; then
+          if [[ -z "$QC_MIN_LENGTH_R1" || -z "$QC_MIN_LENGTH_R2" ]]; then
+            echo "ERROR: QC minimum lengths were not defined for both R1 and R2" >&2
+            exit 1
+          fi
+
+          bash shell/QC_filtering_snake.sh \
+            --mode PE \
+            --input-fastq-r1 "{input.fastq_r1}" \
+            --input-fastq-r2 "{input.fastq_r2}" \
+            --output-fastq-r1 "{output.fastq_r1}" \
+            --output-fastq-r2 "{output.fastq_r2}" \
+            --min-qual "$QC_MIN_QUAL" \
+            --min-length-r1 "$QC_MIN_LENGTH_R1" \
+            --min-length-r2 "$QC_MIN_LENGTH_R2" \
+            --json-report "{output.report}" \
+            --read-count-output "{output.read_count}" \
+            --threads "{threads}"
+        else
+          mkdir -p "$(dirname "{output.fastq_r1}")"
+          mkdir -p "$(dirname "{output.report}")"
+          mkdir -p "$(dirname "{output.read_count}")"
+
+          if [[ "{input.fastq_r1}" == *.gz ]]; then
+            ln -sf "$(realpath "{input.fastq_r1}")" "{output.fastq_r1}"
+          else
+            gzip -c "{input.fastq_r1}" > "{output.fastq_r1}"
+          fi
+
+          if [[ "{input.fastq_r2}" == *.gz ]]; then
+            ln -sf "$(realpath "{input.fastq_r2}")" "{output.fastq_r2}"
+          else
+            gzip -c "{input.fastq_r2}" > "{output.fastq_r2}"
+          fi
+
+          printf '%s\n' '{{"qc_filtering_run": false, "read_counts": {{"output": null}}}}' > "{output.report}"
+          printf 'NA\n' > "{output.read_count}"
+        fi
+
+        test -e "{output.fastq_r1}"
+        test -e "{output.fastq_r2}"
+        test -s "{output.report}"
+        test -s "{output.read_count}"
 
         mkdir -p "$(dirname "{output.done}")"
         touch "{output.done}"
@@ -295,8 +450,8 @@ rule QC_filter:
         done = os.path.join(STATE_DIR, "03_QC_filter.done")
     threads: 1
     resources:
-        mem_mb=1000,
-        runtime=1
+        mem_mb = 1000,
+        runtime = 1
     shell:
         r"""
         touch "{output.done}"
@@ -304,7 +459,7 @@ rule QC_filter:
 
 # Collect all QC-filtered FASTQs belonging to one pipeline sample into one
 # directory. A paired sample gets both *_R1.fastq.gz and *_R2.fastq.gz there.
-rule prepare_bcwithqc_input_prep:
+rule prepare_bcwithqc_input_worker:
     input:
         manifest = lambda wc: str(checkpoints.setup.get().output.manifest),
         fastqs = get_qc_fastqs_for_sample,
@@ -313,8 +468,8 @@ rule prepare_bcwithqc_input_prep:
         done = os.path.join(STATE_DIR, "bcwithqc_input_done", "{sample}.done")
     threads: 1
     resources:
-        mem_mb = 4000,
-        runtime = 10
+        mem_mb = 1000,
+        runtime = 3
     run:
         rows = manifest_rows_for_sample(wildcards.sample)
         source_fastqs = list(input.fastqs)
@@ -360,10 +515,11 @@ rule prepare_bcwithqc_input:
         touch "{output.done}"
         """
 
-rule bcwithqc_prep:
+rule bcwithqc_worker:
     input:
         prepared = os.path.join(STATE_DIR, "bcwithqc_input_done", "{sample}.done"),
-        preparation_done=os.path.join(STATE_DIR, "04_prepare_bcwithqc_input.done")
+        preparation_done=os.path.join(STATE_DIR, "04_prepare_bcwithqc_input.done"),
+        fastqs = get_qc_fastqs_for_sample
     output:
         done = os.path.join(STATE_DIR, "bcwithqc_done", "{sample}.done")
     params:
@@ -373,8 +529,8 @@ rule bcwithqc_prep:
     resources:
         # mem_mb = 40000,
         # runtime = 2400,
-        mem_mb = 10000,
-        runtime = 240,
+        mem_mb = 60000,
+        runtime = get_bcwithqc_runtime,
         constraint = "avx512"
     shell:
         r"""

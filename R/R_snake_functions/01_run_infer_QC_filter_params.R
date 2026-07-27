@@ -15,30 +15,67 @@ run_infer_QC_filter_params <- function(cfg, project_root_dir) {
     required_read_types %in% manifest_read_types
   ]
   
-  if (qc_min_length_is_missing(cfg$qc_filtering$min_length)) {
-    cfg$qc_filtering$min_length <- infer_qc_min_length(
-      cfg = cfg,
-      manifest = manifest,
-      fastq_col = "symlink_file",
-      read_col = "read",
-      n_lines = 10000
+  if (length(required_read_types) == 0L) {
+    stop_log(
+      "Could not determine a supported read type from the manifest. ",
+      "Expected SE, R1, and/or R2."
     )
   }
   
-  resolved_min_lengths <- normalize_qc_min_lengths(
-    min_length = cfg$qc_filtering$min_length,
-    required_read_types = required_read_types
+  resolved_min_lengths <- switch(
+    cfg$qc_filtering$min_length_state,
+    
+    infer = {
+      inferred <- infer_qc_min_length(
+        cfg = cfg,
+        manifest = manifest,
+        fastq_col = "symlink_file",
+        read_col = "read",
+        n_lines = 10000
+      )
+      
+      inferred[required_read_types]
+    },
+    
+    provided_single = {
+      stats::setNames(
+        rep(
+          cfg$qc_filtering$min_length_single,
+          length(required_read_types)
+        ),
+        required_read_types
+      )
+    },
+    
+    provided_R1R2 = {
+      if ("SE" %in% required_read_types) {
+        stop_log(
+          "The manifest contains single-end data, but `qc_filtering.min_length` ",
+          "was configured with separate R1/R2 values."
+        )
+      }
+      
+      c(
+        R1 = cfg$qc_filtering$min_length_R1,
+        R2 = cfg$qc_filtering$min_length_R2
+      )[required_read_types]
+    },
+    
+    stop_log(
+      "Unknown qc_filtering.min_length_state: ",
+      cfg$qc_filtering$min_length_state
+    )
   )
   
-  # Preserve a scalar for purely single-end data.
-  # Store named values for paired-end or mixed data.
-  if (identical(required_read_types, "SE")) {
-    cfg$qc_filtering$min_length <- unname(
-      resolved_min_lengths[["SE"]]
-    )
-  } else {
-    cfg$qc_filtering$min_length <- as.list(
-      resolved_min_lengths
+  missing_lengths <- required_read_types[
+    !required_read_types %in% names(resolved_min_lengths) |
+      is.na(resolved_min_lengths[required_read_types])
+  ]
+  
+  if (length(missing_lengths) > 0L) {
+    stop_log(
+      "No QC minimum length was resolved for required read type(s): ",
+      paste(missing_lengths, collapse = ", ")
     )
   }
   
@@ -50,52 +87,28 @@ run_infer_QC_filter_params <- function(cfg, project_root_dir) {
     as.character(resolved_min_lengths[[read_type]])
   }
   
+  
   writeLines(
     c(
-      paste0(
-        "QC_FILTERING_RUN=",
-        if (isTRUE(cfg$qc_filtering$run)) "true" else "false"
+      paste0("QC_FILTERING_RUN=", if (isTRUE(cfg$qc_filtering$run)) "true" else "false"),
+      paste0("MANIFEST=", shQuote(cfg$paths$manifest)),
+      paste0("QC_FILTERED_FOLDER=", shQuote(cfg$paths$qc_filtered_folder)),
+      paste0("QC_MIN_QUAL=", shQuote(as.character(cfg$qc_filtering$min_qual))),
+      paste0("QC_MIN_LENGTH_SE=", shQuote(get_min_length("SE"))),
+      paste0("QC_MIN_LENGTH_R1=", shQuote(get_min_length("R1"))),
+      paste0("QC_MIN_LENGTH_R2=", shQuote(get_min_length("R2")))
       ),
-      paste0(
-        "MANIFEST=",
-        shQuote(cfg$paths$manifest)
-      ),
-      paste0(
-        "QC_FILTERED_FOLDER=",
-        shQuote(cfg$paths$qc_filtered_folder)
-      ),
-      paste0(
-        "QC_MIN_QUAL=",
-        shQuote(as.character(cfg$qc_filtering$min_qual))
-      ),
-      paste0(
-        "QC_QUAL_OFFSET=",
-        shQuote(as.character(cfg$qc_filtering$qual_offset))
-      ),
-      paste0(
-        "QC_MIN_LENGTH_SE=",
-        shQuote(get_min_length("SE"))
-      ),
-      paste0(
-        "QC_MIN_LENGTH_R1=",
-        shQuote(get_min_length("R1"))
-      ),
-      paste0(
-        "QC_MIN_LENGTH_R2=",
-        shQuote(get_min_length("R2"))
-      )
-    ),
     cfg$paths$snake$QC_filtering_params_sh
   )
   
-  saveRDS(
-    cfg,
-    cfg$paths$snake$resolved_config_rds
-  )
+  logger::log_info("QC minimum-length mode: {cfg$qc_filtering$min_length_state}")
   
-  yaml::write_yaml(
-    cfg,
-    cfg$paths$snake$resolved_config_yaml
+  logger::log_info(
+    "Resolved QC minimum lengths: {values}",
+    values = paste(
+      paste0(names(resolved_min_lengths), "=", resolved_min_lengths),
+      collapse = ", "
+    )
   )
   
   logger::log_info(
