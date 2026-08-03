@@ -152,11 +152,11 @@ message("Using config file: ", config_path)
 
 config <- yaml::read_yaml(config_path)
 # Priority explicit overrides > Rmd params > config.yaml
-project_setup(
+cfg <- project_setup(
   project_root_dir = project_root_dir,
   config_path = config_path,
-  params = params,
-  use_old_suffix_construction = TRUE
+  setup_mode = "setup",
+  only_one_logger = TRUE
 )
 # The old_suffix is here so I don't run into compatibility issues with already
 # analysed data. Should be removed in the future.

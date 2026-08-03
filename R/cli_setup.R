@@ -109,10 +109,11 @@ log_info(
 manifest <- prepare_fastq_inputs(
   fastq_dir = cfg$paths$input_folder,
   fastq_name_table_file_path = cfg$paths$fastq_name_table_xlsx,
+  bins = cfg$bins,
   output_symlink_dir = cfg$paths$fastq_symlinks_folder,
-  manifest_output_path = cfg$paths$manifest,
-  strict_file_match = cfg$paths$strict_file_match
+  manifest_output_path = cfg$paths$manifest
 )
+cfg$manifest <- manifest
 if (!file.exists(cfg$paths$manifest)) {
   stop("FASTQ manifest was not created: ", cfg$paths$manifest, call. = FALSE)
 }
@@ -122,10 +123,7 @@ log_info("Finished creating symlinks of input files.")
 # ------------------------------------------------------------------------------
 saveRDS(cfg, cfg$paths$snake$resolved_config_rds)
 
-yaml::write_yaml(
-  cfg,
-  cfg$paths$snake$resolved_config_yaml
-)
+yaml::write_yaml(cfg, cfg$paths$snake$resolved_config_yaml)
 
 writeLines(
   paste("Setup finished at", Sys.time()),

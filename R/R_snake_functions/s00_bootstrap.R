@@ -17,6 +17,7 @@ bootstrap_pipeline <- function(project_root_dir) {
     "ggplot2",
     "ggrepel",
     "writexl",
+    "readxl",
     "stringr",
     "ggbreak",
     "yaml",

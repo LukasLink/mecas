@@ -5,17 +5,6 @@
 # -----------------------------------------------------------------------------
 # Helpers for bcwithqc-derived count matrices
 # -----------------------------------------------------------------------------
-.normalise_sublib_to_L <- function(x) {
-  x <- as.character(x)
-  dplyr::case_when(
-    grepl("^L\\d+$", x) ~ x,
-    grepl("^sublib_?\\d+$", x, ignore.case = TRUE) ~ paste0("L", stringr::str_extract(x, "\\d+")),
-    grepl("^ICS\\d+$", x, ignore.case = TRUE) ~ paste0("L", stringr::str_extract(x, "\\d+")),
-    grepl("^\\d+$", x) ~ paste0("L", x),
-    TRUE ~ x
-  )
-}
-
 .prepare_bcwithqc_sgrna_annotation <- function(sgRNA_df) {
   required_cols <- c("seq", "sgrna_id", "sublib")
   missing_cols <- setdiff(required_cols, colnames(sgRNA_df))
@@ -70,8 +59,7 @@
     )
   }
   
-  check_df %>%
-    dplyr::mutate(sublib = .normalise_sublib_to_L(sublib))
+  return(check_df)
 }
 
 .apply_bcwithqc_alignment_checks_and_filter <- function(df,
@@ -185,39 +173,32 @@
     dplyr::select(-sublib, -type)
 }
 
-read_bcwithqc_data <- function(dir_path,
-                               cfg,
-                               sgRNA_df = cfg$merged_sgRNA_df,
-                               sub_lib = NULL,
-                               name = NULL,
-                               check_alignments = TRUE) {
-  if (is.null(name)) {
-    name <- basename(dirname(dir_path))
+read_bcwithqc_data <- function(
+    dir_path,
+    cfg,
+    sgRNA_df = cfg$merged_sgRNA_df,
+    sub_lib,
+    name,
+    check_alignments = TRUE
+) {
+  
+  if (missing(sub_lib) || is.null(sub_lib) || length(sub_lib) != 1 || is.na(sub_lib) || !nzchar(sub_lib)) {
+    stop("`sub_lib` must be provided to `read_bcwithqc_data()`.", call. = FALSE)
   }
   
-  if (is.null(sub_lib)) {
-    sub_lib <- stringr::str_match(name, "^[A-Za-z]+_(L\\d+)_[^_]+$")[, 2]
+  if (missing(name) || is.null(name) || length(name) != 1 || is.na(name) || !nzchar(name)) {
+    stop("`name` must be provided to `read_bcwithqc_data()`.", call. = FALSE)
   }
-  
-  if (is.na(sub_lib) || is.null(sub_lib)) {
-    stop(
-      "Could not infer sublibrary from bcwithqc folder name: ",
-      name,
-      call. = FALSE
-    )
-  }
-  
-  sub_lib <- .normalise_sublib_to_L(sub_lib)
   
   barcodes_path <- file.path(dir_path, "barcodes.tsv.gz")
   matrix_path <- file.path(dir_path, "matrix.mtx.gz")
   
   if (!file.exists(barcodes_path)) {
-    stop("Missing bcwithqc barcode file: ", barcodes_path, call. = FALSE)
+    stop("Missing bcwithqc barcode file for `", name, "`:\n  ", barcodes_path, call. = FALSE)
   }
   
   if (!file.exists(matrix_path)) {
-    stop("Missing bcwithqc matrix file: ", matrix_path, call. = FALSE)
+    stop("Missing bcwithqc matrix file for `", name, "`:\n  ", matrix_path, call. = FALSE)
   }
   
   barcode_seqs <- readr::read_tsv(
@@ -238,9 +219,9 @@ read_bcwithqc_data <- function(dir_path,
   
   if (length(barcode_counts) != length(barcode_seqs)) {
     stop(
-      "bcwithqc barcode/matrix size mismatch in ", name, ": ",
-      length(barcode_seqs), " barcodes but ", length(barcode_counts),
-      " matrix columns.",
+      "bcwithqc barcode/matrix size mismatch in `", name, "`: ",
+      length(barcode_seqs), " barcodes but ",
+      length(barcode_counts), " matrix columns.",
       call. = FALSE
     )
   }
@@ -277,196 +258,214 @@ read_bcwithqc_data <- function(dir_path,
   )
 }
 
-process_bcwithqc_data <- function(cfg,
-                                  parent_dir = cfg$paths$bcwithqc_output_folder,
-                                  merged_sgRNA_df = cfg$merged_sgRNA_df,
-                                  data_type = cfg$counting$data_type,
-                                  skip_list = cfg$skip$files,
-                                  check_alignments = TRUE) {
+process_bcwithqc_data <- function(
+    cfg,
+    parent_dir = cfg$paths$bcwithqc_output_folder,
+    manifest = cfg$manifest,
+    merged_sgRNA_df = cfg$merged_sgRNA_df,
+    data_type = cfg$counting$data_type,
+    skip_list = cfg$skip$files,
+    check_alignments = TRUE
+) {
+  
   if (!(data_type %in% c("reads", "umis"))) {
-    stop("Invalid data_type. data_type must be 'reads' or 'umis'", call. = FALSE)
+    stop("Invalid `data_type`. Expected `reads` or `umis`.", call. = FALSE)
   }
   
   if (!dir.exists(parent_dir)) {
-    stop("bcwithqc_output_folder does not exist: ", parent_dir, call. = FALSE)
+    stop("bcwithqc output folder does not exist:\n  ", parent_dir, call. = FALSE)
   }
   
-  subdirs <- list.dirs(parent_dir, recursive = FALSE, full.names = TRUE)
-  
-  if (length(subdirs) == 0) {
-    logger::log_warn("No bcwithqc sample subdirectories found in: {parent_dir}")
-    return(dplyr::bind_rows(list()))
+  if (!is.data.frame(manifest)) {
+    stop("`manifest` must be a data frame.", call. = FALSE)
   }
   
-  results <- list()
+  required_manifest_columns <- c(
+    "pipeline_name",
+    "bin_name",
+    "sublibrary",
+    "sample"
+  )
   
-  for (dir_path in subdirs) {
-    folder_name <- basename(dir_path)
+  missing_manifest_columns <- setdiff(
+    required_manifest_columns,
+    colnames(manifest)
+  )
+  
+  if (length(missing_manifest_columns) > 0) {
+    stop(
+      "The FASTQ manifest is missing columns required for bcwithqc count import:\n",
+      paste0("  - ", missing_manifest_columns, collapse = "\n"),
+      call. = FALSE
+    )
+  }
+  
+  # Paired-end samples have two manifest rows. At this stage, each pipeline_name
+  # should be represented exactly once.
+  pipeline_manifest <- manifest %>%
+    dplyr::transmute(
+      pipeline_name = trimws(as.character(pipeline_name)),
+      bin_name = trimws(as.character(bin_name)),
+      sublibrary = trimws(as.character(sublibrary)),
+      sample_id = trimws(as.character(sample))
+    ) %>%
+    dplyr::distinct()
+  
+  conflicting_pipeline_names <- pipeline_manifest %>%
+    dplyr::count(pipeline_name, name = "n_metadata_rows") %>%
+    dplyr::filter(n_metadata_rows != 1)
+  
+  if (nrow(conflicting_pipeline_names) > 0) {
+    stop(
+      "Some `pipeline_name` values map to conflicting manifest metadata:\n",
+      paste0(
+        "  - ",
+        conflicting_pipeline_names$pipeline_name,
+        collapse = "\n"
+      ),
+      call. = FALSE
+    )
+  }
+  
+  is_skipped <- vapply(
+    pipeline_manifest$pipeline_name,
+    function(name) {
+      any(vapply(
+        skip_list,
+        function(x) {
+          if (startsWith(x, "re:")) {
+            grepl(sub("^re:", "", x), name, perl = TRUE)
+          } else {
+            identical(x, name)
+          }
+        },
+        logical(1)
+      ))
+    },
+    logical(1)
+  )
+  
+  if (any(is_skipped)) {
+    logger::log_info(
+      "Skipping bcwithqc outputs due to skip list: {paste(pipeline_manifest$pipeline_name[is_skipped], collapse = ', ')}"
+    )
+  }
+  
+  skipped_pipeline_names <- pipeline_manifest$pipeline_name[is_skipped]
+  
+  pipeline_manifest <- pipeline_manifest[!is_skipped, , drop = FALSE]
+  
+  actual_output_dirs <- list.dirs(
+    parent_dir,
+    recursive = FALSE,
+    full.names = FALSE
+  )
+  
+  expected_or_skipped_dirs <- c(
+    pipeline_manifest$pipeline_name,
+    skipped_pipeline_names
+  )
+  
+  unexpected_output_dirs <- setdiff(
+    actual_output_dirs,
+    expected_or_skipped_dirs
+  )
+  
+  if (length(unexpected_output_dirs) > 0) {
+    logger::log_warn(
+      "Ignoring bcwithqc output directories that are not present in the current manifest: {paste(unexpected_output_dirs, collapse = ', ')}"
+    )
+  }
+  
+  results <- vector(
+    mode = "list",
+    length = nrow(pipeline_manifest)
+  )
+  
+  for (i in seq_len(nrow(pipeline_manifest))) {
     
-    matches <- stringr::str_match(folder_name, "^([A-Za-z]+)_(L\\d+)_([^_]+)$")
+    pipeline_name <- pipeline_manifest$pipeline_name[i]
+    bin_name <- pipeline_manifest$bin_name[i]
+    sublibrary <- pipeline_manifest$sublibrary[i]
+    sample_id <- pipeline_manifest$sample_id[i]
     
-    if (any(is.na(matches))) {
-      logger::log_warn(
-        "Skipping bcwithqc folder with unexpected name: {folder_name}. Expected pattern examples: I_L1_1, L_L2_R1, or U_L10_5."
-      )
-      next
-    }
-    
-    name <- folder_name
-    
-    is_skipped <- any(vapply(skip_list, function(x) {
-      if (startsWith(x, "re:")) {
-        grepl(sub("^re:", "", x), name, perl = TRUE)
-      } else {
-        identical(x, name)
-      }
-    }, logical(1)))
-    
-    if (is_skipped) {
-      logger::log_info("{name} skipped due to skip list")
-      next
-    }
-    
-    condition_code <- matches[, 2]
-    sub_lib <- matches[, 3]
-    sample_id <- matches[, 4]
-    
-    condition <- dplyr::case_when(
-      condition_code == "I" ~ "input",
-      condition_code == "L" ~ "lower",
-      condition_code == "U" ~ "upper",
-      TRUE ~ condition_code
+    output_dir <- file.path(
+      parent_dir,
+      pipeline_name
     )
     
-    sublib <- paste0("sublib_", stringr::str_remove(sub_lib, "^L"))
-    sample <- paste0("sample_", sample_id)
-    exp <- stringr::str_replace(name, "^([^_]+_)", "")
-    
-    if (data_type == "umis") {
-      matrix_dir <- file.path(dir_path, "raw_umis_bc_matrix")
-    } else {
-      matrix_dir <- file.path(dir_path, "raw_reads_bc_matrix")
+    if (!dir.exists(output_dir)) {
+      stop(
+        "Expected bcwithqc output directory does not exist for `",
+        pipeline_name,
+        "`:\n  ",
+        output_dir,
+        call. = FALSE
+      )
     }
+    
+    matrix_folder_name <- if (data_type == "umis") {
+      "raw_umis_bc_matrix"
+    } else {
+      "raw_reads_bc_matrix"
+    }
+    
+    matrix_dir <- file.path(
+      output_dir,
+      matrix_folder_name
+    )
     
     if (!dir.exists(matrix_dir)) {
-      logger::log_warn(
-        "Skipping {name}: expected bcwithqc matrix directory does not exist: {matrix_dir}"
+      stop(
+        "Expected bcwithqc matrix directory does not exist for `",
+        pipeline_name,
+        "`:\n  ",
+        matrix_dir,
+        call. = FALSE
       )
-      next
     }
     
-    df <- tryCatch({
-      read_bcwithqc_data(
-        dir_path = matrix_dir,
-        cfg = cfg,
-        sgRNA_df = merged_sgRNA_df,
-        sub_lib = sub_lib,
-        name = name,
-        check_alignments = check_alignments
-      ) %>%
-        dplyr::rename(sgRNA = sgrna_id) %>%
-        dplyr::mutate(
-          condition = condition,
-          sublib = sublib,
-          sample = sample,
-          exp = exp
+    results[[i]] <- tryCatch(
+      {
+        read_bcwithqc_data(
+          dir_path = matrix_dir,
+          cfg = cfg,
+          sgRNA_df = merged_sgRNA_df,
+          sub_lib = sublibrary,
+          name = pipeline_name,
+          check_alignments = check_alignments
+        ) %>%
+          dplyr::rename(sgRNA = sgrna_id) %>%
+          dplyr::mutate(
+            bin_name = .env$bin_name,
+            sublib = .env$sublibrary,
+            sample = .env$sample_id,
+            exp = paste(.env$sublibrary, .env$sample_id, sep = "_")
+          )
+      },
+      error = function(e) {
+        stop(
+          "Failed to import bcwithqc counts for `",
+          pipeline_name,
+          "`:\n",
+          conditionMessage(e),
+          call. = FALSE
         )
-    }, error = function(e) {
-      logger::log_warn(
-        "Skipping bcwithqc folder {folder_name} due to error: {conditionMessage(e)}"
-      )
-      return(NULL)
-    })
-    
-    if (!is.null(df)) {
-      results[[length(results) + 1]] <- df
-    } else {
-      logger::log_warn("{matrix_dir} yielded df -> NULL")
-    }
-  }
-  
-  dplyr::bind_rows(results)
-}
-
-
-normalize_count_df_long <- function(count_df_long,
-                                    norm_method = "control_median",
-                                    return_info = FALSE) {
-  allowed_norm_methods <- c("control_median")
-  
-  if (!(norm_method %in% allowed_norm_methods)) {
-    cat("ERROR: ", norm_method, "is not an allowed normalization method.\n")
-    cat("Implemented normalization methods: ", allowed_norm_methods, "\n")
-    stop()
-  }
-  
-  pseudocount_added <- FALSE
-  
-  if (norm_method == "control_median") {
-    
-    norm_fac <- count_df_long %>%
-      dplyr::filter(group_category %in% c(
-        "targeting_control",
-        "non_targeting_control",
-        "kept_control"
-      )) %>%
-      dplyr::group_by(condition, sublib, sample) %>%
-      dplyr::summarise(norm_factor = median(count), .groups = "drop")
-    
-    med_count <- median(count_df_long$count)
-    
-    count_df_long_continue <- count_df_long
-    
-    if (med_count == 0 | any(norm_fac$norm_factor == 0)) {
-      cat("WARNING: at least one normalization factor is 0\n")
-      cat("Median of all counts:", med_count, "\n")
-      
-      zero_nf <- norm_fac %>%
-        dplyr::filter(norm_factor == 0)
-      
-      if (!(nrow(zero_nf) == 0)) {
-        cat("Groups with norm_factor == 0:\n")
-        print(norm_fac)
-        cat("Adding global pseudocount (+1).\n")
-        
-        pseudocount_added <- TRUE
-        
-        count_df_long_plus_one <- count_df_long %>%
-          dplyr::mutate(count = count + 1)
-        
-        norm_fac <- count_df_long_plus_one %>%
-          dplyr::filter(group_category %in% c(
-            "targeting_control",
-            "non_targeting_control",
-            "kept_control"
-          )) %>%
-          dplyr::group_by(condition, sublib, sample) %>%
-          dplyr::summarise(norm_factor = median(count), .groups = "drop")
-        
-        med_count <- median(count_df_long_plus_one$count)
-        
-        count_df_long_continue <- count_df_long_plus_one
       }
-      
-      cat("--------------------------------------------\n")
-    }
-    
-    return_df <- count_df_long_continue %>%
-      dplyr::inner_join(norm_fac, by = c("condition", "sublib", "sample")) %>%
-      dplyr::mutate(norm_count = (count * med_count) / norm_factor) %>%
-      dplyr::mutate(count = round(norm_count, 2)) %>%
-      dplyr::select(-c(norm_factor, norm_count))
+    )
   }
   
-  return_df <- return_df %>%
-    dplyr::mutate(count = round(count))
+  count_df_long <- dplyr::bind_rows(results)
   
-  if (isTRUE(return_info)) {
-    return(list(
-      count_df_long = return_df,
-      pseudocount_added = pseudocount_added
-    ))
+  if (nrow(count_df_long) == 0) {
+    stop(
+      "No bcwithqc count data were imported from:\n  ",
+      parent_dir,
+      call. = FALSE
+    )
   }
   
-  return(return_df)
+  count_df_long
 }
+
+

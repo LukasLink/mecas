@@ -44,7 +44,7 @@ get_count_df_long_and_make_coverage_file <- function(cfg){
   }
   
   #-----------------------------------------------------------------------------
-  # Optional: combine samples or sublibraries of the same condition
+  # Optional: combine samples or sublibraries of the same bin_name
   #-----------------------------------------------------------------------------
   
   combine_for_guide_stats <- cfg$replicates$combine_for_guide_stats %||% ""
@@ -55,28 +55,34 @@ get_count_df_long_and_make_coverage_file <- function(cfg){
     if (identical(combine_for_guide_stats, "sample")) {
       log_info("Combining Samples for MAUDE guide stat calculation. Saving pre-combining counts to {pre_combining_fpath}")
       saveRDS(count_df_long, pre_combining_fpath)
+      
       count_df_long <- count_df_long %>%
-        dplyr::group_by(sgRNA, sublib, condition) %>%
+        dplyr::group_by(sgRNA, sublib, bin_name) %>%
         dplyr::summarise(
-          sample = "sample_1",
           count = sum(count, na.rm = TRUE),
-          exp = dplyr::first(exp),
           group_category = dplyr::first(group_category),
           .groups = "drop"
+        ) %>%
+        dplyr::mutate(
+          sample = "combined_samples",
+          exp = paste(sublib, sample, sep = "_")
         )
     }
     
     if (identical(combine_for_guide_stats, "sublib")) {
       log_info("Combining Sublibraries for MAUDE guide stat calculation. Saving pre-combining counts to {pre_combining_fpath}")
       saveRDS(count_df_long, pre_combining_fpath)
+      
       count_df_long <- count_df_long %>%
-        dplyr::group_by(sgRNA, sample, condition) %>%
+        dplyr::group_by(sgRNA, sample, bin_name) %>%
         dplyr::summarise(
-          sublib = "sublib_1",
           count = sum(count, na.rm = TRUE),
-          exp = dplyr::first(exp),
           group_category = dplyr::first(group_category),
           .groups = "drop"
+        ) %>%
+        dplyr::mutate(
+          sublib = "combined_sublibraries",
+          exp = paste(sublib, sample, sep = "_")
         )
     }
   }
@@ -98,7 +104,7 @@ get_count_df_long_and_make_coverage_file <- function(cfg){
     dplyr::mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
   
   targeting_by_group <- count_df_long %>%
-    dplyr::group_by(condition, sublib, sample) %>%
+    dplyr::group_by(bin_name, sublib, sample) %>%
     dplyr::summarise(
       total_counts = sum(count, na.rm = TRUE),
       targeting_counts = sum(count[group_category == "targeting"], na.rm = TRUE),

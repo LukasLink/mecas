@@ -6,17 +6,42 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
                                        cfg) {
   logger::log_info("Preparing Data for MAUDE...")
   
-  pseudocount_added <- FALSE
+  pseudocount_already_added <- FALSE
   check_all_bins_present(count_df_long = count_df_long, cfg = cfg)
   #-----------------------------------------------------------------------------
   # Optional: subsample controls
   #-----------------------------------------------------------------------------
   
-  if (isTRUE(cfg$normalization$subsample_controls)) {
+  if (isTRUE(cfg$controls$subsample_controls)) {
     count_df_long <- subsample_controls_func(
       count_df_long = count_df_long,
       cfg = cfg
     )
+  }
+  #-----------------------------------------------------------------------------
+  # Optional: strict mode
+  #-----------------------------------------------------------------------------
+  
+  if (isTRUE(cfg$filtering$strict_mode)) {
+    logger::log_info("Strict mode enabled.")
+    logger::log_info("Rows before strict mode: {nrow(count_df_long)}")
+    
+    n_groups_before <- count_df_long %>%
+      dplyr::distinct(sgRNA, sublib, sample) %>%
+      nrow()
+    
+    count_df_long <- count_df_long %>%
+      dplyr::group_by(sgRNA, sublib, sample) %>%
+      dplyr::filter(all(count > 0)) %>%
+      dplyr::ungroup()
+    
+    n_groups_after <- count_df_long %>%
+      dplyr::distinct(sgRNA, sublib, sample) %>%
+      nrow()
+    
+    logger::log_info("Guide-experiment groups before strict mode: {n_groups_before}")
+    logger::log_info("Guide-experiment groups after strict mode: {n_groups_after}")
+    logger::log_info("Rows after strict mode: {nrow(count_df_long)}")
   }
   
   #-----------------------------------------------------------------------------
@@ -40,7 +65,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
     )
     
     count_df_long <- norm_result$count_df_long
-    pseudocount_added <- norm_result$pseudocount_added
+    pseudocount_already_added <- norm_result$pseudocount_already_added
   }
   
   #-----------------------------------------------------------------------------
@@ -49,8 +74,10 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
   
   maude_counts_df <- count_df_long_to_wide(
     count_df_long = count_df_long,
+    bins = cfg$bins,
     print = FALSE,
     drop_0s = cfg$filtering$drop_0s,
+    pseudocount_already_added = pseudocount_already_added,
     recover_input = cfg$normalization$recover_input
   )
   
@@ -87,23 +114,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
       dplyr::mutate(exp = sublib)
   }
   
-  #-----------------------------------------------------------------------------
-  # Optional: strict mode
-  #-----------------------------------------------------------------------------
-  
-  if (isTRUE(cfg$filtering$strict_mode)) {
-    umi_threshold <- if (isTRUE(pseudocount_added)) 2 else 1
-    
-    cat("Strict Mode enabled\n")
-    cat("Rows before strict mode:\t", nrow(maude_counts_df), "\n")
-    
-    maude_counts_df <- maude_counts_df %>%
-      dplyr::filter(
-        dplyr::if_any(c(input, upper, lower), ~ . <= umi_threshold)
-      )
-    
-    cat("Rows after strict mode:\t", nrow(maude_counts_df), "\n")
-  }
+
   
   #-----------------------------------------------------------------------------
   # Optional: control handling
@@ -127,6 +138,8 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
   }
   
   logger::log_info("Finished preparing Data for MAUDE.")
+  maude_counts_df_fpath <- file.path(cfg$paths$rds_output_folder, "MAUDE_ready_count_df.rds")
+  logger::log_info("Saving MAUDE ready dataframe to: {maude_counts_df_fpath}")
   
   return(maude_counts_df)
 }

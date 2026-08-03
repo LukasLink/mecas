@@ -5,8 +5,8 @@
 run_MAUDE <- function(maude_counts_df,
                       cfg,
                       file_suffix = cfg$suffix$file_suffix,
-                      run_maude_stage,
-                      run_plots_stage) {
+                      run_maude_stage = TRUE,
+                      run_plots_stage = FALSE) {
   
   maude_gene_stats_fpath <- file.path(
     cfg$paths$rds_output_folder,
@@ -20,38 +20,26 @@ run_MAUDE <- function(maude_counts_df,
   
   unique_exp <- unique(maude_counts_df$exp)
   
-  # Define bin stats
-  lower_bin_end <- cfg$normalization$upper_lower_percentage
-  upper_bin_start <- 1 - cfg$normalization$upper_lower_percentage
+  # Define binStats
+  binStats <- get_binStats(bins = cfg$bins, experiments = unique_exp)
   
-  maude_bins <- tibble::tibble(
-    Bin = rep(c("upper", "lower"), length(unique_exp)),
-    exp = rep(unique_exp, each = 2),
-    binStartQ = ifelse(
-      rep(c("upper", "lower"), length(unique_exp)) == "lower",
-      0.001,
-      upper_bin_start
-    ),
-    binEndQ = ifelse(
-      rep(c("upper", "lower"), length(unique_exp)) == "lower",
-      lower_bin_end,
-      0.999
-    ),
-    fraction = binEndQ - binStartQ,
-    binStartZ = stats::qnorm(binStartQ),
-    binEndZ = stats::qnorm(binEndQ)
-  ) %>%
-    dplyr::select(Bin, binStartQ, binEndQ, fraction, binStartZ, binEndZ, exp) %>%
-    as.data.frame()
+  sorted_bin_names <- cfg$bins %>%
+    dplyr::filter(sorted_or_unsorted == "sorted") %>%
+    dplyr::arrange(bin_fraction_min, bin_fraction_max) %>%
+    dplyr::pull(bin_name)
+  
+  unsorted_bin_name <- cfg$bins %>%
+    dplyr::filter(sorted_or_unsorted == "unsorted") %>%
+    dplyr::pull(bin_name)
   
   if (isTRUE(run_maude_stage)) {
     
     maude_guide_stats <- findGuideHitsAllScreens(
       experiments = unique(maude_counts_df["exp"]),
       countDataFrame = maude_counts_df,
-      binStats = maude_bins,
-      sortBins = c("lower", "upper"),
-      unsortedBin = "input",
+      binStats = binStats,
+      sortBins = sorted_bin_names,
+      unsortedBin = unsorted_bin_name,
       negativeControl = "isNontargeting"
     )
     
@@ -65,7 +53,7 @@ run_MAUDE <- function(maude_counts_df,
     maude_guide_stats <- readRDS(maude_guide_stats_fpath)
     
   } else {
-    stop_log("This should never trigger, check start_with processing.")
+    stop_log("This should never trigger, check run_MAUDE.")
   }
   
   if (isTRUE(run_maude_stage)) {
@@ -146,7 +134,7 @@ run_MAUDE <- function(maude_counts_df,
   invisible(list(
     maude_guide_stats = maude_guide_stats,
     maude_gene_stats = maude_gene_stats,
-    maude_bins = maude_bins,
+    maude_bins = binStats,
     maude_guide_stats_fpath = maude_guide_stats_fpath,
     maude_gene_stats_fpath = maude_gene_stats_fpath
   ))

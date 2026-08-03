@@ -10,32 +10,29 @@
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/paired_end_infer"
-  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim"
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test"
+  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim"
   # output_folder: "/scratch/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
   
   # Mandatory input directory for fastq files
-  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial"
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/tiny_test_set_se"
+  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial"
+  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/tiny_test_set_pe_input_only"
   # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/QC_filtered"
 
   # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
   # See 'library_formatting_requirements.txt' 
-  library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds"
+  library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds"
+  # library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds"
   
   # Mandatory bcwithqc config.yaml path
-  # bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
-  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_CM_specific_library.json"
+  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
+  # bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_CM_specific_library.json"
   
   # Optional but recommended input_fastq_name_parser.xlsx
   # For matching file names to pipeline specific names.
   # fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/input_fastq_name_table_template.xlsx"
-  fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/library/input_fastq_name_table_pe_test.xlsx"
-  # strict_file_match: true
-  #   -> Every file in fastq_name_table_xlsx needs a match in input_folder 
-  # strict_file_match: false
-  #   -> Pipeline will process only files named in fastq_name_table_xlsx and ignore the rest. 
-  strict_file_match: true 
+  fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/library/input_fastq_name_table_template_plus_bins.xlsx"
 
 # ------------------------------------------------------------------------------
 # Read counting settings
@@ -46,7 +43,7 @@ counting:
   # Allowed values:
   #   - "reads"
   #   - "umis"
-  data_type: "umis"
+  data_type: "reads"
  
 # ------------------------------------------------------------------------------
 # QC filtering with cutadapt
@@ -95,13 +92,13 @@ controls:
   # any gene that matches an entry in include_controls will be treated as 
   # targeting, even if it is a control. 
   include_controls:
-    # - "EGFP"
-    # - "AAVS1_9"
-    # - "AAVS1_13"
-    # - "AAVS1_18"
-    # - "AAVS1_19"
-    # - "AAVS1_25"
-    # - "AAVS1_35"
+    - "EGFP"
+    - "AAVS1_9"
+    - "AAVS1_13"
+    - "AAVS1_18"
+    - "AAVS1_19"
+    - "AAVS1_25"
+    - "AAVS1_35"
 
   # Optional: restrict analysis to use only specified controls.
   use_only_these_controls: []

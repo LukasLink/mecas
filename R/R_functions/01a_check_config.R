@@ -548,9 +548,9 @@
     .validate_file_path(
       option,
       name,
-      required = FALSE,
-      must_exist = FALSE,
-      allow_empty = TRUE
+      required = TRUE,
+      must_exist = TRUE,
+      allow_empty = FALSE
     )
   },
   
@@ -562,15 +562,6 @@
       must_exist = TRUE,
       allow_empty = FALSE
     )
-  },
-  
-  "paths.strict_file_match" = function(option, name) {
-    .validate_logical(option, name)
-  },
-  
-  # Files
-  "files.strict_file_match" = function(option, name) {
-    .validate_logical(option, name)
   },
 
   # QC filtering

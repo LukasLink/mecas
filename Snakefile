@@ -36,6 +36,57 @@ BCWITHQC_CONFIG = config["paths"]["bcwithqc_config_path"]
 #   - read is empty for single-end, or R1/R2 for paired-end
 #   - fastq_id uniquely identifies an individual FASTQ file
 #-------------------------------------------------------------------------------
+
+BCWITHQC_DATA_TYPE = str(
+    config.get("counting", {}).get("data_type", "reads")
+).lower()
+
+if BCWITHQC_DATA_TYPE not in {"reads", "umis"}:
+    raise ValueError(
+        "config counting.data_type must be either 'reads' or 'umis', "
+        f"found: {BCWITHQC_DATA_TYPE!r}"
+    )
+
+
+BCWITHQC_READ_MATRIX_OUTPUTS = [
+    os.path.join(
+        BCWITHQC_OUTPUT_FOLDER,
+        "{sample}",
+        "raw_reads_bc_matrix",
+        filename,
+    )
+    for filename in (
+        "barcodes.tsv.gz",
+        "features.tsv.gz",
+        "matrix.mtx.gz",
+    )
+]
+
+
+BCWITHQC_UMI_MATRIX_OUTPUTS = [
+    os.path.join(
+        BCWITHQC_OUTPUT_FOLDER,
+        "{sample}",
+        "raw_umis_bc_matrix",
+        filename,
+    )
+    for filename in (
+        "barcodes.tsv.gz",
+        "features.tsv.gz",
+        "matrix.mtx.gz",
+    )
+]
+
+
+BCWITHQC_REQUIRED_MATRIX_OUTPUTS = list(
+    BCWITHQC_READ_MATRIX_OUTPUTS
+)
+
+if BCWITHQC_DATA_TYPE == "umis":
+    BCWITHQC_REQUIRED_MATRIX_OUTPUTS.extend(
+        BCWITHQC_UMI_MATRIX_OUTPUTS
+    )
+
 def read_fastq_manifest():
     manifest_path = str(checkpoints.setup.get().output.manifest)
 
@@ -246,18 +297,27 @@ def get_qc_filter_se_runtime(wildcards, input):
 def get_qc_filter_pe_runtime(wildcards, input):
     return estimate_qc_filter_runtime([input.fastq_r1, input.fastq_r2])
   
-def get_bcwithqc_runtime(wildcards, input):
-    fastq_size_gb = sum(
-        os.path.getsize(str(path))
-        for path in input.fastqs
-    ) / (1024 ** 3)
+def get_bcwithqc_preprocess_runtime(wildcards, input):
+    with open(str(input.read_count), "r") as handle:
+        retained_read_pairs = int(handle.read().strip())
 
-    estimated_minutes = 240 + fastq_size_gb * 30
+    read_pairs_million = retained_read_pairs / 1_000_000
 
-    return min(
-        10080,  # maximum 7 days
-        max(300, math.ceil(estimated_minutes))
-    )
+    estimated_minutes = 180 + 5 * read_pairs_million
+
+    return max(300, math.ceil(estimated_minutes))
+
+
+def get_bcwithqc_count_runtime(wildcards, input):
+    with open(str(input.read_count), "r") as handle:
+        retained_read_pairs = int(handle.read().strip())
+
+    read_pairs_million = retained_read_pairs / 1_000_000
+
+    estimated_minutes = 300 + 15 * read_pairs_million
+
+    return max(300, math.ceil(estimated_minutes))
+    
 #-------------------------------------------------------------------------------
 # SNAKEMAKE RULES
 #-------------------------------------------------------------------------------
@@ -356,14 +416,37 @@ rule QC_filter_SE_worker:
           mkdir -p "$(dirname "{output.report}")"
           mkdir -p "$(dirname "{output.read_count}")"
 
-          if [[ "{input.fastq}" == *.gz ]]; then
-            ln -sf "$(realpath "{input.fastq}")" "{output.fastq}"
-          else
-            gzip -c "{input.fastq}" > "{output.fastq}"
-          fi
+          count_fastq_records() {{
+            local fastq="$1"
+            local line_count
 
-          printf '%s\n' '{{"qc_filtering_run": false, "read_counts": {{"output": null}}}}' > "{output.report}"
-          printf 'NA\n' > "{output.read_count}"
+            if [[ "$fastq" == *.gz ]]; then
+              line_count="$(gzip -cd -- "$fastq" | wc -l)"
+            else
+              line_count="$(wc -l < "$fastq")"
+            fi
+
+            if (( line_count % 4 != 0 )); then
+              echo "ERROR: FASTQ line count is not divisible by four: $fastq" >&2
+              echo "Observed line count: $line_count" >&2
+              exit 1
+            fi
+
+            printf '%s\n' "$((line_count / 4))"
+          }}
+
+          read_count="$(count_fastq_records "{input.fastq}")"
+
+          printf '%s\n' "$read_count" > "{output.read_count}"
+
+          printf \
+            '{{"qc_filtering_run": false, "read_counts": {{"input": %s, "output": %s}}}}\n' \
+            "$read_count" \
+            "$read_count" \
+            > "{output.report}"
+
+          echo "QC filtering disabled."
+          echo "Input/retained reads: $read_count"
         fi
 
         test -e "{output.fastq}"
@@ -430,8 +513,45 @@ rule QC_filter_PE_worker:
             gzip -c "{input.fastq_r2}" > "{output.fastq_r2}"
           fi
 
-          printf '%s\n' '{{"qc_filtering_run": false, "read_counts": {{"output": null}}}}' > "{output.report}"
-          printf 'NA\n' > "{output.read_count}"
+          count_fastq_records() {{
+            local fastq="$1"
+            local line_count
+
+            if [[ "$fastq" == *.gz ]]; then
+              line_count="$(gzip -cd -- "$fastq" | wc -l)"
+            else
+              line_count="$(wc -l < "$fastq")"
+            fi
+
+            if (( line_count % 4 != 0 )); then
+              echo "ERROR: FASTQ line count is not divisible by four: $fastq" >&2
+              echo "Observed line count: $line_count" >&2
+              exit 1
+            fi
+
+            printf '%s\n' "$((line_count / 4))"
+          }}
+
+          r1_count="$(count_fastq_records "{input.fastq_r1}")"
+          r2_count="$(count_fastq_records "{input.fastq_r2}")"
+
+          if [[ "$r1_count" -ne "$r2_count" ]]; then
+            echo "ERROR: Paired FASTQ files contain different numbers of reads" >&2
+            echo "R1: $r1_count" >&2
+            echo "R2: $r2_count" >&2
+            exit 1
+          fi
+
+          printf '%s\n' "$r1_count" > "{output.read_count}"
+
+          printf \
+            '{{"qc_filtering_run": false, "read_counts": {{"input": %s, "output": %s}}}}\n' \
+            "$r1_count" \
+            "$r1_count" \
+            > "{output.report}"
+
+          echo "QC filtering disabled."
+          echo "Input/retained read pairs: $r1_count"
         fi
 
         test -e "{output.fastq_r1}"
@@ -515,22 +635,21 @@ rule prepare_bcwithqc_input:
         touch "{output.done}"
         """
 
-rule bcwithqc_worker:
+rule bcwithqc_preprocess:
     input:
         prepared = os.path.join(STATE_DIR, "bcwithqc_input_done", "{sample}.done"),
         preparation_done=os.path.join(STATE_DIR, "04_prepare_bcwithqc_input.done"),
-        fastqs = get_qc_fastqs_for_sample
+        fastqs = get_qc_fastqs_for_sample,
+        read_count = get_qc_read_count_for_sample
     output:
-        done = os.path.join(STATE_DIR, "bcwithqc_done", "{sample}.done")
+        done = os.path.join(STATE_DIR, "bcwithqc_preprocess_done", "{sample}.done")
     params:
         input_dir = lambda wc: os.path.join(BCWITHQC_INPUT_FOLDER, wc.sample),
         output_dir = lambda wc: os.path.join(BCWITHQC_OUTPUT_FOLDER, wc.sample)
     threads: 10
     resources:
-        # mem_mb = 40000,
-        # runtime = 2400,
-        mem_mb = 60000,
-        runtime = get_bcwithqc_runtime,
+        mem_mb = 10000,
+        runtime = get_bcwithqc_preprocess_runtime,
         constraint = "avx512"
     shell:
         r"""
@@ -557,9 +676,37 @@ rule bcwithqc_worker:
           find "{params.output_dir}" -maxdepth 2 -type f >&2
           exit 1
         fi
-
-        bam_file="${{bam_files[0]}}"
-
+        
+        mkdir -p "$(dirname "{output.done}")"
+        touch "{output.done}"
+        """
+        
+rule bcwithqc_count:
+    input:
+        preprocess_done = os.path.join(STATE_DIR, "bcwithqc_preprocess_done", "{sample}.done"),
+        read_count = get_qc_read_count_for_sample
+    output:
+        done = os.path.join(STATE_DIR, "bcwithqc_done", "{sample}.done"),
+        matrices = BCWITHQC_REQUIRED_MATRIX_OUTPUTS
+    params:
+        output_dir = lambda wc: os.path.join(BCWITHQC_OUTPUT_FOLDER, wc.sample)
+    threads: 10
+    resources:
+        mem_mb = 40000,
+        runtime = get_bcwithqc_count_runtime,
+        constraint = "avx512"
+    shell:
+        r"""
+        unset PYTHONPATH
+        unset PYTHONHOME
+        export PYTHONNOUSERSITE=1
+        
+        # Snakemake may create the parent directories of declared outputs.
+        # bcwithqc incorrectly interprets their existence as completed matrices.
+        rm -rf \
+          "{params.output_dir}/raw_reads_bc_matrix" \
+          "{params.output_dir}/raw_umis_bc_matrix"
+          
         bcwithqc count \
           "{params.output_dir}" \
           --STAR-output-dir="{params.output_dir}" \
@@ -570,7 +717,7 @@ rule bcwithqc_worker:
 
         mkdir -p "$(dirname "{output.done}")"
         touch "{output.done}"
-        """
+        """     
         
 rule bcwithqc:
     input:

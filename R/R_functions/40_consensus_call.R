@@ -33,7 +33,8 @@ run_consensus_call <- function(maude_counts_df,
     )
   }
   
-  logger::log_info("Finished MAUDE replicate runs. Starting high-confidence consensus call.")
+  logger::log_info("Finished MAUDE replicate runs.")
+  logger::log_info("Starting high-confidence consensus call.")
   
   high_confidence_hits <- automate_calc_replicate_comparison(
     cfg = cfg,
@@ -103,12 +104,19 @@ run_consensus_call <- function(maude_counts_df,
   writexl::write_xlsx(explorative_hits$Hits_in_X_df, explorative_xlsx)
   saveRDS(explorative_hits$Hits_in_X_df, explorative_rds)
   
-  logger::log_info("Saved high-confidence hits to: {high_confidence_xlsx}")
-  logger::log_info("Saved explorative hits to: {explorative_xlsx}")
+  logger::log_info("Saving high-confidence hits to: {high_confidence_xlsx}")
+  logger::log_info("Saving explorative hits to: {explorative_xlsx}")
+  
+  replicate_means_xlsx <- file.path(cfg$paths$results_output_folder, "Mean_hits.xlsx")
+  replicate_means_rds <- file.path(cfg$paths$rds_output_folder, "Mean_hits.rds")
   
   logger::log_info("Calculating replicate means.")
   
   replicate_means <- automate_calc_replicate_means(cfg = cfg)
+  
+  writexl::write_xlsx(replicate_means, replicate_means_xlsx)
+  saveRDS(replicate_means, replicate_means_rds)
+  logger::log_info("Saving mean hits to: {replicate_means_xlsx}")
   
   logger::log_info("Finished consensus calling.")
   

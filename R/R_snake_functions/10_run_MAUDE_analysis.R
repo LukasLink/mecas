@@ -37,7 +37,7 @@ run_MAUDE_analysis <- function(cfg){
     cfg = cfg,
     file_suffix = cfg$suffix$file_suffix,
     run_maude_stage = TRUE,
-    run_plots_stage = TRUE
+    run_plots_stage = FALSE
   )
   
   # Export MAUDE results + combine replicates

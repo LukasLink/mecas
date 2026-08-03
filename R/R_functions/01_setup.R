@@ -13,6 +13,7 @@ cran_packages <- c(
   "ggplot2",
   "ggrepel",
   "writexl",
+  "readxl",
   "stringr",
   "ggbreak",
   "yaml",
@@ -267,16 +268,12 @@ log_project_setup <- function(cfg) {
   logger::log_info("==========================================================")
   logger::log_info("Project setup options")
   logger::log_info("==========================================================")
-
-  logger::log_info("setup_mode:                        {cfg$run$setup_mode}")
-  logger::log_info("----------------------------------------------------------")
   
   logger::log_info("output_folder:                     {cfg$paths$output_folder}")
   logger::log_info("input_folder:                      {cfg$paths$input_folder}")
   logger::log_info("library_path:                      {cfg$paths$library_path}")
   logger::log_info("bcwithqc_config_path:              {cfg$paths$bcwithqc_config_path}")
   logger::log_info("fastq_name_table_xlsx:             {cfg$paths$fastq_name_table_xlsx}")
-  logger::log_info("strict_file_match:                 {cfg$paths$strict_file_match}")
   logger::log_info("----------------------------------------------------------")
 
   logger::log_info("skip_list:                         {paste(cfg$skip$files, collapse = ', ')}")
@@ -397,10 +394,6 @@ project_setup <- function(project_root_dir,
     bcwithqc_config_path = check_input(
       config$paths$bcwithqc_config_path %||% "",
       "paths.bcwithqc_config_path"
-    ),
-    strict_file_match = check_input(
-      config$paths$strict_file_match %||% TRUE,
-      "paths.strict_file_match"
     )
   )
   
@@ -764,6 +757,12 @@ project_setup <- function(project_root_dir,
     initialize_pipeline_logger(cfg$paths$log_files[[setup_mode]])
   }
   
+  #=============================================================================
+  # Load bins
+  #=============================================================================
+  cfg$bins <- validate_bins(
+    fastq_name_table_xlsx = cfg$paths$fastq_name_table_xlsx
+  )
   #=============================================================================
   # Load library
   #=============================================================================
