@@ -43,43 +43,18 @@ plot_violin_by_sublib_sample <- function(count_df_long,
     sublib_val <- unique_groups$sublib[i]
     sample_val <- unique_groups$sample[i]
     
-    title <- paste0(
-      "L",
-      sub("sublib_", "", sublib_val),
-      "_",
-      sub("sample_", "", sample_val)
-    )
-    
     df_subset <- df %>%
       dplyr::filter(sublib == sublib_val, sample == sample_val)
     
     df_subset <- df_subset %>%
       dplyr::rename(Type = group_type) %>% 
-      dplyr::group_by(Type, condition) %>%
+      dplyr::group_by(Type, bin_name) %>%
       dplyr::filter(dplyr::n() > 0) %>%
       dplyr::ungroup()
     
-    targeting_conds <- df_subset %>%
-      dplyr::filter(Type == "targeting") %>%
-      dplyr::pull(condition) %>%
-      unique() %>%
-      head(3)
-    
-    nontargeting_conds <- df_subset %>%
-      dplyr::filter(Type == "non-targeting") %>%
-      dplyr::pull(condition) %>%
-      unique() %>%
-      head(3)
-    
-    df_filtered <- df_subset %>%
-      dplyr::filter(
-        (Type == "targeting" & condition %in% targeting_conds) |
-          (Type == "non-targeting" & condition %in% nontargeting_conds)
-      )
-    
     p <- ggplot2::ggplot(
-      df_filtered,
-      ggplot2::aes(x = condition, y = count, fill = Type)
+      df_subset,
+      ggplot2::aes(x = bin_name, y = count, fill = Type)
     ) +
       ggplot2::geom_violin(trim = FALSE, scale = "width") +
       ggplot2::labs(
@@ -96,60 +71,26 @@ plot_violin_by_sublib_sample <- function(count_df_long,
   return(plot_list)
 }
 
-get_grouped_summary_wide <- function(count_df_long, stat = c("median", "mean")) {
-  stat <- match.arg(stat)  # ensure valid input
+get_grouped_summary_wide <- function(count_df_long,
+                                     stat = c("median", "mean")) {
   
-  # Define function to apply
+  stat <- match.arg(stat)
+  
   summary_fun <- switch(
     stat,
     median = function(x) median(x, na.rm = TRUE),
     mean = function(x) round(mean(x, na.rm = TRUE), 2)
   )
   
-  # Assign group_type via exact matching
-  count_df_long <- count_df_long %>%
-    mutate(group_type = ifelse(group_category == "targeting", "targeting", "non-targeting"))
-  
-  unique_groups <- count_df_long %>%
-    distinct(sublib, sample)
-  
-  summary_rows <- list()
-  
-  for (i in 1:nrow(unique_groups)) {
-    sublib_i <- unique_groups$sublib[i]
-    sample_i <- unique_groups$sample[i]
-    
-    df_sub <- count_df_long %>%
-      filter(sublib == sublib_i, sample == sample_i)
-    
-    for (grp in c("targeting", "non-targeting")) {
-      df_grp <- df_sub %>%
-        filter(group_type == grp)
-      
-      # Take up to 3 sorted conditions
-      conds <- sort(unique(df_grp$condition))[1:min(3, length(unique(df_grp$condition)))]
-      
-      # Calculate summary values (median or mean)
-      summaries <- df_grp %>%
-        filter(condition %in% conds) %>%
-        group_by(condition) %>%
-        summarise(val = summary_fun(count), .groups = "drop") %>%
-        arrange(condition)
-      
-      values <- c(summaries$val, rep(NA, 3 - nrow(summaries)))
-      names(values) <- c("condition_lower", "condition_middle", "condition_upper")[1:length(values)]
-      
-      row <- tibble(
-        group_id = paste(sublib_i, sample_i, grp, sep = "_"),
-        !!!as.list(values)
-      )
-      
-      summary_rows[[length(summary_rows) + 1]] <- row
-    }
-  }
-  
-  summary_df <- bind_rows(summary_rows)
-  return(summary_df)
+  count_df_long %>%
+    dplyr::mutate(
+      group_type = ifelse( group_category == "targeting", "targeting", "non-targeting")
+    ) %>%
+    dplyr::group_by(sublib, sample, group_type, bin_name) %>%
+    dplyr::summarise(value = summary_fun(count), .groups = "drop") %>%
+    tidyr::pivot_wider(names_from = bin_name, values_from = value) %>%
+    dplyr::mutate(group_id = paste(sublib, sample, group_type, sep = "_")) %>%
+    dplyr::select(group_id, dplyr::everything(), -sublib, -sample, -group_type)
 }
 
 plot_violin_by_group_category_split_by_sublib <- function(df,
@@ -190,17 +131,17 @@ plot_violin_by_group_category_split_by_sublib <- function(df,
       if (include_targeting) group_category == "targeting"
       else group_category != "targeting"
     ) %>%
-    dplyr::mutate(group = interaction(condition, exp, drop = TRUE))
+    dplyr::mutate(group = interaction(bin_name, exp, drop = TRUE))
   
   count_summary <- filtered_df %>%
-    dplyr::group_by(condition, exp) %>%
+    dplyr::group_by(bin_name, exp) %>%
     dplyr::summarise(
       total_count = sum(count),
       mean_count = round(mean(count), 1),
       sd_count = round(stats::sd(count), 1),
       .groups = "drop"
     ) %>%
-    dplyr::mutate(group = interaction(condition, exp, drop = TRUE))
+    dplyr::mutate(group = interaction(bin_name, exp, drop = TRUE))
   
   plots <- list()
   
@@ -208,21 +149,21 @@ plot_violin_by_group_category_split_by_sublib <- function(df,
     sub_df <- filtered_df %>%
       dplyr::filter(sublib == sublib_name)
     
-    x_levels <- levels(interaction(sub_df$condition, sub_df$exp, drop = TRUE))
+    x_levels <- levels(interaction(sub_df$bin_name, sub_df$exp, drop = TRUE))
     
     label_df <- count_summary %>%
       dplyr::filter(
-        interaction(condition, exp, drop = TRUE) %in%
-          unique(interaction(sub_df$condition, sub_df$exp, drop = TRUE))
+        interaction(bin_name, exp, drop = TRUE) %in%
+          unique(interaction(sub_df$bin_name, sub_df$exp, drop = TRUE))
       ) %>%
       dplyr::mutate(
-        group_fac = factor(interaction(condition, exp, drop = TRUE), levels = x_levels),
+        group_fac = factor(interaction(bin_name, exp, drop = TRUE), levels = x_levels),
         x_center = as.numeric(group_fac)
       )
     
     p <- ggplot2::ggplot(
       sub_df,
-      ggplot2::aes(x = interaction(condition, exp), y = count)
+      ggplot2::aes(x = interaction(bin_name, exp), y = count)
     ) +
       ggplot2::geom_violin(
         fill = viol_col,
@@ -297,7 +238,7 @@ generate_all_violin_plots_and_summaries <- function(df,
                                                     non_targeting = FALSE,
                                                     summary_df = FALSE,
                                                     y_limit = 60) {
-  if (targeting == TRUE) {
+  if (isTRUE(targeting)) {
     targeting_results <- plot_violin_by_group_category_split_by_sublib(
       df,
       cfg = cfg,
@@ -319,7 +260,7 @@ generate_all_violin_plots_and_summaries <- function(df,
     }
   }
   
-  if (non_targeting == TRUE) {
+  if (isTRUE(non_targeting)) {
     non_targeting_results <- plot_violin_by_group_category_split_by_sublib(
       df,
       cfg = cfg,

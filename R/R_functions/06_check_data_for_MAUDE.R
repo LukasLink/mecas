@@ -1,31 +1,47 @@
-plot_maude_qc <- function(maude_counts_df, print = TRUE, add_0s = FALSE) {
+plot_maude_qc <- function(maude_counts_df, cfg, print = TRUE, add_0s = FALSE) {
+  
+  all_bins <- cfg$bins$bin_name
+  
+  sorted_bins <- cfg$bins %>%
+    dplyr::filter(sorted_or_unsorted == "sorted") %>%
+    dplyr::pull(bin_name)
   
   if (isTRUE(add_0s)) {
     maude_counts_df <- maude_counts_df %>%
-      mutate(
-        upper = ifelse(is.na(upper), 0, upper),
-        lower = ifelse(is.na(lower), 0, lower)
+      dplyr::mutate(
+        dplyr::across(
+          dplyr::all_of(sorted_bins),
+          ~ ifelse(is.na(.x), 0, .x)
+        )
       )
   }
   
   na_summary_overall <- maude_counts_df %>%
-    pivot_longer(cols = c(input, lower, upper), names_to = "condition", values_to = "value") %>%
+    pivot_longer(
+      cols = dplyr::all_of(all_bins),
+      names_to = "bin_name",
+      values_to = "value"
+    ) %>%
     mutate(is_na = is.na(value)) %>%
-    group_by(condition) %>%
+    group_by(bin_name) %>%
     summarise(na_count = sum(is_na), .groups = "drop")
   
-  p1 <- ggplot(na_summary_overall, aes(x = condition, y = na_count, fill = condition)) +
+  p1 <- ggplot(na_summary_overall, aes(x = bin_name, y = na_count, fill = bin_name)) +
     geom_col() +
-    labs(title = "Missing Entries per Bin", y = "Number of NAs", x = "Condition") +
+    labs(title = "Missing Entries per Bin", y = "Number of NAs", x = "Bin") +
     theme_bw()
   
   na_summary_by_exp <- maude_counts_df %>%
-    pivot_longer(cols = c(input, lower, upper), names_to = "condition", values_to = "value") %>%
+    pivot_longer(
+      cols = dplyr::all_of(all_bins),
+      names_to = "bin_name",
+      values_to = "value"
+    ) %>%
     mutate(is_na = is.na(value)) %>%
-    group_by(exp, condition) %>%
+    group_by(exp, bin_name) %>%
     summarise(na_count = sum(is_na), .groups = "drop")
   
-  p2 <- ggplot(na_summary_by_exp, aes(x = exp, y = na_count, fill = condition)) +
+  p2 <- ggplot(na_summary_by_exp, aes(x = exp, y = na_count, fill = bin_name)) +
     geom_col(position = "dodge") +
     labs(title = "Missing Entries per Bin by Experiment", x = "Experiment", y = "Number of NAs") +
     theme_bw() +
@@ -59,40 +75,75 @@ plot_maude_qc <- function(maude_counts_df, print = TRUE, add_0s = FALSE) {
 }
 
 
-control_sanity_check <- function(maude_counts_df, print = TRUE) {
+control_sanity_check <- function(maude_counts_df, cfg, print = TRUE) {
+  
+  unsorted_bin <- cfg$bins %>%
+    dplyr::filter(sorted_or_unsorted == "unsorted") %>%
+    dplyr::pull(bin_name) %>%
+    base::unname()
+  
+  sorted_bins <- cfg$bins %>%
+    dplyr::filter(sorted_or_unsorted == "sorted") %>%
+    dplyr::pull(bin_name)
   
   plot_list <- list()
   
   for (sublib in unique(maude_counts_df$sublib)) {
     
     sublib_data <- maude_counts_df[maude_counts_df$sublib == sublib, ]
-    control_data <- sublib_data[grepl("^CONTROL_", sublib_data$sgRNA), ]
+    control_data <- sublib_data %>% dplyr::filter(isNontargeting)
     
     if (nrow(control_data) == 0) {
-      logger::log_warn("No CONTROL_ sgRNAs found for sublibrary: {sublib}")
+      logger::log_warn("No non-targeting sgRNAs found for sublibrary: {sublib}")
       next
     }
     
-    control_data$log2_upper_input <- log2(control_data$upper / control_data$input)
-    control_data$log2_lower_input <- log2(control_data$lower / control_data$input)
-    
-    log2_values <- data.frame(
-      sgRNA = rep(control_data$sgRNA, 2),
-      log2_fold_change = c(control_data$log2_upper_input, control_data$log2_lower_input),
-      comparison = rep(c("upper vs input", "lower vs input"), each = nrow(control_data))
+    # Devide each bin by the unsorted bin. 
+    log2_values <- do.call(
+      rbind,
+      lapply(
+        sorted_bins,
+        function(current_bin) {
+          data.frame(
+            sgRNA = control_data$sgRNA,
+            log2_fold_change = log2(
+              control_data[[current_bin]] /
+                control_data[[unsorted_bin]]
+            ),
+            comparison = paste(current_bin, "vs", unsorted_bin),
+            stringsAsFactors = FALSE
+          )
+        }
+      )
     )
     
-    p <- ggplot(log2_values, aes(x = comparison, y = log2_fold_change, fill = comparison)) +
+    p <- ggplot(
+      log2_values,
+      aes(
+        x = comparison,
+        y = log2_fold_change,
+        fill = comparison
+      )
+    ) +
       geom_boxplot(width = 0.5, alpha = 0.7) +
-      scale_fill_manual(values = c("upper vs input" = "lightblue", "lower vs input" = "lightgreen")) +
       theme_bw() +
       labs(
-        title = paste("Log2 Fold Change Between Upper/Lower and Input for", sublib),
+        title = paste(
+          "Log2 Fold Change Between Sorted Bins and",
+          unsorted_bin,
+          "for",
+          sublib
+        ),
         x = "",
         y = "Log2 Fold Change"
       ) +
       theme(
-        axis.text.x = element_text(angle = 50, hjust = 1, face = "bold", size = 12),
+        axis.text.x = element_text(
+          angle = 50,
+          hjust = 1,
+          face = "bold",
+          size = 12
+        ),
         plot.title = element_text(size = 12),
         legend.position = "none"
       )
@@ -101,30 +152,54 @@ control_sanity_check <- function(maude_counts_df, print = TRUE) {
     plot_list[[paste0("control_sanity_", safe_sublib)]] <- p
   }
   
-  control_data_all <- maude_counts_df[grepl("^CONTROL_", maude_counts_df$sgRNA), ]
+  control_data_all <- maude_counts_df %>% dplyr::filter(isNontargeting)
   
   if (nrow(control_data_all) > 0) {
     
-    control_data_all$log2_upper_input <- log2(control_data_all$upper / control_data_all$input)
-    control_data_all$log2_lower_input <- log2(control_data_all$lower / control_data_all$input)
-    
-    log2_values_all <- data.frame(
-      sgRNA = rep(control_data_all$sgRNA, 2),
-      log2_fold_change = c(control_data_all$log2_upper_input, control_data_all$log2_lower_input),
-      comparison = rep(c("upper vs input", "lower vs input"), each = nrow(control_data_all))
+    log2_values_all <- do.call(
+      rbind,
+      lapply(
+        sorted_bins,
+        function(current_bin) {
+          data.frame(
+            sgRNA = control_data_all$sgRNA,
+            log2_fold_change = log2(
+              control_data_all[[current_bin]] /
+                control_data_all[[unsorted_bin]]
+            ),
+            comparison = paste(current_bin, "vs", unsorted_bin),
+            stringsAsFactors = FALSE
+          )
+        }
+      )
     )
     
-    p_all <- ggplot(log2_values_all, aes(x = comparison, y = log2_fold_change, fill = comparison)) +
+    p_all <- ggplot(
+      log2_values_all,
+      aes(
+        x = comparison,
+        y = log2_fold_change,
+        fill = comparison
+      )
+    ) +
       geom_boxplot(width = 0.5, alpha = 0.7) +
-      scale_fill_manual(values = c("upper vs input" = "lightblue", "lower vs input" = "lightgreen")) +
       theme_bw() +
       labs(
-        title = "Log2 Fold Change Between Upper/Lower and Input for All Data",
+        title = paste(
+          "Log2 Fold Change Between Sorted Bins and",
+          unsorted_bin,
+          "for All Data"
+        ),
         x = "",
         y = "Log2 Fold Change"
       ) +
       theme(
-        axis.text.x = element_text(angle = 50, hjust = 1, face = "bold", size = 12),
+        axis.text.x = element_text(
+          angle = 50,
+          hjust = 1,
+          face = "bold",
+          size = 12
+        ),
         plot.title = element_text(size = 12),
         legend.position = "none"
       )
@@ -132,7 +207,7 @@ control_sanity_check <- function(maude_counts_df, print = TRUE) {
     plot_list[["control_sanity_all"]] <- p_all
     
   } else {
-    logger::log_warn("No CONTROL_ sgRNAs found in MAUDE counts.")
+    logger::log_warn("No non-targeting sgRNAs found in MAUDE counts.")
   }
   
   if (isTRUE(print)) {
@@ -147,6 +222,8 @@ create_maude_qc_plot_objects <- function(count_df_long,
                                          maude_counts_df,
                                          cfg,
                                          input_recovery = FALSE) {
+  
+  all_bins <- cfg$bins$bin_name
   
   if (identical(cfg$counting$data_type, "umis")) {
     data_name <- "UMIs"
@@ -165,11 +242,11 @@ create_maude_qc_plot_objects <- function(count_df_long,
   }
   
   sample_sum_df <- count_df_long %>%
-    dplyr::group_by(condition, exp) %>%
+    dplyr::group_by(bin_name, exp) %>%
     dplyr::summarise(total_count = sum(count), .groups = "drop") %>%
     dplyr::mutate(
-      Sample = interaction(condition, exp, drop = TRUE),
-      Bin = condition
+      Sample = interaction(bin_name, exp, drop = TRUE),
+      Bin = bin_name
     )
   
   p_sum_per_sample <- ggplot2::ggplot(
@@ -190,11 +267,11 @@ create_maude_qc_plot_objects <- function(count_df_long,
     )
   
   sample_n_df <- count_df_long %>%
-    dplyr::group_by(condition, exp) %>%
+    dplyr::group_by(bin_name, exp) %>%
     dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
     dplyr::mutate(
-      Sample = interaction(condition, exp, drop = TRUE),
-      Bin = condition
+      Sample = interaction(bin_name, exp, drop = TRUE),
+      Bin = bin_name
     )
   
   p_n_per_sample <- ggplot2::ggplot(
@@ -215,9 +292,9 @@ create_maude_qc_plot_objects <- function(count_df_long,
     )
   
   bin_n_before_df <- count_df_long %>%
-    dplyr::group_by(condition) %>%
+    dplyr::group_by(bin_name) %>%
     dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
-    dplyr::mutate(Bin = condition)
+    dplyr::mutate(Bin = bin_name)
   
   p_n_per_bin_before <- ggplot2::ggplot(
     bin_n_before_df,
@@ -238,9 +315,10 @@ create_maude_qc_plot_objects <- function(count_df_long,
   
   bin_n_after_df <- maude_counts_df %>%
     dplyr::summarise(
-      input = sum(!is.na(input)),
-      upper = sum(!is.na(upper)),
-      lower = sum(!is.na(lower))
+      dplyr::across(
+        dplyr::all_of(all_bins),
+        ~ sum(!is.na(.x))
+      )
     ) %>%
     tidyr::pivot_longer(
       cols = dplyr::everything(),
@@ -267,9 +345,10 @@ create_maude_qc_plot_objects <- function(count_df_long,
   
   bin_sum_after_df <- maude_counts_df %>%
     dplyr::summarise(
-      input = sum(input, na.rm = TRUE),
-      upper = sum(upper, na.rm = TRUE),
-      lower = sum(lower, na.rm = TRUE)
+      dplyr::across(
+        dplyr::all_of(all_bins),
+        ~ sum(.x, na.rm = TRUE)
+      )
     ) %>%
     tidyr::pivot_longer(
       cols = dplyr::everything(),
@@ -302,12 +381,14 @@ create_maude_qc_plot_objects <- function(count_df_long,
   )
   
   control_plots <- control_sanity_check(
+    cfg = cfg,
     maude_counts_df = maude_counts_df,
     print = FALSE
   )
   
   maude_qc_plots <- plot_maude_qc(
     maude_counts_df = maude_counts_df,
+    cfg = cfg, 
     print = FALSE
   )
   

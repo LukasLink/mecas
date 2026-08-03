@@ -9,21 +9,20 @@ run_plot <- function(cfg) {
   cfg$suffix$file_info_suffix <- ""
   
   logger::log_info("Loading Results...")
+
+  count_df_long <- readRDS(cfg$paths$count_df_fpath)
   
-  loaded_results <- load_results_for_plotting(
-    file_suffix = cfg$suffix$file_suffix,
-    cfg = cfg
-  )
+  maude_counts_df <- readRDS(cfg$paths$maude_counts_df_fpath)
   
   run_count_violin_plots(
-    count_df_long = loaded_results$count_df_long,
+    count_df_long = count_df_long,
     cfg = cfg,
     y_limit = cfg$plots$read_count_violin$violin_y_limit
   )
   
   run_maude_qc_plots(
-    count_df_long = loaded_results$count_df_long,
-    maude_counts_df = loaded_results$maude_counts_df,
+    count_df_long = count_df_long,
+    maude_counts_df = maude_counts_df,
     cfg = cfg,
     input_recovery = isTRUE(cfg$normalization$recover_input)
   )

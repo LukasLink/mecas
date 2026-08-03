@@ -760,6 +760,8 @@ rule MAUDE:
         count_done=os.path.join(STATE_DIR, "06_count.done")
     output:
         MAUDE_guide_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_guide_stats.rds"),
+        MAUDE_count_df = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_ready_count_df.rds"),
+        MAUDE_binStats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_binStats.rds"),
         MAUDE_gene_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_gene_stats.rds"),
         done = os.path.join(STATE_DIR, "07_MAUDE.done")
     threads: 1
@@ -778,6 +780,7 @@ rule plot:
     input:
         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
         count_df = os.path.join(RDS_OUTPUT_FOLDER, "count_df.rds"),
+        MAUDE_count_df = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_ready_count_df.rds"),
         MAUDE_guide_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_guide_stats.rds"),
         MAUDE_gene_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_gene_stats.rds"),
         MAUDE_done = os.path.join(STATE_DIR, "07_MAUDE.done")

@@ -8,6 +8,10 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
   
   pseudocount_already_added <- FALSE
   check_all_bins_present(count_df_long = count_df_long, cfg = cfg)
+  
+  binStats_fpath <- file.path(cfg$paths$rds_output_folder, "MAUDE_binStats.rds")
+  saveRDS(cfg$bins, binStats_fpath)
+  logger::log_info("Bins validated and saved to {binStats_fpath}")
   #-----------------------------------------------------------------------------
   # Optional: subsample controls
   #-----------------------------------------------------------------------------
@@ -138,8 +142,9 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
   }
   
   logger::log_info("Finished preparing Data for MAUDE.")
-  maude_counts_df_fpath <- file.path(cfg$paths$rds_output_folder, "MAUDE_ready_count_df.rds")
-  logger::log_info("Saving MAUDE ready dataframe to: {maude_counts_df_fpath}")
+  
+  saveRDS(maude_counts_df, cfg$paths$maude_counts_df_fpath)
+  logger::log_info("Saving MAUDE ready dataframe to: {cfg$paths$maude_counts_df_fpath}")
   
   return(maude_counts_df)
 }
