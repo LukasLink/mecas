@@ -1,53 +1,43 @@
-Using profile ./sample_profiles/slurm for setting default command line arguments.
+Using profile sample_profiles/slurm for setting default command line arguments.
+Config file config.yaml is extended by additional config specified via the command line.
 
 SNAKEMAKE
 =========
-  Date: 2026-08-03 16:05:24
-  Workflow ID: 8240d3bf-ceef-4364-8316-63361ac2c8c2
+  Date: 2026-08-04 16:41:04
+  Workflow ID: 241e1e9d-282c-4f78-a3a7-5008da3050b3
   Platform: Linux-4.18.0-553.144.1.el8_10.x86_64-x86_64-with-glibc2.28
   Host: login1.cluster.embl.de
   User: link
   Snakemake version: 9.23.1
   Python version: 3.13.5 (main, Nov 20 2025, 12:48:42) [GCC 14.3.0]
-  Command: /g/easybuild/x86_64/Rocky/8/haswell/software/snakemake/9.23.1-foss-2025b/bin/snakemake -p plot --allowed-rules setup count MAUDE plot --rerun-incomplete --sdm apptainer --apptainer-args --bind /g:/g --profile ./sample_profiles/slurm
-  Snakefile: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/Snakefile
-  Base directory: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis
-  Run directory: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis
-  Working directory: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis
+  Command: /g/easybuild/x86_64/Rocky/8/haswell/software/snakemake/9.23.1-foss-2025b/bin/snakemake setup --sdm apptainer --apptainer-args --bind /g:/g,/home:/home --profile sample_profiles/slurm --config input_folder=/g/steinmetz/link/Amplicon_barcode_analysis/RAW/tiny_test_set_se output_folder=/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test library_path=/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds bcwithqc_config_path=/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json fastq_name_table_xlsx=/g/steinmetz/link/Amplicon_barcode_analysis/library/input_fastq_name_table_template_plus_bins.xlsx data_type=reads --force
+  Snakefile: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test/pipeline/Snakefile
+  Base directory: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test/pipeline
+  Run directory: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test/pipeline
+  Working directory: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test/pipeline
   Config file(s): ['config.yaml']
-  Config MD5: 831a4584c8527393190d557187dc3fed
+  Config MD5: 5e0b8db7118e814648a9bdec9c346bc2
 
 Building DAG of jobs...
-Updating checkpoint dependencies.
-SLURM run ID: 9db690a8-e9dd-4bf6-9b99-c62707a633df
+SLURM run ID: 10c08d4b-1ae2-48d7-b022-6c1b9abff4ef
 MinJobAge 7200s (>= 120s). 'squeue' should work reliably for status queries.
 Using shell: /usr/bin/bash
-Provided remote nodes: 20
+Provided remote nodes: 30
 Job stats:
 job      count
 -----  -------
-count        1
-MAUDE        1
-plot         1
-total        3
+setup        1
+total        1
 
 Select jobs to execute...
 Execute 1 jobs...
-Job 2 has been submitted with SLURM jobid 60297485 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_count/60297485.log).
-[Mon Aug  3 16:06:05 2026]
-Finished jobid: 2 (Rule: count)
-1 of 3 steps (33%) done
-Select jobs to execute...
-Execute 1 jobs...
-Job 4 has been submitted with SLURM jobid 60297514 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_MAUDE/60297514.log).
-[Mon Aug  3 16:33:42 2026]
-Finished jobid: 4 (Rule: MAUDE)
-2 of 3 steps (67%) done
-Select jobs to execute...
-Execute 1 jobs...
-Job 0 has been submitted with SLURM jobid 60299178 (log: /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/slurm_logs/rule_plot/60299178.log).
-[Mon Aug  3 16:35:13 2026]
-Finished jobid: 0 (Rule: plot)
-3 of 3 steps (100%) done
+No SLURM account given, trying to guess.
+No account was given, not able to get a SLURM account via sacct: sacct: invalid option -- '1'
+
+Unable to guess SLURM account. Trying to proceed without.
+Job 0 has been submitted with SLURM jobid 60365862 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test/pipeline/.snakemake/slurm_logs/rule_setup/60365862.log).
+[Tue Aug  4 16:42:34 2026]
+Finished jobid: 0 (Rule: setup)
+1 of 1 steps (100%) done
 Cleaning up SLURM log files older than 10 day(s).
-Complete log(s): /home/link/Amplicon_barcode_analysis/Lukas_Pipeline/binned_PCR_amplicon_UMI_analysis/.snakemake/log/2026-08-03T160523.815798.snakemake.log
+Complete log(s): /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/bins_test/pipeline/.snakemake/log/2026-08-04T164103.808565.snakemake.log

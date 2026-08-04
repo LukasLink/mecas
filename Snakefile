@@ -11,6 +11,111 @@ shell.executable("/usr/bin/bash")
 
 container: "containers/bcwithqc_maude.sif"
 
+
+#-------------------------------------------------------------------------------
+# Merge CLI overrides into nested config
+#-------------------------------------------------------------------------------
+
+config.setdefault("paths", {})
+config.setdefault("counting", {})
+
+CLI_TO_CONFIG = {
+    "output_folder": ("paths", "output_folder"),
+    "input_folder": ("paths", "input_folder"),
+    "library_path": ("paths", "library_path"),
+    "bcwithqc_config_path": ("paths", "bcwithqc_config_path"),
+    "fastq_name_table_xlsx": ("paths", "fastq_name_table_xlsx"),
+    "data_type": ("counting", "data_type"),
+}
+
+for cli_key, (section, key) in CLI_TO_CONFIG.items():
+    if cli_key in config:
+        config[section][key] = config[cli_key]
+
+
+#-------------------------------------------------------------------------------
+# Validate required user configuration
+#-------------------------------------------------------------------------------
+
+required = [
+    ("paths", "output_folder"),
+    ("paths", "input_folder"),
+    ("paths", "library_path"),
+    ("paths", "bcwithqc_config_path"),
+    ("paths", "fastq_name_table_xlsx"),
+    ("counting", "data_type"),
+]
+
+missing = []
+
+for section, key in required:
+    value = config.get(section, {}).get(key)
+
+    if value is None or str(value).strip() == "":
+        missing.append(f"{section}.{key}")
+
+if missing:
+    raise ValueError(
+        "Missing required configuration values:\n  - "
+        + "\n  - ".join(missing)
+    )
+
+
+#-------------------------------------------------------------------------------
+# Validate filesystem paths
+#-------------------------------------------------------------------------------
+
+def require_file(path, description):
+    if not os.path.isfile(path):
+        raise ValueError(
+            f"{description} does not exist or is not a file:\n{path}"
+        )
+
+
+def require_dir(path, description):
+    if not os.path.isdir(path):
+        raise ValueError(
+            f"{description} does not exist or is not a directory:\n{path}"
+        )
+
+
+require_dir(
+    config["paths"]["input_folder"],
+    "Input folder"
+)
+
+require_file(
+    config["paths"]["library_path"],
+    "Library file"
+)
+
+require_file(
+    config["paths"]["bcwithqc_config_path"],
+    "bcwithqc config"
+)
+
+require_file(
+  config["paths"]["fastq_name_table_xlsx"],
+    "FASTQ name table"
+)
+
+
+#-------------------------------------------------------------------------------
+# Validate data type
+#-------------------------------------------------------------------------------
+
+data_type = str(
+    config["counting"]["data_type"]
+).lower()
+
+if data_type not in {"reads", "umis"}:
+    raise ValueError(
+        "counting.data_type must be either 'reads' or 'umis'. "
+        f"Found '{data_type}'."
+    )
+
+config["counting"]["data_type"] = data_type
+
 #-------------------------------------------------------------------------------
 # Define paths based on config
 #-------------------------------------------------------------------------------
@@ -26,7 +131,7 @@ RESULTS_OUTPUT_FOLDER = os.path.join(OUTPUT_FOLDER, "results")
 PLOTS_OUTPUT_FOLDER = os.path.join(OUTPUT_FOLDER, "plots")
 
 BCWITHQC_CONFIG = config["paths"]["bcwithqc_config_path"]
-
+BCWITHQC_DATA_TYPE = config["counting"]["data_type"]
 #-------------------------------------------------------------------------------
 # Manifest helpers
 #
@@ -36,17 +141,6 @@ BCWITHQC_CONFIG = config["paths"]["bcwithqc_config_path"]
 #   - read is empty for single-end, or R1/R2 for paired-end
 #   - fastq_id uniquely identifies an individual FASTQ file
 #-------------------------------------------------------------------------------
-
-BCWITHQC_DATA_TYPE = str(
-    config.get("counting", {}).get("data_type", "reads")
-).lower()
-
-if BCWITHQC_DATA_TYPE not in {"reads", "umis"}:
-    raise ValueError(
-        "config counting.data_type must be either 'reads' or 'umis', "
-        f"found: {BCWITHQC_DATA_TYPE!r}"
-    )
-
 
 BCWITHQC_READ_MATRIX_OUTPUTS = [
     os.path.join(
@@ -334,8 +428,6 @@ rule all:
 
 
 checkpoint setup:
-    input:
-        config = "config.yaml"
     output:
         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
         cfg_yaml = os.path.join(STATE_DIR, "resolved_config.yaml"),
@@ -345,12 +437,20 @@ checkpoint setup:
     resources:
         mem_mb = 4000,
         runtime = 10
-    shell:
-        r"""
-        unset R_LIBS
-        unset R_LIBS_USER
-        Rscript --vanilla R/cli_setup.R {input.config}
-        """
+    run:
+        import yaml
+
+        merged_cfg = os.path.join(STATE_DIR, "merged_config.yaml")
+        os.makedirs(STATE_DIR, exist_ok=True)
+
+        with open(merged_cfg, "w") as handle:
+            yaml.safe_dump(config, handle, sort_keys=False)
+
+        shell(f"""
+            unset R_LIBS
+            unset R_LIBS_USER
+            Rscript --vanilla R/cli_setup.R {merged_cfg}
+        """)
 
 
 rule infer_QC_filter_params:
