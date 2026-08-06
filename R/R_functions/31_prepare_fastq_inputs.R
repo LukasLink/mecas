@@ -272,10 +272,10 @@ prepare_fastq_inputs <- function(
   }
   
   if (length(missing_from_xlsx) > 0) {
-    stop_log(
+    logger::log_warn(
       "Some supported input files in the directory are missing from the `fastq_names` sheet:\n",
       make_error_list(missing_from_xlsx),
-      "\n\nEvery supported input file (fastq files) must be listed in the XLSX file."
+      "\n\nThese files will be ignored because they are not listed in the XLSX manifest."
     )
   }
   
