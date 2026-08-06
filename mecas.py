@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-import importlib.resources
+# import importlib.resources
 import os
 from os import path
 import shutil
@@ -335,7 +335,7 @@ def build_parser():
 
     subparsers = parser.add_subparsers(
         dest="command",
-        required=True,
+        # required=True, # This needs python 3.6
         metavar="COMMAND",
     )
 
@@ -370,6 +370,10 @@ def main():
     if getattr(args, "version_command", False):
         print(f"mecas {VERSION}")
         raise SystemExit(0)
+    
+    if not getattr(args, "command", None):
+        parser.print_help()
+        raise SystemExit(2)
 
     resolve_user_paths(args)
     

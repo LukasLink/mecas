@@ -449,7 +449,7 @@ checkpoint setup:
         shell(f"""
             unset R_LIBS
             unset R_LIBS_USER
-            Rscript --vanilla R/cli_setup.R {merged_cfg}
+            Rscript --vanilla R/cli_A_setup.R {merged_cfg}
         """)
 
 
@@ -468,7 +468,7 @@ rule infer_QC_filter_params:
         r"""
         unset R_LIBS
         unset R_LIBS_USER
-        Rscript --vanilla R/cli_infer_QC_filter_params.R {input.cfg_rds}
+        Rscript --vanilla R/cli_B_infer_QC_filter_params.R {input.cfg_rds}
         """
 
 
@@ -849,7 +849,7 @@ rule count:
         r"""
         unset R_LIBS
         unset R_LIBS_USER
-        Rscript --vanilla R/cli_count.R {input.cfg_rds}
+        Rscript --vanilla R/cli_C_count.R {input.cfg_rds}
         """
 
 
@@ -872,7 +872,7 @@ rule MAUDE:
         r"""
         unset R_LIBS
         unset R_LIBS_USER
-        Rscript --vanilla R/cli_MAUDE.R {input.cfg_rds}
+        Rscript --vanilla R/cli_D_MAUDE.R {input.cfg_rds}
         """
 
 
@@ -896,5 +896,5 @@ rule plot:
         r"""
         unset R_LIBS
         unset R_LIBS_USER
-        Rscript --vanilla R/cli_plot.R {input.cfg_rds}
+        Rscript --vanilla R/cli_E_plot.R {input.cfg_rds}
         """

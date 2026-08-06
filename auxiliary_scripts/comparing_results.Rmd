@@ -2836,7 +2836,7 @@ guide_z_ranks_old <- readRDS("/g/steinmetz/link/sharing/nico/best_guides/by_Z_sc
 
 
 ```{r cleanup, eval=FALSE}
-delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_2"
+delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling"
 delete_bam_and_reads(root = delete_this, dry_run = FALSE)
 ```
 
