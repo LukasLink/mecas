@@ -574,19 +574,6 @@
   },
 
 
-  # Skip lists
-  "skip.files" = function(option, name) {
-    .validate_list_or_character(option, name, required = FALSE)
-  },
-  
-  "skip.sublibraries" = function(option, name) {
-    .validate_list_or_character(option, name, required = FALSE)
-  },
-  
-  "skip.samples" = function(option, name) {
-    .validate_list_or_character(option, name, required = FALSE)
-  },
-  
   # Controls
   "controls.include_controls" = function(option, name) {
     .validate_list_or_character(option, name, required = FALSE)

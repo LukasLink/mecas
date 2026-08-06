@@ -264,7 +264,6 @@ process_bcwithqc_data <- function(
     manifest = cfg$manifest,
     merged_sgRNA_df = cfg$merged_sgRNA_df,
     data_type = cfg$counting$data_type,
-    skip_list = cfg$skip$files,
     check_alignments = TRUE
 ) {
   
@@ -327,48 +326,16 @@ process_bcwithqc_data <- function(
     )
   }
   
-  is_skipped <- vapply(
-    pipeline_manifest$pipeline_name,
-    function(name) {
-      any(vapply(
-        skip_list,
-        function(x) {
-          if (startsWith(x, "re:")) {
-            grepl(sub("^re:", "", x), name, perl = TRUE)
-          } else {
-            identical(x, name)
-          }
-        },
-        logical(1)
-      ))
-    },
-    logical(1)
-  )
-  
-  if (any(is_skipped)) {
-    logger::log_info(
-      "Skipping bcwithqc outputs due to skip list: {paste(pipeline_manifest$pipeline_name[is_skipped], collapse = ', ')}"
-    )
-  }
-  
-  skipped_pipeline_names <- pipeline_manifest$pipeline_name[is_skipped]
-  
-  pipeline_manifest <- pipeline_manifest[!is_skipped, , drop = FALSE]
   
   actual_output_dirs <- list.dirs(
     parent_dir,
     recursive = FALSE,
     full.names = FALSE
   )
-  
-  expected_or_skipped_dirs <- c(
-    pipeline_manifest$pipeline_name,
-    skipped_pipeline_names
-  )
-  
+    
   unexpected_output_dirs <- setdiff(
     actual_output_dirs,
-    expected_or_skipped_dirs
+    pipeline_manifest$pipeline_name
   )
   
   if (length(unexpected_output_dirs) > 0) {

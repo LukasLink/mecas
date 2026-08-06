@@ -72,15 +72,15 @@ qc_filtering:
 # ------------------------------------------------------------------------------
 skip:
   # Individual files to skip.
-  # Example: ["I_L3_5", "U_L1_2"]
+  # Example: ["top20_library3_sample1", "unsorted_bin.fastq.gz"]
   files: []
 
   # Entire sublibraries to skip.
-  # Example: ["L4", "L5"]
+  # Example: ["L4", "sublib5"]
   sublibraries: []
 
   # Entire sample numbers to skip.
-  # Example: ["1", "24"]
+  # Example: ["1", "sampleA"]
   samples: []
 
 

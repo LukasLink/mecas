@@ -9,8 +9,7 @@ get_count_df_long_and_make_coverage_file <- function(cfg){
   
   count_df_long <- process_bcwithqc_data(
     cfg = cfg,
-    data_type = cfg$counting$data_type,
-    skip_list = cfg$skip$files
+    data_type = cfg$counting$data_type
   )
   
   logger::log_info("Finished reading in read/UMI counts.")

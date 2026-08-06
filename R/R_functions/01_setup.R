@@ -275,10 +275,7 @@ log_project_setup <- function(cfg) {
   logger::log_info("bcwithqc_config_path:              {cfg$paths$bcwithqc_config_path}")
   logger::log_info("fastq_name_table_xlsx:             {cfg$paths$fastq_name_table_xlsx}")
   logger::log_info("----------------------------------------------------------")
-
-  logger::log_info("skip_list:                         {paste(cfg$skip$files, collapse = ', ')}")
-  logger::log_info("skip_list_sublib:                  {paste(cfg$skip$sublibraries, collapse = ', ')}")
-  logger::log_info("skip_list_sample:                  {paste(cfg$skip$samples, collapse = ', ')}")
+  
   logger::log_info("include_controls_list:             {paste(cfg$controls$include_controls, collapse = ', ')}")
   logger::log_info(
     "use_only_these_controls_list:      {x}",
@@ -400,21 +397,6 @@ project_setup <- function(project_root_dir,
   if (is.null(cfg$paths$output_folder) || !nzchar(cfg$paths$output_folder)) {
     stop("`paths.output_folder` must be provided in the YAML config.", call. = FALSE)
   }
-
-  cfg$skip <- list(
-    files = check_input(
-      parse_comma_list(config$skip$files %||% c()),
-      "skip.files"
-    ),
-    sublibraries = check_input(
-      parse_comma_list(config$skip$sublibraries %||% c()),
-      "skip.sublibraries"
-    ),
-    samples = check_input(
-      parse_comma_list(config$skip$samples %||% c()),
-      "skip.samples"
-    )
-  )
   
   cfg$controls <- list(
     include_controls = check_input(
@@ -651,16 +633,7 @@ project_setup <- function(project_root_dir,
       paste0("comb_", cfg$replicates$combine_for_gene_stats)
     }
   )
-  
-  skip_list_and_suffix <- create_skip_list_and_suffix(
-    cfg$skip$files,
-    cfg$skip$sublibraries,
-    cfg$skip$samples
-  )
-  
-  cfg$skip$files <- skip_list_and_suffix[[1]]
-  cfg$suffix$skip_suffix <- skip_list_and_suffix[[2]]
-  
+
 
   fs_parts <- c(
     cfg$counting$data_type,
@@ -675,7 +648,6 @@ project_setup <- function(project_root_dir,
     cfg$suffix$combine_for_guide_stats_suffix,
     cfg$suffix$combine_for_gene_stats_suffix,
     cfg$suffix$auto_combine_replicates_suffix,
-    cfg$suffix$skip_suffix,
     cfg$output$extra_suffix
   )
  
