@@ -397,9 +397,9 @@ def get_bcwithqc_preprocess_runtime(wildcards, input):
 
     read_pairs_million = retained_read_pairs / 1_000_000
 
-    estimated_minutes = 180 + 5 * read_pairs_million
+    estimated_minutes = 60 + 5 * read_pairs_million
 
-    return max(300, math.ceil(estimated_minutes))
+    return estimated_minutes
 
 
 def get_bcwithqc_count_runtime(wildcards, input):
@@ -408,9 +408,9 @@ def get_bcwithqc_count_runtime(wildcards, input):
 
     read_pairs_million = retained_read_pairs / 1_000_000
 
-    estimated_minutes = 300 + 15 * read_pairs_million
+    estimated_minutes = 60 + 25 * read_pairs_million 
 
-    return max(300, math.ceil(estimated_minutes))
+    return estimated_minutes
     
 #-------------------------------------------------------------------------------
 # SNAKEMAKE RULES
@@ -495,6 +495,15 @@ rule QC_filter_SE_worker:
     shell:
         r"""
         source "{input.params}"
+        
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       QC_filter_SE_worker"
+        echo "Sample:     {wildcards.sample}"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "============================================================"
 
         if [[ "$QC_FILTERING_RUN" == "true" ]]; then
           if [[ -z "$QC_MIN_LENGTH_SE" ]]; then
@@ -577,6 +586,15 @@ rule QC_filter_PE_worker:
     shell:
         r"""
         source "{input.params}"
+        
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       QC_filter_PE_worker"
+        echo "Sample:     {wildcards.sample}"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "============================================================"
 
         if [[ "$QC_FILTERING_RUN" == "true" ]]; then
           if [[ -z "$QC_MIN_LENGTH_R1" || -z "$QC_MIN_LENGTH_R2" ]]; then
@@ -753,6 +771,16 @@ rule bcwithqc_preprocess:
         constraint = "avx512"
     shell:
         r"""
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       bcwithqc_preprocess"
+        echo "Sample:     {wildcards.sample}"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "Constraint: {resources.constraint}"
+        echo "============================================================"
+        
         unset PYTHONPATH
         unset PYTHONHOME
         export PYTHONNOUSERSITE=1
@@ -792,11 +820,21 @@ rule bcwithqc_count:
         output_dir = lambda wc: os.path.join(BCWITHQC_OUTPUT_FOLDER, wc.sample)
     threads: 10
     resources:
-        mem_mb = 40000,
+        mem_mb = 70000,
         runtime = get_bcwithqc_count_runtime,
         constraint = "avx512"
     shell:
         r"""
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       bcwithqc_count"
+        echo "Sample:     {wildcards.sample}"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "Constraint: {resources.constraint}"
+        echo "============================================================"
+        
         unset PYTHONPATH
         unset PYTHONHOME
         export PYTHONNOUSERSITE=1
