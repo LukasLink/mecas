@@ -55,159 +55,13 @@ anchor_rmd <- find_up_file(start_dir, "data_analysis_with_MAUDE.Rmd", max_up = 1
 # The anchor's directory is the project root that contains functions/, config.yaml, etc.
 project_root_dir <- dirname(anchor_rmd)
 
-#-------------------------------------------------------------------------------
-# Load config.yaml
-#-------------------------------------------------------------------------------
-
-if (!requireNamespace("yaml", quietly = TRUE)) {
-  stop(
-    "The R package 'yaml' is required to read config.yaml.\n",
-    "Install it with: install.packages('yaml')"
-  )
-}
-
-# If params$config is provided, use it.
-# Otherwise, use config.yaml in project_root_dir and send a warning.
-if (!is.null(params$config) && !is.na(params$config) && nzchar(params$config)) {
-  config_path <- normalizePath(params$config, mustWork = TRUE)
-} else {
-  config_path <- file.path(project_root_dir, "config.yaml")
-
-  if (!file.exists(config_path)) {
-    stop(
-      "No config file was provided via params$config, and no default config.yaml ",
-      "was found in project_root_dir:\n",
-      config_path
-    )
-  }
-
-  warning(
-    "No config file was provided via params$config. ",
-    "Using default config.yaml from project_root_dir:\n",
-    config_path,
-    call. = FALSE
-  )
-
-  config_path <- normalizePath(config_path, mustWork = TRUE)
-}
-
-message("Using config file: ", config_path)
-
-config <- yaml::read_yaml(config_path)
-
-#-------------------------------------------------------------------------------
-# Helper for optional YAML fields
-#-------------------------------------------------------------------------------
-
-`%||%` <- function(x, y) {
-  if (is.null(x)) y else x
-}
-
-#-------------------------------------------------------------------------------
-# Convert config.yaml into legacy user_opts object
-#-------------------------------------------------------------------------------
-# This keeps the rest of the existing Rmd compatible with the previous setup.
-
-user_opts <- list(
-  # Run behavior
-  first_time = config$run$first_time %||% FALSE,
-
-  # Directories / paths
-  output_folder = config$paths$output_folder,
-  input_folder = config$paths$input_folder %||% "",
-  header_path = config$paths$header_path %||% "",
-  library_path = config$paths$library_path %||% "",
-
-  reference_fasta = config$paths$reference_fasta_path %||% "",
-  reference_fasta_path = config$paths$reference_fasta_path %||% "",
-  reference_gtf_path = config$paths$reference_gtf_path %||% "",
-
-  # Optional bcwithqc paths
-  bcwithqc_dir = config$bcwithqc$bcwithqc_dir %||% "",
-  bcwithqc_config_path = config$bcwithqc$bcwithqc_config_path %||% "",
-  bcwithqc_rf_folder = config$bcwithqc$bcwithqc_rf_folder %||% "",
-
-  # align_UMI_tools options
-  UMI_regex = config$align_UMI_tools$umi_regex %||% "",
-
-  # Skip lists
-  skip_list = config$skip$files %||% c(),
-  skip_list_sublib = config$skip$sublibraries %||% c(),
-  skip_list_sample = config$skip$samples %||% c(),
-
-  # Controls
-  include_controls_list = config$controls$include_controls %||% c(),
-  use_only_these_controls_list = config$controls$use_only_these_controls %||% c(),
-  same_controls_in_all_sublibraries =
-    config$controls$same_controls_in_all_sublibraries %||% TRUE,
-  subsample_controls = config$controls$subsample_controls %||% FALSE,
-
-  # Counting options
-  read_counting = config$counting$read_counting %||% "align_UMI_tools",
-  data_type = config$counting$data_type %||% "reads",
-
-  # Resources
-  n_threads = config$resources$n_threads %||% 1,
-  max_mem_bytes = config$resources$max_mem_bytes %||% NA,
-  genome_sa_index_n_bases = config$resources$genome_sa_index_n_bases %||% "",
-
-  # Replicates / grouping
-  method = config$replicates$method %||% "",
-  combine_for_guide_stats = config$replicates$combine_for_guide_stats %||% "sample",
-  combine_for_gene_stats = config$replicates$combine_for_gene_stats %||% "none",
-  auto_combine_replicates = config$replicates$auto_combine_replicates %||% FALSE,
-
-  # Normalization / bins
-  norm_method = config$normalization$norm_method %||% "control_median",
-  recover_input = config$normalization$recover_input %||% TRUE,
-  use_custom_bins = config$normalization$use_custom_bins %||% FALSE,
-  upper_lower_percentage = config$normalization$upper_lower_percentage %||% 0.10,
-
-  # Filtering
-  drop_0s = config$filtering$drop_0s %||% FALSE,
-  strict_mode = config$filtering$strict_mode %||% FALSE,
-  min_guides_per_gene = config$filtering$min_guides_per_gene %||% 0,
-
-  # Output naming
-  extra_suffix = config$output$extra_suffix %||% ""
-)
-
-#-------------------------------------------------------------------------------
-# Optional: handle use_only_these_controls
-#-------------------------------------------------------------------------------
-# If config$controls$use_only_these_controls contains entries, use them.
-# Otherwise, remove the object to preserve old downstream behavior.
-
-if (length(user_opts$use_only_these_controls_list) > 0) {
-  use_only_these_controls_list <- user_opts$use_only_these_controls_list
-} else {
-  if (exists("use_only_these_controls_list")) {
-    rm(use_only_these_controls_list)
-  }
-}
-
-#-------------------------------------------------------------------------------
-# Optional: save the config that was actually used
-#-------------------------------------------------------------------------------
-
-if (!is.null(user_opts$output_folder) && nzchar(user_opts$output_folder)) {
-  dir.create(user_opts$output_folder, recursive = TRUE, showWarnings = FALSE)
-
-  used_config_name <- if (nzchar(user_opts$extra_suffix)) {
-    paste0("used_config_compare_", user_opts$extra_suffix, ".yaml")
-  } else {
-    "used_config_compare.yaml"
-  }
-
-  used_config_path <- file.path(user_opts$output_folder, used_config_name)
-  file.copy(config_path, used_config_path, overwrite = TRUE)
-}
 
 #-------------------------------------------------------------------------------
 # Source pipeline functions
 #-------------------------------------------------------------------------------
 
-source(file.path(project_root_dir, "R/R_functions", "zzz_source_all.R"))
+source(file.path(project_root_dir, "R/R_functions", "s00_bootstrap.R"))
+bootstrap_pipeline(project_root_dir)
 
 #-------------------------------------------------------------------------------
 # Run setup
@@ -215,12 +69,10 @@ source(file.path(project_root_dir, "R/R_functions", "zzz_source_all.R"))
 
 cfg <- project_setup(
   project_root_dir,
-  config_path = file.path(project_root_dir, "config.yaml"),
-  use_old_suffix_construction = TRUE
+  config_path = file.path(project_root_dir, "config.yaml")
 )
+cfg <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/.pipeline_state/resolved_config.rds")
 
-# The old_suffix is here so I don't run into compatibility issues with already
-# analysed data. Should be removed in the future.
 
 ################################################################################
 ############# LOAD COMPARISON SPECIFIC LIBS #####################################
@@ -2875,3 +2727,243 @@ gal_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep
 check_gal_bc_gene_fpath <- readRDS(gal_bc_gene_fpath)
 ```
 
+```{r load_guide_stats, eval=FALSE}
+# R/R_functions/EA_00_run_plot.R
+
+# 
+# count_df_long <- readRDS(cfg$paths$count_df_fpath) %>%
+#   rename(bin_name = condition)
+# saveRDS(count_df_long, cfg$paths$count_df_fpath)
+# read_count_df <- readRDS(cfg$paths$reads_count_df_fpath) %>%
+#   rename(bin_name = condition)
+# 
+# saveRDS(read_count_df, cfg$paths$reads_count_df_fpath)
+count_df_long <- readRDS(cfg$paths$count_df_fpath)
+cfg$counting$data_type <- "umis"
+if (identical("umis", cfg$counting$data_type)){
+  run_umi_read_scatter_plots(
+    umi_counts_df = count_df_long,
+    read_counts_df = readRDS(cfg$paths$reads_count_df_fpath),
+    cfg = cfg)
+}
+  
+run_count_density_plots(count_df_long = count_df_long, cfg = cfg)
+
+```
+
+```{r Jia_analysis, eval=FALSE}
+jia_read_counts <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds/count_df.rds")
+jia_umi_counts <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds_umis/count_df.rds")
+library <- readRDS(cfg$paths$library_path)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(stringr)
+library(patchwork)
+library(tidytext)
+
+# Helper: guess the sgRNA column in a table
+guess_sg_col <- function(df) {
+  candidates <- c("sgRNA", "sgrna_id", "sgrna_seq", "sgrna")
+  hit <- intersect(candidates, colnames(df))
+  if (length(hit) == 0) stop("No sgRNA column found in data frame.")
+  hit[1]
+}
+
+# Helper: guess the count column in a table
+guess_count_col <- function(df) {
+  candidates <- c("count", "counts", "value")
+  hit <- intersect(candidates, colnames(df))
+  if (length(hit) == 0) stop("No count column found in data frame.")
+  hit[1]
+}
+
+read_sg_col <- guess_sg_col(jia_read_counts)
+umi_sg_col  <- guess_sg_col(jia_umi_counts)
+read_ct_col  <- guess_count_col(jia_read_counts)
+umi_ct_col   <- guess_count_col(jia_umi_counts)
+
+# Make a common key for joining library <-> count tables.
+# Prefer sgrna_id if available; otherwise fall back to sgRNA or sgrna_seq.
+library_key_col <- guess_sg_col(library)
+
+# Standardize columns
+reads_df <- jia_read_counts %>%
+  transmute(
+    sgRNA = .data[[read_sg_col]],
+    read_count = .data[[read_ct_col]],
+    sample = if ("sample" %in% colnames(.)) sample else NA_character_,
+    condition = if ("condition" %in% colnames(.)) condition else NA_character_
+  )
+
+umis_df <- jia_umi_counts %>%
+  transmute(
+    sgRNA = .data[[umi_sg_col]],
+    umi_count = .data[[umi_ct_col]],
+    sample = if ("sample" %in% colnames(.)) sample else NA_character_,
+    condition = if ("condition" %in% colnames(.)) condition else NA_character_
+  )
+
+# If your library table uses sgrna_id, this join should work directly.
+# If not, change `sgRNA` to the appropriate key column in library.
+library_df <- library %>%
+  rename(
+    sgRNA = all_of(library_key_col)
+  ) %>%
+  select(sgRNA, gene, entrez_id, type, sgrna_seq)
+
+# Join read + UMI counts and add gene
+combined_df <- full_join(reads_df, umis_df, by = c("sgRNA", "sample", "condition")) %>%
+  left_join(library_df, by = "sgRNA") %>%
+  mutate(
+    read_count = replace_na(read_count, 0),
+    umi_count  = replace_na(umi_count, 0)
+  )
+
+# Optional: log transform for nicer plots
+combined_df <- combined_df %>%
+  mutate(
+    log10_read = log10(read_count + 1),
+    log10_umi  = log10(umi_count + 1)
+  )
+
+# ------------------------------------------------------------
+# 1) Scatter plot: read count vs UMI count by sgRNA
+# ------------------------------------------------------------
+p_scatter <- ggplot(combined_df, aes(x = read_count, y = umi_count)) +
+  geom_point(alpha = 0.35, size = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "Read count vs UMI count by sgRNA",
+    x = "Read count (log10 scale)",
+    y = "UMI count (log10 scale)"
+  ) +
+  theme_bw()
+
+# Optional: add correlation label
+cor_val <- cor(combined_df$read_count, combined_df$umi_count, method = "spearman", use = "complete.obs")
+p_scatter <- p_scatter +
+  annotate("text", x = Inf, y = Inf, label = paste0("Spearman rho = ", round(cor_val, 3)),
+           hjust = 1.1, vjust = 1.5, size = 4)
+
+# ------------------------------------------------------------
+# 2) Separate distributions of read and UMI counts
+# ------------------------------------------------------------
+dist_df <- combined_df %>%
+  select(sgRNA, gene, read_count, umi_count) %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count")
+  )
+
+p_dist <- ggplot(dist_df, aes(x = count + 1, fill = count_type)) +
+  geom_density(alpha = 0.35) +
+  scale_x_log10() +
+  labs(
+    title = "Count distributions",
+    x = "Count + 1 (log10 scale)",
+    y = "Density",
+    fill = ""
+  ) +
+  theme_bw()
+
+# ------------------------------------------------------------
+# 3) Lowest 10 sgRNAs by read / UMI count
+# ------------------------------------------------------------
+
+low20_sg_df <- combined_df %>%
+  select(sgRNA, gene, read_count, umi_count) %>%
+  distinct() %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count"),
+    label = sgRNA
+  ) %>%
+  group_by(count_type) %>%
+  slice_min(order_by = count, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_low20_sg <- ggplot(
+  low20_sg_df,
+  aes(x = tidytext::reorder_within(label, count, count_type), y = count, fill = count_type)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~count_type, scales = "free_y", ncol = 1) +
+  tidytext::scale_x_reordered() +
+  labs(
+    title = "Lowest 10 sgRNAs by count type",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_bw()
+
+
+# ------------------------------------------------------------
+# 4) Lowest 10 genes by aggregated read / UMI count
+# ------------------------------------------------------------
+
+gene_df <- combined_df %>%
+  filter(!is.na(gene), gene != "") %>%
+  filter(type == "targeting") %>%
+  group_by(gene) %>%
+  summarise(
+    read_count = sum(read_count, na.rm = TRUE),
+    umi_count  = sum(umi_count, na.rm = TRUE),
+    n_sgRNAs   = n_distinct(sgRNA),
+    .groups = "drop"
+  )
+
+low20_gene_df <- gene_df %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count")
+  ) %>%
+  group_by(count_type) %>%
+  slice_min(order_by = count, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_low20_gene <- ggplot(
+  low20_gene_df,
+  aes(x = tidytext::reorder_within(gene, count, count_type), y = count, fill = count_type)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~count_type, scales = "free_y", ncol = 1) +
+  tidytext::scale_x_reordered() +
+  labs(
+    title = "Lowest 10 targeting genes by count type",
+    x = NULL,
+    y = "Aggregated count"
+  ) +
+  theme_bw()
+
+# ------------------------------------------------------------
+# Combine and print
+# ------------------------------------------------------------
+
+print(p_scatter)
+print(p_dist)
+print(p_low20_sg)
+print(p_low20_gene)
+```

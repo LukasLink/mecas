@@ -3,144 +3,37 @@ Config file config.yaml is extended by additional config specified via the comma
 
 SNAKEMAKE
 =========
-  Date: 2026-08-06 16:40:13
-  Workflow ID: 07099e16-70a1-44e2-a1d5-d2e8eac07cc8
+  Date: 2026-08-10 16:45:02
+  Workflow ID: 2d6e21f5-1721-4324-8e86-ffbe14be48b6
   Platform: Linux-4.18.0-553.144.1.el8_10.x86_64-x86_64-with-glibc2.28
   Host: login1.cluster.embl.de
   User: link
   Snakemake version: 9.23.1
   Python version: 3.13.5 (main, Nov 20 2025, 12:48:42) [GCC 14.3.0]
-  Command: /g/easybuild/x86_64/Rocky/8/haswell/software/snakemake/9.23.1-foss-2025b/bin/snakemake all --sdm apptainer --apptainer-args --bind /g:/g,/home:/home --profile sample_profiles/slurm --config input_folder=/g/steinmetz/link/Amplicon_barcode_analysis/RAW/tiny_test_set_se output_folder=/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3 library_path=/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds bcwithqc_config_path=/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json fastq_name_table_xlsx=/g/steinmetz/link/Amplicon_barcode_analysis/library/input_fastq_name_table_template_plus_bins.xlsx data_type=reads
-  Snakefile: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/Snakefile
-  Base directory: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline
-  Run directory: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline
-  Working directory: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline
+  Command: /g/easybuild/x86_64/Rocky/8/haswell/software/snakemake/9.23.1-foss-2025b/bin/snakemake setup --sdm apptainer --apptainer-args --bind /g:/g,/home:/home --profile sample_profiles/slurm --config input_folder=/g/steinmetz/link/Amplicon_barcode_analysis/RAW/2026-07-07_Jia_CM_screen_initial output_folder=/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim library_path=/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds bcwithqc_config_path=/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_CM_specific_library.json fastq_name_table_xlsx=/g/steinmetz/link/Amplicon_barcode_analysis/library/input_fastq_name_table_pe_test.xlsx data_type=reads --force --allowed-rules setup plot
+  Snakefile: /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/pipeline/Snakefile
+  Base directory: /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/pipeline
+  Run directory: /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/pipeline
+  Working directory: /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/pipeline
   Config file(s): ['config.yaml']
-  Config MD5: c6a5f5a2ddca99bf5a31b53ee3772ff0
+  Config MD5: 50f8e5c65946f5f48bc5ae7f96cdb261
 
 Building DAG of jobs...
-SLURM run ID: 1e7a8764-ade9-42ca-b6c3-bdc0c485d9b2
+SLURM run ID: 8326c907-f756-458a-b0db-a89f053975cb
 MinJobAge 7200s (>= 120s). 'squeue' should work reliably for status queries.
 Using shell: /usr/bin/bash
 Provided remote nodes: 100
 Job stats:
-job                       count
-----------------------  -------
-setup                         1
-QC_filter                     1
-bcwithqc                      1
-infer_QC_filter_params        1
-prepare_bcwithqc_input        1
-count                         1
-MAUDE                         1
-plot                          1
-all                           1
-total                         9
+job      count
+-----  -------
+setup        1
+total        1
 
 Select jobs to execute...
 Execute 1 jobs...
-Job 1 has been submitted with SLURM jobid 60479481 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_setup/60479481.log).
-Waiting at most 60 seconds for missing files:
-/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/.pipeline_state/resolved_config.rds (missing locally)
-/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/.pipeline_state/resolved_config.yaml (missing locally)
-/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/.pipeline_state/fastq_manifest.tsv (missing locally)
-/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/.pipeline_state/01_setup.done (missing locally)
-[Thu Aug  6 16:41:00 2026]
-Finished jobid: 1 (Rule: setup)
-1 of 9 steps (11%) done
-Updating checkpoint dependencies.
-Select jobs to execute...
-Execute 1 jobs...
-Job 2 has been submitted with SLURM jobid 60479488 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_infer_QC_filter_params/60479488.log).
-[Thu Aug  6 16:42:24 2026]
-Finished jobid: 2 (Rule: infer_QC_filter_params)
-2 of 29 steps (7%) done
-Select jobs to execute...
-Execute 5 jobs...
-Job 22 has been submitted with SLURM jobid 60479494 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_QC_filter_SE_worker/input_L1_sampleA/60479494.log).
-Job 20 has been submitted with SLURM jobid 60479495 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_QC_filter_SE_worker/bottom_10_L1_sampleA/60479495.log).
-Job 23 has been submitted with SLURM jobid 60479498 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_QC_filter_SE_worker/top_10_L1_sampleA/60479498.log).
-Job 24 has been submitted with SLURM jobid 60479499 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_QC_filter_SE_worker/top_20_L1_sampleA/60479499.log).
-Job 21 has been submitted with SLURM jobid 60479500 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_QC_filter_SE_worker/bottom_20_L1_sampleA/60479500.log).
-[Thu Aug  6 16:43:04 2026]
-Finished jobid: 20 (Rule: QC_filter_SE_worker)
-3 of 29 steps (10%) done
-[Thu Aug  6 16:43:04 2026]
-Finished jobid: 22 (Rule: QC_filter_SE_worker)
-4 of 29 steps (14%) done
-[Thu Aug  6 16:43:04 2026]
-Finished jobid: 23 (Rule: QC_filter_SE_worker)
-5 of 29 steps (17%) done
-[Thu Aug  6 16:43:04 2026]
-Finished jobid: 24 (Rule: QC_filter_SE_worker)
-6 of 29 steps (21%) done
-[Thu Aug  6 16:43:04 2026]
-Finished jobid: 21 (Rule: QC_filter_SE_worker)
-7 of 29 steps (24%) done
-Select jobs to execute...
-Execute 1 jobs...
-Job 3 has been submitted with SLURM jobid 60479504 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_QC_filter/60479504.log).
-[Thu Aug  6 16:43:44 2026]
-Finished jobid: 3 (Rule: QC_filter)
-8 of 29 steps (28%) done
-Select jobs to execute...
-Execute 5 jobs...
-Job 28 has been submitted with SLURM jobid 60479509 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_prepare_bcwithqc_input_worker/top_10_L1_sampleA/60479509.log).
-Job 26 has been submitted with SLURM jobid 60479510 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_prepare_bcwithqc_input_worker/bottom_20_L1_sampleA/60479510.log).
-Job 27 has been submitted with SLURM jobid 60479511 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_prepare_bcwithqc_input_worker/input_L1_sampleA/60479511.log).
-Job 25 has been submitted with SLURM jobid 60479512 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_prepare_bcwithqc_input_worker/bottom_10_L1_sampleA/60479512.log).
-Job 29 has been submitted with SLURM jobid 60479513 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_prepare_bcwithqc_input_worker/top_20_L1_sampleA/60479513.log).
-[Thu Aug  6 16:44:25 2026]
-Finished jobid: 28 (Rule: prepare_bcwithqc_input_worker)
-9 of 29 steps (31%) done
-[Thu Aug  6 16:44:25 2026]
-Finished jobid: 26 (Rule: prepare_bcwithqc_input_worker)
-10 of 29 steps (34%) done
-[Thu Aug  6 16:44:25 2026]
-Finished jobid: 27 (Rule: prepare_bcwithqc_input_worker)
-11 of 29 steps (38%) done
-[Thu Aug  6 16:44:25 2026]
-Finished jobid: 25 (Rule: prepare_bcwithqc_input_worker)
-12 of 29 steps (41%) done
-[Thu Aug  6 16:44:25 2026]
-Finished jobid: 29 (Rule: prepare_bcwithqc_input_worker)
-13 of 29 steps (45%) done
-Select jobs to execute...
-Execute 1 jobs...
-Job 4 has been submitted with SLURM jobid 60479516 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_prepare_bcwithqc_input/60479516.log).
-[Thu Aug  6 16:45:05 2026]
-Finished jobid: 4 (Rule: prepare_bcwithqc_input)
-14 of 29 steps (48%) done
-Select jobs to execute...
-Execute 5 jobs...
-Job 37 has been submitted with SLURM jobid 60479522 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_preprocess/top_10_L1_sampleA/60479522.log).
-Job 31 has been submitted with SLURM jobid 60479523 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_preprocess/bottom_10_L1_sampleA/60479523.log).
-Job 39 has been submitted with SLURM jobid 60479524 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_preprocess/top_20_L1_sampleA/60479524.log).
-Job 35 has been submitted with SLURM jobid 60479525 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_preprocess/input_L1_sampleA/60479525.log).
-Job 33 has been submitted with SLURM jobid 60479526 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_preprocess/bottom_20_L1_sampleA/60479526.log).
-[Thu Aug  6 16:45:45 2026]
-Finished jobid: 37 (Rule: bcwithqc_preprocess)
-15 of 29 steps (52%) done
-Select jobs to execute...
-Execute 1 jobs...
-[Thu Aug  6 16:45:45 2026]
-Finished jobid: 31 (Rule: bcwithqc_preprocess)
-16 of 29 steps (55%) done
-[Thu Aug  6 16:45:45 2026]
-Finished jobid: 39 (Rule: bcwithqc_preprocess)
-17 of 29 steps (59%) done
-[Thu Aug  6 16:45:45 2026]
-Finished jobid: 35 (Rule: bcwithqc_preprocess)
-18 of 29 steps (62%) done
-Select jobs to execute...
-Execute 3 jobs...
-Job 36 has been submitted with SLURM jobid 60479529 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_count/top_10_L1_sampleA/60479529.log).
-Job 30 has been submitted with SLURM jobid 60479530 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_count/bottom_10_L1_sampleA/60479530.log).
-Job 34 has been submitted with SLURM jobid 60479531 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_count/input_L1_sampleA/60479531.log).
-Job 38 has been submitted with SLURM jobid 60479532 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_count/top_20_L1_sampleA/60479532.log).
-[Thu Aug  6 16:46:25 2026]
-Finished jobid: 33 (Rule: bcwithqc_preprocess)
-19 of 29 steps (66%) done
-Select jobs to execute...
-Execute 1 jobs...
-Job 32 has been submitted with SLURM jobid 60479536 (log: /g/steinmetz/link/Amplicon_barcode_analysis/snake_test/cli_test_v3/pipeline/.snakemake/slurm_logs/rule_bcwithqc_count/bottom_20_L1_sampleA/60479536.log).
+Job 0 has been submitted with SLURM jobid 60678952 (log: /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/pipeline/.snakemake/slurm_logs/rule_setup/60678952.log).
+[Mon Aug 10 16:46:33 2026]
+Finished jobid: 0 (Rule: setup)
+1 of 1 steps (100%) done
+Cleaning up SLURM log files older than 10 day(s).
+Complete log(s): /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/pipeline/.snakemake/log/2026-08-10T164501.932637.snakemake.log

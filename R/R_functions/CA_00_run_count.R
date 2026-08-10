@@ -6,6 +6,11 @@ run_count <- function(cfg) {
   
   count_df_long <- get_count_df_long_and_make_coverage_file(cfg = cfg)
   
+  # If we are processing umis, might as well already provide the reads_counts too. 
+  if (identical("umis", cfg$counting$data_type)){
+    count_df_long_reads <- get_read_count_df_long(cfg)
+  }
+  
   count_df_tsv_gz <- file.path(
     cfg$paths$results_output_folder,
     "count_df.tsv.gz"

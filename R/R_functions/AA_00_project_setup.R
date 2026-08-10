@@ -545,7 +545,7 @@ project_setup <- function(project_root_dir,
     
     read_count_violin = list(
       violin_y_limit = check_input(
-        config$plots$read_count_violin$violin_y_limit %||% 8000,
+        config$plots$read_count_violin$violin_y_limit %||% NA,
         "plots.read_count_violin.violin_y_limit"
       )
     ),
@@ -676,6 +676,7 @@ project_setup <- function(project_root_dir,
   cfg$paths$config_path <- config_path %||% ""
   
   cfg$paths$count_df_fpath <- file.path(cfg$paths$rds_output_folder, "count_df.rds")
+  cfg$paths$reads_count_df_fpath <- file.path(cfg$paths$rds_output_folder, "raw_reads_count_df.rds")
   cfg$paths$maude_counts_df_fpath <- file.path(cfg$paths$rds_output_folder, "MAUDE_ready_count_df.rds")
   #=============================================================================
   # Snakemake handeling

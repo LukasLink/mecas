@@ -182,7 +182,7 @@ validate_bins <- function(fastq_name_table_xlsx) {
   }
   
   if (!any(sorted_rows)) {
-    stop_log("At least one sorted bin is required.", call. = FALSE)
+    log_warn("No sorted bins were specified. This will lead to a failure when running MAUDE.", call. = FALSE)
   }
   
   if (any(min_was_provided[unsorted_rows]) || any(max_was_provided[unsorted_rows])) {

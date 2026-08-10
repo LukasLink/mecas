@@ -6,9 +6,30 @@
 
 run_count_violin_plots <- function(count_df_long,
                                    cfg,
-                                   y_limit = 8000,
+                                   y_limit = NA,
+                                   auto_y_limit_prob = 0.99,
                                    non_targeting = TRUE,
                                    output_subdir = "01_read_or_umi_count_plots") {
+  
+  get_auto_y_limit <- function(df, prob = auto_y_limit_prob) {
+    if (!"count" %in% colnames(df)) {
+      stop("count_df_long must contain a `count` column.")
+    }
+    
+    y <- df$count
+    y <- y[is.finite(y)]
+    
+    if (length(y) == 0) {
+      stop("No finite count values found for automatic y_limit calculation.")
+    }
+    
+    ceiling(stats::quantile(y, probs = prob, na.rm = TRUE, names = FALSE))
+  }
+  
+  if (is.na(y_limit)) {
+    y_limit <- get_auto_y_limit(count_df_long, prob = auto_y_limit_prob)
+    logger::log_info("Auto-determined y_limit from data: {y_limit}")
+  }
   
   plot_dir <- file.path(cfg$paths$plots_output_folder, output_subdir)
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)

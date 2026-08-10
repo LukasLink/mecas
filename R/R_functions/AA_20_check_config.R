@@ -704,7 +704,7 @@
   
   # Violin plot
   "plots.read_count_violin.violin_y_limit" = function(option, name) {
-    .validate_integer(option, name, min = 1)
+    .validate_integer(option, name, min = 1, required = FALSE)
   },
   
   # Waterfall plot

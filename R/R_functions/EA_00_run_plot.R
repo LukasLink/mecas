@@ -31,6 +31,15 @@ run_plot <- function(cfg) {
     cfg = cfg
   )
   
+  if (identical("umis", cfg$counting$data_type)){
+    run_umi_read_scatter_plots(
+      umi_counts_df = count_df_long,
+      read_counts_df = readRDS(cfg$paths$reads_count_df_fpath),
+      cfg = cfg)
+  }
+  
+  run_count_density_plots(count_df_long = count_df_long, cfg = cfg)
+  
   logger::log_info("Finished plot generation.")
   
   invisible(TRUE)
