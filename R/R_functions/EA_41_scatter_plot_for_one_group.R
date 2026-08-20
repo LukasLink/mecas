@@ -12,7 +12,7 @@ scatter_plot_for_one_group <- function(df) {
   sublib      <- unique(df$sublib)[1]
   
   title_txt <- paste(
-    "Read count vs UMI count",
+    "Read count vs deduplicated UMI count per sgRNA",
     paste0("sample = ", sample_name),
     paste0("bin_name = ", bin_name),
     paste0("sublib = ", sublib),

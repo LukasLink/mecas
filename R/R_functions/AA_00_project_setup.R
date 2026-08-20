@@ -23,7 +23,8 @@ cran_packages <- c(
 
 bioc_packages <- c(
   "AnnotationDbi",
-  "org.Hs.eg.db"
+  "org.Hs.eg.db",
+  "Rsamtools"
 )
 
 other_packages <- c(
@@ -288,6 +289,7 @@ log_project_setup <- function(cfg) {
   logger::log_info("----------------------------------------------------------")
   
   logger::log_info("data_type:                         {cfg$counting$data_type}")
+  logger::log_info("umis_as_sublibs:                   {cfg$counting$umis_as_sublibs}")
   logger::log_info("method:                            {cfg$replicates$method}")
   logger::log_info("norm_method:                       {cfg$normalization$norm_method}")
   logger::log_info("combine_for_guide_stats:           {cfg$replicates$combine_for_guide_stats}")
@@ -421,6 +423,10 @@ project_setup <- function(project_root_dir,
     data_type = check_input(
       config$counting$data_type %||% "reads",
       "counting.data_type"
+    ),
+    umis_as_sublibs = check_input(
+      config$counting$umis_as_sublibs %||% FALSE,
+      "counting.umis_as_sublibs"
     )
   )
   
@@ -664,8 +670,8 @@ project_setup <- function(project_root_dir,
   cfg$paths$data_dir <- get_file_path(project_root_dir, "data")
   
   cfg$paths$bcwithqc_output_folder <- make_clean_dir(cfg$paths$output_folder, "bcwithqc_output")
-  cfg$paths$qc_filtered_folder <- make_clean_dir(cfg$paths$output_folder, "QC_filtered")
   cfg$paths$rds_output_folder <- make_clean_dir(cfg$paths$output_folder, "rds")
+  cfg$paths$reads_per_umi_count <- make_clean_dir(cfg$paths$rds_output_folder, "reads_per_umi_count")
   cfg$paths$results_output_folder <- make_clean_dir(cfg$paths$output_folder, "results")
   
   cfg$paths$plots_output_folder <- make_clean_dir(cfg$paths$output_folder, "plots")
@@ -689,13 +695,14 @@ project_setup <- function(project_root_dir,
   cfg$paths$snake$resolved_config_rds <- file.path(cfg$paths$snake$state_dir, "resolved_config.rds")
   cfg$paths$snake$resolved_config_yaml <- file.path(cfg$paths$snake$state_dir, "resolved_config.yaml")
   cfg$paths$snake$QC_filtering_params_sh <- file.path(cfg$paths$snake$state_dir,"QC_filtering_params.sh")
+  cfg$paths$snake$count_df_meta <- make_clean_dir(cfg$paths$snake$state_dir,"count_df_meta")
   
   cfg$paths$snake$done <- list(
     setup = file.path(cfg$paths$snake$state_dir, "01_setup.done"),
     infer_QC_filter_params = file.path(cfg$paths$snake$state_dir, "02_infer_QC_filter_params.done"),
-    count = file.path(cfg$paths$snake$state_dir, "06_count.done"),
-    MAUDE = file.path(cfg$paths$snake$state_dir, "07_MAUDE.done"),
-    plot = file.path(cfg$paths$snake$state_dir, "08_plot.done")
+    count = file.path(cfg$paths$snake$state_dir, "07_count.done"),
+    MAUDE = file.path(cfg$paths$snake$state_dir, "08_MAUDE.done"),
+    plot = file.path(cfg$paths$snake$state_dir, "09_plot.done")
   )
   #=============================================================================
   # Logging 
@@ -721,6 +728,7 @@ project_setup <- function(project_root_dir,
     cfg$paths$log_files <- list(
       setup = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_01_setup.log")),
       infer_QC_filter_params = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_02_infer_QC_filter_params.log")),
+      reads_per_umi_count = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_05-2_reads_per_umi_count.log")),
       count = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_06_count.log")),
       MAUDE = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_07_MAUDE.log")),
       plot = file.path(cfg$paths$log_folder, paste0(cfg$run$run_id, "_08_plot.log"))

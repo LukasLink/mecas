@@ -8,6 +8,8 @@ count_df_long_to_wide <- function(count_df_long,
                                   recover_input = FALSE,
                                   for_sum = FALSE,
                                   pseudocount_already_added = FALSE,
+                                  strict_mode = FALSE,
+                                  umis_as_sublibs = FALSE, 
                                   ctrl_selection = c("targeting_control", "non_targeting_control")) {
   
   required_count_columns <- c("sgRNA", "count", "group_category", "bin_name", "sublib", "sample", "exp")
@@ -70,23 +72,30 @@ count_df_long_to_wide <- function(count_df_long,
   
   log_wide_diagnostics(maude_counts_df, "Initial wide table")
   
+  #-----------------------------------------------------------------------------
+  # Optional: recover input (by estimating the mean of other bins for each sgRNA)
+  #-----------------------------------------------------------------------------
   if (isTRUE(recover_input)) {
-    input_means <- maude_counts_df %>%
-      dplyr::group_by(sgRNA, sublib) %>%
-      dplyr::summarise(mean_input = mean(.data[[unsorted_bin]], na.rm = TRUE), .groups = "drop") %>%
-      dplyr::mutate(mean_input = ifelse(is.nan(mean_input), NA_real_, mean_input))
-    
-    maude_counts_df <- maude_counts_df %>%
-      dplyr::left_join(input_means, by = c("sgRNA", "sublib"))
-    
-    recover_input_rows <- is.na(maude_counts_df[[unsorted_bin]]) & has_any_sorted_count
-    maude_counts_df[[unsorted_bin]][recover_input_rows] <- maude_counts_df$mean_input[recover_input_rows]
-    maude_counts_df$mean_input <- NULL
-    
+    if (isTRUE(umis_as_sublibs)){
+      log_warn("recover_input option is currently not supported for --umis-as-sublibs and will be skipped")
+    } else {
+      input_means <- maude_counts_df %>%
+        dplyr::group_by(sgRNA, sublib) %>%
+        dplyr::summarise(mean_input = mean(.data[[unsorted_bin]], na.rm = TRUE), .groups = "drop") %>%
+        dplyr::mutate(mean_input = ifelse(is.nan(mean_input), NA_real_, mean_input))
+      
+      maude_counts_df <- maude_counts_df %>%
+        dplyr::left_join(input_means, by = c("sgRNA", "sublib"))
+      
+      recover_input_rows <- is.na(maude_counts_df[[unsorted_bin]]) & has_any_sorted_count
+      maude_counts_df[[unsorted_bin]][recover_input_rows] <- maude_counts_df$mean_input[recover_input_rows]
+      maude_counts_df$mean_input <- NULL
+    }
   } else if (!isTRUE(for_sum)) {
     maude_counts_df <- maude_counts_df %>%
       dplyr::filter(dplyr::if_all(dplyr::all_of(all_bins), ~ !is.na(.x)))
   }
+  #-----------------------------------------------------------------------------
   
   if (isTRUE(drop_0s)) {
     maude_counts_df <- maude_counts_df %>%
@@ -97,6 +106,24 @@ count_df_long_to_wide <- function(count_df_long,
     maude_counts_df <- maude_counts_df %>%
       dplyr::mutate(dplyr::across(dplyr::all_of(all_bins), ~ .x + 1))
   }
+  
+  #-----------------------------------------------------------------------------
+  # Optional: strict mode
+  #-----------------------------------------------------------------------------
+  if (isTRUE(strict_mode)) {
+    logger::log_info("Strict mode enabled.")
+    logger::log_info("Rows/Guides before strict mode: {nrow(maude_counts_df)}")
+    
+    maude_counts_df <- maude_counts_df %>%
+      dplyr::filter(
+        dplyr::if_all(
+          dplyr::all_of(all_bins),
+          ~ !is.na(.x) & .x > 1
+        )
+      )
+    logger::log_info("Rows/Guides after strict mode: {nrow(maude_counts_df)}")
+  }
+  #-----------------------------------------------------------------------------
   
   # MAUDE expects integer counts.
   maude_counts_df <- maude_counts_df %>%

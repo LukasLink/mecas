@@ -7,10 +7,15 @@ create_maude_qc_plot_objects <- function(count_df_long,
   
   all_bins <- cfg$bins$bin_name
   
-  if (identical(cfg$counting$data_type, "umis")) {
+  if (isTRUE(cfg$counting$umis_as_sublibs)) {
+    data_name <- "reads"
+    entry_name <- "sgRNA-UMI entries"
+  } else if (identical(cfg$counting$data_type, "umis")) {
     data_name <- "UMIs"
+    entry_name <- "sgRNA entries"
   } else if (identical(cfg$counting$data_type, "reads")) {
     data_name <- "reads"
+    entry_name <- "sgRNA entries"
   } else {
     stop_log("`counting.data_type` must be either 'umis' or 'reads'.")
   }
@@ -23,13 +28,37 @@ create_maude_qc_plot_objects <- function(count_df_long,
     title_suffix_2 <- "(ready for MAUDE)"
   }
   
-  sample_sum_df <- count_df_long %>%
-    dplyr::group_by(bin_name, exp) %>%
-    dplyr::summarise(total_count = sum(count), .groups = "drop") %>%
-    dplyr::mutate(
-      Sample = interaction(bin_name, exp, drop = TRUE),
-      Bin = bin_name
-    )
+  if (isTRUE(cfg$counting$umis_as_sublibs)) {
+    sample_sum_df <- count_df_long %>%
+      dplyr::group_by(bin_name, sample) %>%
+      dplyr::summarise(total_count = sum(count), .groups = "drop") %>%
+      dplyr::mutate(
+        Sample = interaction(bin_name, sample, drop = TRUE),
+        Bin = bin_name
+      ) 
+    sample_n_df <- count_df_long %>%
+      dplyr::group_by(bin_name, sample) %>%
+      dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
+      dplyr::mutate(
+        Sample = interaction(bin_name, sample, drop = TRUE),
+        Bin = bin_name
+      )
+  } else {
+    sample_sum_df <- count_df_long %>%
+      dplyr::group_by(bin_name, exp) %>%
+      dplyr::summarise(total_count = sum(count), .groups = "drop") %>%
+      dplyr::mutate(
+        Sample = interaction(bin_name, exp, drop = TRUE),
+        Bin = bin_name
+      ) 
+    sample_n_df <- count_df_long %>%
+      dplyr::group_by(bin_name, exp) %>%
+      dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
+      dplyr::mutate(
+        Sample = interaction(bin_name, exp, drop = TRUE),
+        Bin = bin_name
+      )
+  }
   
   p_sum_per_sample <- ggplot2::ggplot(
     sample_sum_df,
@@ -48,13 +77,7 @@ create_maude_qc_plot_objects <- function(count_df_long,
       legend.position = "none"
     )
   
-  sample_n_df <- count_df_long %>%
-    dplyr::group_by(bin_name, exp) %>%
-    dplyr::summarise(num_sgRNAs = dplyr::n(), .groups = "drop") %>%
-    dplyr::mutate(
-      Sample = interaction(bin_name, exp, drop = TRUE),
-      Bin = bin_name
-    )
+
   
   p_n_per_sample <- ggplot2::ggplot(
     sample_n_df,
@@ -62,9 +85,9 @@ create_maude_qc_plot_objects <- function(count_df_long,
   ) +
     ggplot2::geom_col() +
     ggplot2::labs(
-      title = paste("Number of sgRNA entries per sample", title_suffix_1),
+      title = paste("Number of", entry_name, "per sample", title_suffix_1),
       x = "Sample",
-      y = "Number of sgRNA entries"
+      y = paste("Number of", entry_name)
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
@@ -84,9 +107,9 @@ create_maude_qc_plot_objects <- function(count_df_long,
   ) +
     ggplot2::geom_col() +
     ggplot2::labs(
-      title = paste("Number of sgRNA entries per bin", title_suffix_1),
+      title = paste("Number of", entry_name, "per bin", title_suffix_1),
       x = "Bin",
-      y = "sgRNA entries"
+      y = paste("Number of", entry_name)
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
@@ -114,9 +137,9 @@ create_maude_qc_plot_objects <- function(count_df_long,
   ) +
     ggplot2::geom_col() +
     ggplot2::labs(
-      title = paste("Number of sgRNA entries per bin", title_suffix_2),
+      title = paste("Number of", entry_name, "per bin", title_suffix_2),
       x = "Bin",
-      y = "Number of sgRNA entries"
+      y = paste("Number of", entry_name)
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
@@ -146,7 +169,7 @@ create_maude_qc_plot_objects <- function(count_df_long,
     ggplot2::labs(
       title = paste("Sum of", data_name, "per bin"),
       x = "Bin",
-      y = "Total counts"
+      y = "Total counts (incl. pseudocounts)"
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(

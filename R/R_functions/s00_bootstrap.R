@@ -75,6 +75,8 @@ bootstrap_pipeline <- function(project_root_dir) {
     library(yaml)
     library(tools)
     library(logger)
+    library(Rsamtools)
+    library(data.table)
   })
   
   suppressMessages({

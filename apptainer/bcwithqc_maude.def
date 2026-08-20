@@ -383,7 +383,8 @@ if (actual_r != expected_r) {
 BiocManager::install(
     c(
         "AnnotationDbi",
-        "org.Hs.eg.db"
+        "org.Hs.eg.db",
+        "Rsamtools"
     ),
     version = "3.22",
     ask = FALSE,
@@ -393,7 +394,8 @@ BiocManager::install(
 
 required_packages <- c(
     "AnnotationDbi",
-    "org.Hs.eg.db"
+    "org.Hs.eg.db",
+    "Rsamtools"
 )
 
 missing_packages <- required_packages[
@@ -509,6 +511,7 @@ required_packages <- c(
     "reshape",
     "AnnotationDbi",
     "org.Hs.eg.db",
+    "Rsamtools", 
     "MAUDE"
 )
 

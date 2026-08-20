@@ -5,6 +5,7 @@ import os
 import shutil
 import math
 from pathlib import Path
+import gzip
 
 
 shell.executable("/usr/bin/bash")
@@ -26,6 +27,7 @@ CLI_TO_CONFIG = {
     "bcwithqc_config_path": ("paths", "bcwithqc_config_path"),
     "fastq_name_table_xlsx": ("paths", "fastq_name_table_xlsx"),
     "data_type": ("counting", "data_type"),
+    "umis_as_sublibs": ("counting", "umis_as_sublibs"),
 }
 
 for cli_key, (section, key) in CLI_TO_CONFIG.items():
@@ -343,6 +345,11 @@ def get_samples_after_setup(wildcards):
 
     return samples
 
+def get_count_df_meta_files(wildcards):
+    return [
+        os.path.join(STATE_DIR,"count_df_meta",sample + ".txt")
+        for sample in get_samples_after_setup(wildcards)
+    ]
 
 def get_qc_job_done_files(wildcards):
     se_done = expand(
@@ -363,11 +370,38 @@ def get_prepare_bcwithqc_input_done_files(wildcards):
         os.path.join(STATE_DIR, "bcwithqc_input_done", "{sample}.done"),
         sample=get_samples_after_setup(wildcards),
     )
-
+    
+def get_bcwithqc_preprocess_done_files(wildcards):
+    return expand(
+        os.path.join(
+            STATE_DIR,
+            "bcwithqc_preprocess_done",
+            "{sample}.done",
+        ),
+        sample=get_samples_after_setup(wildcards),
+    )
 
 def get_bcwithqc_done_files(wildcards):
     return expand(
-        os.path.join(STATE_DIR, "bcwithqc_done", "{sample}.done"),
+        os.path.join(STATE_DIR, "bcwithqc_count_done", "{sample}.done"),
+        sample=get_samples_after_setup(wildcards),
+    )
+    
+def get_reads_per_umi_count_bam(wildcards):
+    return os.path.join(
+        BCWITHQC_OUTPUT_FOLDER,
+        wildcards.sample,
+        "with_bc_umi.sorted.bam",
+    )
+
+
+def get_reads_per_umi_count_done_files(wildcards):
+    return expand(
+        os.path.join(
+            STATE_DIR,
+            "reads_per_umi_count",
+            "{sample}.done",
+        ),
         sample=get_samples_after_setup(wildcards),
     )
 
@@ -411,7 +445,190 @@ def get_bcwithqc_count_runtime(wildcards, input):
     estimated_minutes = 60 + 25 * read_pairs_million 
 
     return estimated_minutes
+
+def get_reads_per_umi_count_dependency(wildcards):
+    if (config["counting"]["umis_as_sublibs"] is True):
+        return os.path.join(
+            STATE_DIR,
+            "05-2_reads_per_umi_count.done"
+        )
+    return []
+  
+def get_reads_per_umi_count_runtime(wildcards, input):
+  if(config["counting"]["umis_as_sublibs"] is True):
+    with open(str(input.read_count), "r") as handle:
+        retained_read_pairs = int(handle.read().strip())
+
+    read_pairs_10_million = retained_read_pairs / 10_000_000
+    read_pairs_100_million =  retained_read_pairs / 100_000_000
     
+    estimated_minutes = 60 + 0.5 * read_pairs_10_million + 10 * read_pairs_100_million
+  else: 
+    estimated_minutes = 1
+
+  return estimated_minutes 
+
+def get_reads_per_umi_count_mb(wildcards, input):
+  if(config["counting"]["umis_as_sublibs"] is True):
+    mb = 40000
+
+  else: 
+    mb = 1000
+
+  return mb
+
+def get_total_count_df_rows(wildcards):
+    # During initial DAG construction / dry-run, setup may not have run yet.
+    manifest_path = os.path.join(STATE_DIR, "fastq_manifest.tsv")
+
+    if not os.path.isfile(manifest_path):
+        return 0
+      
+    samples = get_samples_after_setup(wildcards)
+
+    total_rows = 0
+
+    if config["counting"]["umis_as_sublibs"] is True:
+        for sample in samples:
+            meta_file = os.path.join(STATE_DIR,"count_df_meta",sample + ".txt")
+
+            if not os.path.isfile(meta_file):
+                continue
+
+            with open(meta_file, "r") as handle:
+                total_rows += int(handle.read().strip())
+
+    else:
+        for sample in samples:
+            barcode_file = os.path.join(
+                BCWITHQC_OUTPUT_FOLDER,
+                sample,
+                "raw_" + config["counting"]["data_type"] + "_bc_matrix",
+                "barcodes.tsv.gz"
+            )
+
+            if not os.path.isfile(barcode_file):
+                continue
+
+            with gzip.open(barcode_file, "rt") as handle:
+                total_rows += sum(1 for _ in handle)
+
+    return total_rows
+  
+def get_count_mb(wildcards, input):
+    total_rows = get_total_count_df_rows(wildcards)
+    mb = 4000 + 0.0002 * total_rows
+    return math.ceil(mb)
+  
+def get_count_runtime(wildcards, input):
+    total_rows = get_total_count_df_rows(wildcards)
+    minutes = 10 + 0.5 * total_rows / 1_000_000
+    # Actually 0.18 not 0.5 but safety margin
+    return math.ceil(minutes)
+  
+def get_MAUDE_mb(wildcards, input):
+    total_rows = get_total_count_df_rows(wildcards)
+    mb = 20000 + 0.0002 * total_rows
+    return math.ceil(mb)
+  
+def get_MAUDE_runtime(wildcards, input):
+    total_rows = get_total_count_df_rows(wildcards)
+    minutes = 600 + 0.5 * total_rows / 1_000_000
+    return math.ceil(minutes)
+  
+def get_plot_mb(wildcards, input):
+    total_rows = get_total_count_df_rows(wildcards)
+    mb = 20000 + 0.0002 * total_rows
+    return math.ceil(mb)
+  
+def get_plot_runtime(wildcards, input):
+    total_rows = get_total_count_df_rows(wildcards)
+    minutes = 600 + 0.5 * total_rows / 1_000_000
+    return math.ceil(minutes)
+  
+def get_plot_maude_dependency(wildcards):
+    if config.get("mecas_command") == "all":
+        return os.path.join(STATE_DIR, "08_MAUDE.done")
+
+    return []  
+  
+def cleanup_pipeline_intermediates():
+    removed = []
+    kept = []
+
+    # -------------------------------------------------------------------------
+    # QC_filtered
+    # Delete the directory unless everything inside it is a symlink.
+    # -------------------------------------------------------------------------
+    if os.path.isdir(QC_FILTERED_FOLDER):
+        qc_entries = []
+
+        for root, dirs, files in os.walk(QC_FILTERED_FOLDER):
+            for name in dirs:
+                qc_entries.append(os.path.join(root, name))
+            for name in files:
+                qc_entries.append(os.path.join(root, name))
+
+        real_entries = [
+            path for path in qc_entries
+            if not os.path.islink(path)
+        ]
+
+        # Ignore ordinary directories that exist only to contain symlinks.
+        real_files = [
+            path for path in real_entries
+            if not os.path.isdir(path)
+        ]
+
+        if len(real_files) > 0:
+            shutil.rmtree(QC_FILTERED_FOLDER)
+            removed.append(QC_FILTERED_FOLDER)
+        else:
+            kept.append(QC_FILTERED_FOLDER)
+
+    # -------------------------------------------------------------------------
+    # Large bcwithqc intermediate files
+    # -------------------------------------------------------------------------
+    if os.path.isdir(BCWITHQC_OUTPUT_FOLDER):
+        for root, dirs, files in os.walk(BCWITHQC_OUTPUT_FOLDER):
+            for filename in files:
+                filepath = os.path.join(root, filename)
+
+                should_delete = (
+                    filename.endswith(".bam")
+                    or filename.endswith(".bam.bai")
+                    or filename.endswith(".fq")
+                    or filename == "bcs.tsv"
+                    or filename == "reads.tsv"
+                )
+
+                if should_delete and not os.path.islink(filepath):
+                    os.remove(filepath)
+                    removed.append(filepath)
+    # -------------------------------------------------------------------------
+    # Remove state markers for rules whose outputs were deleted by cleanup.
+    # This ensures Snakemake reruns them if the pipeline is started again.
+    # -------------------------------------------------------------------------
+    cleanup_state_paths = [
+        os.path.join(STATE_DIR, "03_QC_filter.done"),
+        os.path.join(STATE_DIR, "04_prepare_bcwithqc_input.done"),
+        os.path.join(STATE_DIR, "05_bcwithqc_preprocess.done"),
+        os.path.join(STATE_DIR, "06_bcwithqc_count.done"),
+        os.path.join(STATE_DIR, "QC_filter_jobs"),
+        os.path.join(STATE_DIR, "bcwithqc_input_done"),
+        os.path.join(STATE_DIR, "bcwithqc_preprocess_done"),
+        os.path.join(STATE_DIR, "bcwithqc_count_done"),
+    ]
+
+    for state_path in cleanup_state_paths:
+        if os.path.isdir(state_path):
+            shutil.rmtree(state_path)
+            removed.append(state_path)
+        elif os.path.isfile(state_path) or os.path.islink(state_path):
+            os.remove(state_path)
+            removed.append(state_path)
+
+    return removed, kept
 #-------------------------------------------------------------------------------
 # SNAKEMAKE RULES
 #-------------------------------------------------------------------------------
@@ -421,10 +638,11 @@ rule all:
         done_02 = os.path.join(STATE_DIR, "02_infer_QC_filter_params.done"),
         done_03 = os.path.join(STATE_DIR, "03_QC_filter.done"),
         done_04 = os.path.join(STATE_DIR, "04_prepare_bcwithqc_input.done"),
-        done_05 = os.path.join(STATE_DIR, "05_bcwithqc.done"),
-        done_06 = os.path.join(STATE_DIR, "06_count.done"),
-        done_07 = os.path.join(STATE_DIR, "07_MAUDE.done"),
-        done_08 = os.path.join(STATE_DIR, "08_plot.done")
+        done_05 = os.path.join(STATE_DIR, "05_bcwithqc_preprocess.done"),
+        done_06 = os.path.join(STATE_DIR, "06_bcwithqc_count.done"),
+        done_07 = os.path.join(STATE_DIR, "07_count.done"),
+        done_08 = os.path.join(STATE_DIR, "08_MAUDE.done"),
+        done_09 = os.path.join(STATE_DIR, "09_plot.done")
 
 
 checkpoint setup:
@@ -451,7 +669,46 @@ checkpoint setup:
             unset R_LIBS_USER
             Rscript --vanilla R/cli_A_setup.R {merged_cfg}
         """)
-
+        
+        # ---------------------------------------------------------------------
+        # Create convenient symlinks to Snakemake logs in the main output dir
+        # ---------------------------------------------------------------------
+    
+        snakemake_dir = os.path.join(OUTPUT_FOLDER,"pipeline",".snakemake")
+        logs_dir = os.path.join(OUTPUT_FOLDER,"logs")
+        os.makedirs(logs_dir, exist_ok=True)
+    
+        if os.path.isdir(snakemake_dir):
+    
+            # The main Snakemake log directory gets a descriptive name.
+            snakemake_log_dir = os.path.join(snakemake_dir,"log")
+    
+            if os.path.isdir(snakemake_log_dir):
+                target = os.path.join(logs_dir,"snakemake_full_logs")
+                relative_source = os.path.relpath(snakemake_log_dir, start=logs_dir)
+    
+                if os.path.lexists(target):
+                    os.unlink(target)
+    
+                os.symlink(relative_source,target,target_is_directory=True)
+    
+            # Link any other .snakemake directories whose names contain "log" like "slurm_logs".
+            for name in os.listdir(snakemake_dir):
+    
+                if name == "log":
+                    continue
+    
+                source = os.path.join(snakemake_dir,name)
+    
+                if "log" in name.lower() and os.path.isdir(source):
+                    target = os.path.join(logs_dir,name)
+                    relative_source = os.path.relpath(source, start=logs_dir)
+    
+                    if os.path.lexists(target):
+                        os.unlink(target)
+    
+                    os.symlink(relative_source,target,target_is_directory=True)
+                    
 
 rule infer_QC_filter_params:
     input:
@@ -753,7 +1010,7 @@ rule prepare_bcwithqc_input:
         touch "{output.done}"
         """
 
-rule bcwithqc_preprocess:
+rule bcwithqc_preprocess_worker:
     input:
         prepared = os.path.join(STATE_DIR, "bcwithqc_input_done", "{sample}.done"),
         preparation_done=os.path.join(STATE_DIR, "04_prepare_bcwithqc_input.done"),
@@ -773,7 +1030,7 @@ rule bcwithqc_preprocess:
         r"""
         echo "============================================================"
         echo "JOB RESOURCES"
-        echo "Rule:       bcwithqc_preprocess"
+        echo "Rule:       bcwithqc_preprocess_worker"
         echo "Sample:     {wildcards.sample}"
         echo "Threads:    {threads}"
         echo "Memory:     {resources.mem_mb} MB"
@@ -808,14 +1065,29 @@ rule bcwithqc_preprocess:
         mkdir -p "$(dirname "{output.done}")"
         touch "{output.done}"
         """
+rule bcwithqc_preprocess:
+    input:
+        get_bcwithqc_preprocess_done_files
+    output:
+        done = os.path.join(STATE_DIR, "05_bcwithqc_preprocess.done")
+    threads: 1
+    resources:
+        mem_mb = 1000,
+        runtime = 1
+    shell:
+        r"""
+        touch "{output.done}"
+        """
         
-rule bcwithqc_count:
+rule bcwithqc_count_worker:
     input:
         preprocess_done = os.path.join(STATE_DIR, "bcwithqc_preprocess_done", "{sample}.done"),
         read_count = get_qc_read_count_for_sample
     output:
-        done = os.path.join(STATE_DIR, "bcwithqc_done", "{sample}.done"),
-        matrices = BCWITHQC_REQUIRED_MATRIX_OUTPUTS
+        done = os.path.join(STATE_DIR, "bcwithqc_count_done", "{sample}.done"),
+        matrices = BCWITHQC_REQUIRED_MATRIX_OUTPUTS,
+        bam = os.path.join(BCWITHQC_OUTPUT_FOLDER, "{sample}", "with_bc_umi.sorted.bam"),
+        bai = os.path.join(BCWITHQC_OUTPUT_FOLDER, "{sample}", "with_bc_umi.sorted.bam.bai")
     params:
         output_dir = lambda wc: os.path.join(BCWITHQC_OUTPUT_FOLDER, wc.sample)
     threads: 10
@@ -827,7 +1099,7 @@ rule bcwithqc_count:
         r"""
         echo "============================================================"
         echo "JOB RESOURCES"
-        echo "Rule:       bcwithqc_count"
+        echo "Rule:       bcwithqc_count_worker"
         echo "Sample:     {wildcards.sample}"
         echo "Threads:    {threads}"
         echo "Memory:     {resources.mem_mb} MB"
@@ -843,7 +1115,9 @@ rule bcwithqc_count:
         # bcwithqc incorrectly interprets their existence as completed matrices.
         rm -rf \
           "{params.output_dir}/raw_reads_bc_matrix" \
-          "{params.output_dir}/raw_umis_bc_matrix"
+          "{params.output_dir}/raw_umis_bc_matrix" \
+          "{params.output_dir}/with_bc_umi.sorted.bam" \
+          "{params.output_dir}/with_bc_umi.sorted.bam.bai"
           
         bcwithqc count \
           "{params.output_dir}" \
@@ -857,11 +1131,11 @@ rule bcwithqc_count:
         touch "{output.done}"
         """     
         
-rule bcwithqc:
+rule bcwithqc_count:
     input:
         get_bcwithqc_done_files
     output:
-        done=os.path.join(STATE_DIR, "05_bcwithqc.done")
+        done=os.path.join(STATE_DIR, "06_bcwithqc_count.done")
     threads: 1
     resources:
         mem_mb=1000,
@@ -871,20 +1145,85 @@ rule bcwithqc:
         touch "{output.done}"
         """
 
+
+rule reads_per_umi_count_worker:
+    input:
+        bam = get_reads_per_umi_count_bam,
+        bcwithqc_done = os.path.join(STATE_DIR, "bcwithqc_count_done", "{sample}.done"),
+        cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
+        read_count = get_qc_read_count_for_sample
+    output:
+        rds = os.path.join(RDS_OUTPUT_FOLDER, "reads_per_umi_count", "{sample}.rds"),
+        meta = os.path.join(STATE_DIR, "count_df_meta", "{sample}.txt"),
+        done = os.path.join(STATE_DIR, "reads_per_umi_count", "{sample}.done")
+    threads: 1
+    resources:
+        mem_mb = get_reads_per_umi_count_mb,
+        runtime = get_reads_per_umi_count_runtime
+    shell:
+        r"""
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       reads_per_umi_count_worker"
+        echo "Sample:     {wildcards.sample}"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "============================================================"
+
+        unset R_LIBS
+        unset R_LIBS_USER
+        
+        mkdir -p "$(dirname "{output.done}")"
+        mkdir -p "$(dirname "{output.rds}")"
+        
+        Rscript --vanilla \
+            R/cli_F_reads_per_umi_count.R \
+            "{input.cfg_rds}" \
+            "{wildcards.sample}"
+        
+
+        touch "{output.done}"
+        """
+
+rule reads_per_umi_count:
+    input:
+        get_reads_per_umi_count_done_files,
+        meta = get_count_df_meta_files
+    output:
+        done = os.path.join(STATE_DIR, "05-2_reads_per_umi_count.done")
+    threads: 1
+    resources:
+        mem_mb = 1000,
+        runtime = 1
+    shell:
+        r"""
+        touch "{output.done}"
+        """
+        
 rule count:
     input:
         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
-        bcwithqc_done = os.path.join(STATE_DIR, "05_bcwithqc.done")
+        bcwithqc_done = os.path.join(STATE_DIR, "06_bcwithqc_count.done"),
+        reads_per_umi_count_done = get_reads_per_umi_count_dependency
     output:
         count_df = os.path.join(RDS_OUTPUT_FOLDER, "count_df.rds"),
         mapping_results = os.path.join(RESULTS_OUTPUT_FOLDER,"mapping_results.xlsx"),
-        done = os.path.join(STATE_DIR, "06_count.done")
+        done = os.path.join(STATE_DIR, "07_count.done")
     threads: 1
     resources:
-        mem_mb = 4000,
-        runtime = 30
+        mem_mb = get_count_mb,
+        runtime = get_count_runtime
     shell:
         r"""
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       count"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "============================================================"
+        
         unset R_LIBS
         unset R_LIBS_USER
         Rscript --vanilla R/cli_C_count.R {input.cfg_rds}
@@ -895,19 +1234,29 @@ rule MAUDE:
     input:
         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
         count_df = os.path.join(RDS_OUTPUT_FOLDER, "count_df.rds"),
-        count_done=os.path.join(STATE_DIR, "06_count.done")
+        count_done=os.path.join(STATE_DIR, "07_count.done")
     output:
         MAUDE_guide_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_guide_stats.rds"),
         MAUDE_count_df = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_ready_count_df.rds"),
         MAUDE_binStats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_binStats.rds"),
         MAUDE_gene_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_gene_stats.rds"),
-        done = os.path.join(STATE_DIR, "07_MAUDE.done")
+        done = os.path.join(STATE_DIR, "08_MAUDE.done")
     threads: 1
     resources:
-        mem_mb = 4000,
-        runtime = 120
+        # mem_mb = get_MAUDE_mb,
+        # runtime = get_MAUDE_runtime
+        mem_mb = 120000,
+        runtime = 14400
     shell:
         r"""
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       MAUDE"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "============================================================"
+        
         unset R_LIBS
         unset R_LIBS_USER
         Rscript --vanilla R/cli_D_MAUDE.R {input.cfg_rds}
@@ -918,21 +1267,51 @@ rule plot:
     input:
         cfg_rds = os.path.join(STATE_DIR, "resolved_config.rds"),
         count_df = os.path.join(RDS_OUTPUT_FOLDER, "count_df.rds"),
-        MAUDE_count_df = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_ready_count_df.rds"),
-        MAUDE_guide_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_guide_stats.rds"),
-        MAUDE_gene_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_gene_stats.rds"),
-        MAUDE_done = os.path.join(STATE_DIR, "07_MAUDE.done")
+        maude_done = get_plot_maude_dependency
     output:
         violin = os.path.join(PLOTS_OUTPUT_FOLDER, "01_read_or_umi_count_plots", "count_summary.xlsx"),
-        bar = os.path.join(PLOTS_OUTPUT_FOLDER, "02_MAUDE_QC_plots", "sum_per_sample.png"),
-        done = os.path.join(STATE_DIR, "08_plot.done")
+        done = os.path.join(STATE_DIR, "09_plot.done")
     threads: 1
     resources:
-        mem_mb = 4000,
-        runtime = 120
+        mem_mb = get_plot_mb,
+        runtime = get_plot_runtime
     shell:
         r"""
+        echo "============================================================"
+        echo "JOB RESOURCES"
+        echo "Rule:       plot"
+        echo "Threads:    {threads}"
+        echo "Memory:     {resources.mem_mb} MB"
+        echo "Runtime:    {resources.runtime} minutes"
+        echo "============================================================"
+        
         unset R_LIBS
         unset R_LIBS_USER
         Rscript --vanilla R/cli_E_plot.R {input.cfg_rds}
         """
+        
+rule cleanup:
+    threads: 1
+    resources:
+        mem_mb = 4000,
+        runtime = 10
+    run:
+        print("============================================================")
+        print("MECAS CLEANUP")
+        print("============================================================")
+
+        removed, kept = cleanup_pipeline_intermediates()
+
+        if kept:
+            print("\nKept directories containing only symlinked files:")
+            for path in kept:
+                print(f"  {path}")
+
+        if removed:
+            print("\nRemoved intermediary files/directories:")
+            for path in removed:
+                print(f"  {path}")
+        else:
+            print("\nNo intermediary files needed cleanup.")
+
+        print("\nCleanup complete.")

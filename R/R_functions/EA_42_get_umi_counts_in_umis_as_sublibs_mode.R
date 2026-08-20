@@ -1,16 +1,20 @@
-# R/R_functions/CA_20_get_read_count_df_long.R
+# R/R_snake/EA_42_get_umi_counts_in_umis_as_sublibs_mode.R
 
-get_read_count_df_long <- function(cfg, return_df = FALSE){
+get_umi_counts_in_umis_as_sublibs_mode <- function(cfg){
   #-----------------------------------------------------------------------------
   # Read counts back into R
   #-----------------------------------------------------------------------------
   
+  logger::log_info("Reading in read/UMI counts...")
   
   count_df_long <- process_bcwithqc_data(
     cfg = cfg,
-    data_type = "reads"
+    data_type = "umis"
   )
-
+  
+  logger::log_info("Finished reading in read/UMI counts.")
+  logger::log_info("sgRNAs aligned to the wrong sublibrary were excluded from the analysis.")
+  
   #-----------------------------------------------------------------------------
   # Optional: use_only_these_controls / include_controls
   #-----------------------------------------------------------------------------
@@ -45,78 +49,36 @@ get_read_count_df_long <- function(cfg, return_df = FALSE){
   combine_for_guide_stats <- cfg$replicates$combine_for_guide_stats %||% ""
   
   if (!identical(combine_for_guide_stats, "")) {
-    pre_combining_fpath <- file.path(cfg$paths$rds_output_folder, "raw_reads_count_df_long_pre_combining.rds")
     
     if (identical(combine_for_guide_stats, "sample")) {
-      log_info("Combining Samples for MAUDE guide stat calculation. Saving pre-combining raw read counts to {pre_combining_fpath}")
-      saveRDS(count_df_long, pre_combining_fpath)
       
-      data.table::setDT(count_df_long)
-      
-      count_df_long <- count_df_long[
-        ,
-        .(
+      count_df_long <- count_df_long %>%
+        dplyr::group_by(sgRNA, sublib, bin_name) %>%
+        dplyr::summarise(
           count = sum(count, na.rm = TRUE),
-          group_category = data.table::first(group_category)
-        ),
-        by = .(sgRNA, sublib, bin_name)
-      ]
-      
-      count_df_long[
-        ,
-        `:=`(
+          group_category = dplyr::first(group_category),
+          .groups = "drop"
+        ) %>%
+        dplyr::mutate(
           sample = "combined_samples",
-          exp = paste(sublib, "combined_samples", sep = "_")
+          exp = paste(sublib, sample, sep = "_")
         )
-      ]
     }
     
     if (identical(combine_for_guide_stats, "sublib")) {
-      log_info("Combining Sublibraries for MAUDE guide stat calculation. Saving pre-combining raw read counts to {pre_combining_fpath}")
-      saveRDS(count_df_long, pre_combining_fpath)
       
-      # Using data.table here to reduce memory requirements for large count dataframes.
-      data.table::setDT(count_df_long)
-      
-      count_df_long <- count_df_long[
-        ,
-        .(
+      count_df_long <- count_df_long %>%
+        dplyr::group_by(sgRNA, sample, bin_name) %>%
+        dplyr::summarise(
           count = sum(count, na.rm = TRUE),
-          group_category = data.table::first(group_category)
-        ),
-        by = .(sgRNA, sample, bin_name)
-      ]
-      
-      count_df_long[
-        ,
-        `:=`(
+          group_category = dplyr::first(group_category),
+          .groups = "drop"
+        ) %>%
+        dplyr::mutate(
           sublib = "combined_sublibraries",
-          exp = paste("combined_sublibraries", sample, sep = "_")
+          exp = paste(sublib, sample, sep = "_")
         )
-      ]
     }
   }
-  count_df_tsv_gz <- file.path(
-    cfg$paths$results_output_folder,
-    "raw_reads_count_df.tsv.gz"
-  )
-  
-  # R-specific compact version
-  saveRDS(
-    count_df_long,
-    file = cfg$paths$reads_count_df_fpath,
-    compress = "gzip"
-  )
-  
-  # Compressed, portable TSV version
-  readr::write_tsv(
-    count_df_long,
-    file = count_df_tsv_gz
-  )
-  if (isTRUE(return_df)){
-    return(count_df_long)
-  } else {
-    return(FALSE)
-  }
-  
+  return(count_df_long)
 }

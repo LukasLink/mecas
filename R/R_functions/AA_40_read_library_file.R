@@ -303,6 +303,29 @@ read_library_file <- function(library_path,
   
   seq <- validate_nucleotide_sequence(df[[col_seq]], "sgrna_seq/seq/sgrna_sequence/sequence")
   
+  if (anyDuplicated(seq)) {
+    duplicated_sequences <- unique(seq[duplicated(seq)])
+    duplicated_summary <- table(seq[seq %in% duplicated_sequences])
+    
+    log_warn(
+      "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+      "WARNING: DUPLICATED GUIDE SEQUENCES DETECTED\n",
+      "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+      "The library contains ", length(duplicated_sequences),
+      " guide sequence(s) that occur more than once.\n",
+      "These sequences map to multiple sgRNA IDs and will produce ",
+      "multiple rows in downstream joins.\n",
+      "Occurrences per duplicated sequence:\n",
+      paste(
+        names(duplicated_summary),
+        duplicated_summary,
+        sep = " : ",
+        collapse = "\n"
+      ),
+      "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    )
+  }
+  
   if (is.null(col_align_seq)){
     align_seq <- rep(NA, nrow(df))
   } else {

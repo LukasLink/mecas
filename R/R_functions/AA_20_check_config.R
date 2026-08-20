@@ -596,6 +596,10 @@
   
   "counting.data_type" = .validate_choice(c("reads", "umis")),
   
+  "counting.umis_as_sublibs" = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
   # Replicates / grouping
   "replicates.method" = function(option, name) {
     .validate_string(option, name, required = TRUE, allow_empty = TRUE)

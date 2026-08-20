@@ -1,7 +1,7 @@
-# R/R_functions/EA_12_plot_violin_by_group_category_split_by_sublib.R
+# R/R_functions/EA_12a_plot_violin_by_group_category_umis_as_sublibs.R
 
 
-plot_violin_by_group_category_split_by_sublib <- function(df,
+plot_violin_by_group_category_umis_as_sublibs <- function(df,
                                                           cfg,
                                                           include_targeting = TRUE,
                                                           norm_method = NULL,
@@ -10,68 +10,43 @@ plot_violin_by_group_category_split_by_sublib <- function(df,
                                                           viol_col = "#E0E0E0") {
   
   if (!is.null(norm_method)) {
-    df <- normalize_count_df_long(df, norm_method)
+    df <- normalize_count_df_long(df, norm_method, umis_as_sublibs = TRUE)
     norm_title <- paste0("(normalization: ", norm_method, ")")
   } else {
     norm_title <- "(no normalization)"
   }
-  
-  count_type <- cfg$counting$data_type
-  
-  if (!(count_type %in% c("umis", "reads"))) {
-    stop(
-      "Invalid data_type: ", count_type,
-      ". data_type must be 'umis' or 'reads'.",
-      call. = FALSE
-    )
-  }
-  
-  if (count_type == "umis") {
-    title_prefix <- "UMI counts for"
-  }
-  
-  if (count_type == "reads") {
-    title_prefix <- "Read counts for"
-  }
-  
+
   filtered_df <- df %>%
     dplyr::filter(
       if (include_targeting) group_category == "targeting"
       else group_category != "targeting"
-    ) %>%
-    dplyr::mutate(group = interaction(bin_name, exp, drop = TRUE))
+    )
   rm(df)
   count_summary <- filtered_df %>%
-    dplyr::group_by(bin_name, exp) %>%
+    dplyr::group_by(bin_name, sample) %>%
     dplyr::summarise(
       total_count = sum(count),
       mean_count = round(mean(count), 1),
       sd_count = round(stats::sd(count), 1),
       .groups = "drop"
-    ) %>%
-    dplyr::mutate(group = interaction(bin_name, exp, drop = TRUE))
+    )
   
   plots <- list()
   
-  for (sublib_name in unique(filtered_df$sublib)) {
+  for (sample_val in unique(filtered_df$sample)) {
     sub_df <- filtered_df %>%
-      dplyr::filter(sublib == sublib_name)
-    
-    x_levels <- levels(interaction(sub_df$bin_name, sub_df$exp, drop = TRUE))
+      dplyr::filter(sample == sample_val)
     
     label_df <- count_summary %>%
-      dplyr::filter(
-        interaction(bin_name, exp, drop = TRUE) %in%
-          unique(interaction(sub_df$bin_name, sub_df$exp, drop = TRUE))
-      ) %>%
+      dplyr::filter(sample == sample_val) %>%
       dplyr::mutate(
-        group_fac = factor(interaction(bin_name, exp, drop = TRUE), levels = x_levels),
+        group_fac = factor(bin_name, levels = unique(sub_df$bin_name)),
         x_center = as.numeric(group_fac)
       )
     
     p <- ggplot2::ggplot(
       sub_df,
-      ggplot2::aes(x = interaction(bin_name, exp), y = count)
+      ggplot2::aes(x = bin_name, y = count)
     ) +
       ggplot2::geom_violin(
         fill = viol_col,
@@ -99,38 +74,38 @@ plot_violin_by_group_category_split_by_sublib <- function(df,
       ) +
       ggplot2::geom_text(
         data = label_df,
-        ggplot2::aes(x = group, y = y_limit - y_limit / 26, label = total_count),
+        ggplot2::aes(x = bin_name, y = y_limit - y_limit / 26, label = total_count),
         size = 2.5,
         inherit.aes = FALSE
       ) +
       ggplot2::geom_text(
         data = label_df,
-        ggplot2::aes(x = group, y = y_limit - y_limit / 14, label = paste0("mean: ", mean_count)),
+        ggplot2::aes(x = bin_name, y = y_limit - y_limit / 14, label = paste0("mean: ", mean_count)),
         size = 2.3,
         inherit.aes = FALSE
       ) +
       ggplot2::geom_text(
         data = label_df,
-        ggplot2::aes(x = group, y = y_limit - y_limit / 10, label = paste0("sd: ", sd_count)),
+        ggplot2::aes(x = bin_name, y = y_limit - y_limit / 10, label = paste0("sd: ", sd_count)),
         size = 2.3,
         inherit.aes = FALSE
       ) +
       ggplot2::labs(
         title = paste(
-          title_prefix,
+          "Reads per UMI for",
           ifelse(include_targeting, "targeting sgRNA", "non-targeting sgRNA"),
           "–",
-          sublib_name,
+          sample_val,
           norm_title
         ),
         x = "",
-        y = "Count"
+        y = "Reads per UMI"
       ) +
       ggplot2::coord_cartesian(ylim = c(0, y_limit)) +
       ggplot2::theme_bw() +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
     
-    plots[[sublib_name]] <- p
+    plots[[sample_val]] <- p
   }
   
   return(list(

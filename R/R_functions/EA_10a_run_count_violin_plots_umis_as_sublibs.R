@@ -1,15 +1,12 @@
-# R/R_functions/EA_10_run_count_violin_plots.R
+# R/R_functions/EA_10a_run_count_violin_plots_umis_as_sublibs.R
 
-#-------------------------------------------------------------------------------
-# post read counting Violin Plot generation
-#-------------------------------------------------------------------------------
-
-run_count_violin_plots <- function(count_df_long,
-                                   cfg,
-                                   y_limit = NA,
-                                   auto_y_limit_prob =1,
-                                   non_targeting = TRUE,
-                                   output_subdir = "01_read_or_umi_count_plots") {
+run_count_violin_plots_umis_as_sublibs <- function(
+    count_df_long,
+    cfg,
+    y_limit = NA,
+    auto_y_limit_prob = 1,
+    non_targeting = TRUE,
+    output_subdir = "01_read_or_umi_count_plots") {
   
   get_auto_y_limit <- function(df, prob = auto_y_limit_prob) {
     if (!"count" %in% colnames(df)) {
@@ -34,12 +31,12 @@ run_count_violin_plots <- function(count_df_long,
   plot_dir <- file.path(cfg$paths$plots_output_folder, output_subdir)
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
   
-  logger::log_info("Creating read/UMI count violin plots in: {plot_dir}")
+  logger::log_info("Creating reads-per-UMI violin plots in: {plot_dir}")
   
-  summary_medians <- get_grouped_summary_wide(count_df_long, stat = "median")
-  summary_means <- get_grouped_summary_wide(count_df_long, stat = "mean")
+  summary_medians <- get_grouped_summary_wide_umis_as_sublibs(count_df_long, stat = "median")
+  summary_means <- get_grouped_summary_wide_umis_as_sublibs(count_df_long, stat = "mean")
   
-  summary_xlsx <- file.path(plot_dir, "count_summary.xlsx")
+  summary_xlsx <- file.path(plot_dir,"count_summary.xlsx")
   
   writexl::write_xlsx(
     list(
@@ -48,7 +45,6 @@ run_count_violin_plots <- function(count_df_long,
     ),
     summary_xlsx
   )
-  
   logger::log_info("Saved count summary tables to: {summary_xlsx}")
   
   save_plot_list <- function(plot_list, prefix, width = 8, height = 5) {
@@ -77,7 +73,7 @@ run_count_violin_plots <- function(count_df_long,
     invisible(NULL)
   }
   
-  plots_raw <- plot_violin_by_sublib_sample(
+  plots_raw <- plot_violin_by_sample_umis_as_sublibs(
     count_df_long = count_df_long,
     cfg = cfg,
     norm_method = NULL
@@ -85,10 +81,10 @@ run_count_violin_plots <- function(count_df_long,
   
   save_plot_list(
     plot_list = plots_raw,
-    prefix = "violin_counts_by_sublib_sample_raw"
+    prefix = "violin_reads_per_umi_by_sample_raw"
   )
   
-  plots_norm <- plot_violin_by_sublib_sample(
+  plots_norm <- plot_violin_by_sample_umis_as_sublibs(
     count_df_long = count_df_long,
     cfg = cfg,
     norm_method = "control_median"
@@ -96,12 +92,12 @@ run_count_violin_plots <- function(count_df_long,
   
   save_plot_list(
     plot_list = plots_norm,
-    prefix = "violin_counts_by_sublib_sample_normalized"
+    prefix = "violin_reads_per_umi_by_sample_normalized"
   )
   
-  targeting_raw <- plot_violin_by_group_category_split_by_sublib(
-    df = count_df_long,
-    cfg = cfg,
+  targeting_raw <- plot_violin_by_group_category_umis_as_sublibs(
+    count_df_long,
+    cfg,
     include_targeting = TRUE,
     norm_method = NULL,
     y_limit = y_limit,
@@ -109,13 +105,13 @@ run_count_violin_plots <- function(count_df_long,
   )
   
   save_plot_list(
-    plot_list = targeting_raw$plots,
-    prefix = "targeting_raw",
+    targeting_raw$plots,
+    "targeting_reads_per_umi_raw",
     width = 10,
     height = 6
   )
   
-  targeting_norm <- plot_violin_by_group_category_split_by_sublib(
+  targeting_norm <- plot_violin_by_group_category_umis_as_sublibs(
     df = count_df_long,
     cfg = cfg,
     include_targeting = TRUE,
@@ -126,16 +122,15 @@ run_count_violin_plots <- function(count_df_long,
   
   save_plot_list(
     plot_list = targeting_norm$plots,
-    prefix = "targeting_control_median",
+    prefix = "targeting_reads_per_umi_normalized",
     width = 10,
     height = 6
   )
   
   if (isTRUE(non_targeting)) {
-    
-    non_targeting_raw <- plot_violin_by_group_category_split_by_sublib(
-      df = count_df_long,
-      cfg = cfg,
+    non_targeting_raw <- plot_violin_by_group_category_umis_as_sublibs(
+      count_df_long,
+      cfg,
       include_targeting = FALSE,
       norm_method = NULL,
       y_limit = y_limit,
@@ -143,13 +138,13 @@ run_count_violin_plots <- function(count_df_long,
     )
     
     save_plot_list(
-      plot_list = non_targeting_raw$plots,
-      prefix = "non_targeting_raw",
+      non_targeting_raw$plots,
+      "non_targeting_reads_per_umi_raw",
       width = 10,
       height = 6
     )
     
-    non_targeting_norm <- plot_violin_by_group_category_split_by_sublib(
+    non_targeting_norm <- plot_violin_by_group_category_umis_as_sublibs(
       df = count_df_long,
       cfg = cfg,
       include_targeting = FALSE,
@@ -160,16 +155,20 @@ run_count_violin_plots <- function(count_df_long,
     
     save_plot_list(
       plot_list = non_targeting_norm$plots,
-      prefix = "non_targeting_control_median",
+      prefix = "non_targeting_reads_per_umi_normalized",
       width = 10,
       height = 6
     )
   }
   
-  logger::log_info("Finished creating read/UMI count violin plots.")
+  logger::log_info(
+    "Finished creating reads-per-UMI violin plots."
+  )
   
-  invisible(list(
-    plot_dir = plot_dir,
-    summary_xlsx = summary_xlsx
-  ))
+  invisible(
+    list(
+      plot_dir = plot_dir,
+      summary_xlsx = summary_xlsx
+    )
+  )
 }

@@ -1,7 +1,7 @@
 # R/R_functions/EA_31a_plot_significance_by_rank.R
 
 plot_significance_by_rank <- function(Hits_df,
-                                      mark_cntrl = TRUE,
+                                      mark_cntrl = FALSE,
                                       mark_special = NULL,
                                       mark_N_top_hits = 0,
                                       box_padding = 0.8,

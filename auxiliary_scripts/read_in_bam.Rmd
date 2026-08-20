@@ -1,0 +1,454 @@
+---
+title: "read_in_bam"
+output: html_document
+---
+
+
+
+```{r A}
+library(tidyverse)
+build_reads_per_umi_count_df <- function(
+    bam_fpath,
+    library,
+    set_bin_name_to,
+    set_sample_to,
+    chunk_size = 10000000L,
+    consolidate_every = 10L
+    ) {
+
+    sgrna_list <- library$sgrna_seq
+    n_sgrnas <- length(sgrna_list)
+
+    bam <- Rsamtools::BamFile(bam_fpath, yieldSize = chunk_size)
+
+    open(bam)
+    on.exit(close(bam), add = TRUE)
+
+    chunk_results <- list()
+    chunks_since_consolidation <- 0L
+    chunk_number <- 0L
+    reads_processed <- 0L
+
+    memory_used_gb <- function() {
+        gc()[2, 2] / 1024
+    }
+
+    memory_rss_gb <- function() {
+        status <- readLines("/proc/self/status")
+        rss_line <- status[startsWith(status, "VmRSS:")]
+        as.numeric(sub("VmRSS:\\s+([0-9]+) kB.*", "\\1", rss_line)) / 1024^2
+    }
+
+    repeat {
+
+        chunk_start <- Sys.time()
+
+        reads <- Rsamtools::scanBam(
+            bam,
+            param = Rsamtools::ScanBamParam(
+                flag = Rsamtools::scanBamFlag(
+                    isSecondMateRead = FALSE
+                ),
+                what = character(),
+                tag = c("CB", "UB")
+            )
+        )[[1]]
+
+        if (length(reads$tag$CB) == 0L) { break }
+
+        chunk_number <- chunk_number + 1L
+        chunks_since_consolidation <- chunks_since_consolidation + 1L
+        reads_processed <- reads_processed + length(reads$tag$CB)
+
+        sgRNA <- reads$tag$CB
+        UMI <- reads$tag$UB
+
+        keep <- !is.na(sgRNA) & !is.na(UMI)
+
+        if (any(keep)) {
+
+            sgRNA <- sgRNA[keep]
+            UMI <- UMI[keep]
+
+            sgRNA_id <- match(sgRNA, sgrna_list)
+
+            keep_library_sgrna <- !is.na(sgRNA_id)
+
+            if (any(keep_library_sgrna)) {
+
+                sgRNA_id <- sgRNA_id[keep_library_sgrna]
+                UMI <- UMI[keep_library_sgrna]
+
+                umi_values <- unique(UMI)
+                UMI_id <- match(UMI, umi_values)
+
+                pair_key <- as.double(sgRNA_id) +
+                    as.double(n_sgrnas) * (as.double(UMI_id) - 1)
+
+                ordered_key <- sort(pair_key)
+                runs <- rle(ordered_key)
+
+                unique_keys <- runs$values
+
+                # Inverse of the 1-based pair key encoding.
+                sgRNA_id <- ((unique_keys - 1) %% n_sgrnas) + 1L
+                umi_id <- floor((unique_keys - 1) / n_sgrnas) + 1L
+
+                chunk_results[[length(chunk_results) + 1L]] <- data.frame(
+                    sgRNA = sgrna_list[sgRNA_id],
+                    UMI = umi_values[umi_id],
+                    count = runs$lengths,
+                    stringsAsFactors = FALSE
+                )
+            }
+        }
+
+        if (chunks_since_consolidation >= consolidate_every) {
+
+            if (length(chunk_results) > 0L) {
+                chunk_results <- list(
+                    dplyr::bind_rows(chunk_results) %>%
+                        dplyr::group_by(sgRNA, UMI) %>%
+                        dplyr::summarise(count = sum(count), .groups = "drop")
+                )
+            }
+
+            chunks_since_consolidation <- 0L
+        }
+
+        chunk_time <- as.numeric(
+            difftime(Sys.time(), chunk_start, units = "secs")
+        )
+
+        cat(
+            "Finished chunk", chunk_number,
+            "| reads:", format(reads_processed, big.mark = ","),
+            "| time:", sprintf("%.2f s", chunk_time),
+            "| R memory:", sprintf("%.2f GB", memory_used_gb()),
+            "| RSS:", sprintf("%.2f GB", memory_rss_gb()),
+            "\n"
+        )
+    }
+
+
+    if (length(chunk_results) == 0L) {
+        result <- data.frame(
+            sgRNA = character(),
+            UMI = character(),
+            count = integer(),
+            stringsAsFactors = FALSE
+        )
+    } else {
+        result <- dplyr::bind_rows(chunk_results) %>%
+            dplyr::group_by(sgRNA, UMI) %>%
+            dplyr::summarise(count = sum(count), .groups = "drop")
+    }
+    
+    # Modify it to be in line with count_df_long formating
+    return(
+        result %>%
+            left_join(
+                library %>%
+                    select(-any_of(c("align_seq", "gene", "entrez_id"))),
+                by = c("sgRNA" = "sgrna_seq")
+            ) %>%
+            rename(
+                sgrna_seq = sgRNA,
+                sgRNA = sgrna_id,
+                group_category = type
+            ) %>%
+            mutate(
+                bin_name = set_bin_name_to,
+                sample = set_sample_to,
+                sublib = sgrna_seq,
+                exp = paste(sublib, sample, sep = "_")
+            ) %>%
+            select(-sgrna_seq) %>%
+            select(c(sgRNA, sublib, bin_name, count, group_category, sample, exp))
+    )
+
+}
+
+
+reads_per_umi_count_df <- build_reads_per_umi_count_df(
+    "/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/bcwithqc_output/I_L1_sampleA/with_bc_umi.sorted.bam",
+    library = readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds"),
+    set_bin_name_to = "input",
+    set_sample_to = "sampleA"
+)
+print(head(reads_per_umi_count_df))
+# saveRDS(reads_per_umi_count_df, "/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds/reads_per_umi_count_df.rds")
+# reads_per_umi_count_df <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds/reads_per_umi_count_df.rds")
+# reads_per_umi_count_df_old <- reads_per_umi_count_df
+```
+
+```{r B}
+library <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds")
+duplicated_library <- library %>%
+    dplyr::group_by(sgrna_seq) %>%
+    dplyr::filter(dplyr::n() > 1) %>%
+    dplyr::ungroup()
+
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+
+dups_in_hits <- duplicated_library %>%
+  dplyr::filter(gene %in% manual_add_for_missing$`Target Gene Symbol`)
+dups_in_list <- readRDS("/g/steinmetz/link/Gene_list_finalize/cp_sgRNA_df_alias_re.rds") %>%
+  dplyr::filter(gene %in% duplicated_library$gene)
+cp_sgRNA_df_RAW_dups <- cp_sgRNA_df_RAW %>% 
+  dplyr::filter(`Target Gene Symbol` %in% duplicated_library$gene)
+pa_maude_hits_df <- readxl::read_xlsx(
+    "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/results/MAUDE_Hits_lukas_reads_control_median_RI_comb_sample.xlsx"
+)
+jia_count_df <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds/count_df.rds")
+expression_of_dups <- pa_maude_hits_df %>%
+  dplyr::filter(symbol %in% duplicated_library$gene)
+
+subset_reads_per_umi_dups <- reads_per_umi_count_df %>% 
+  filter(sgRNA %in% duplicated_library$sgrna_id)
+# Number of occurrences of each gene in duplicated_library
+gene_frequency <- duplicated_library %>%
+    dplyr::count(gene, name = "n_occurrences")
+
+# Define overlap groups for each sgRNA sequence
+sgrna_groups <- duplicated_library %>%
+    dplyr::group_by(sgrna_seq) %>%
+    dplyr::summarise(
+        n_genes = dplyr::n_distinct(gene),
+        genes = paste(sort(unique(gene)), collapse = " / "),
+        .groups = "drop"
+    ) %>%
+    dplyr::mutate(
+        color_group = dplyr::if_else(
+            n_genes == 1,
+            "no-overlap",
+            genes
+        )
+    )
+
+# Map each gene to its overlap group
+gene_colors <- duplicated_library %>%
+    dplyr::select(sgrna_seq, gene) %>%
+    dplyr::distinct() %>%
+    dplyr::left_join(
+        sgrna_groups %>%
+            dplyr::select(sgrna_seq, color_group),
+        by = "sgrna_seq"
+    ) %>%
+    dplyr::select(gene, color_group) %>%
+    dplyr::distinct()
+
+# Build plotting dataframe
+plot_df <- expression_of_dups %>%
+    dplyr::left_join(
+        gene_frequency,
+        by = c("symbol" = "gene")
+    ) %>%
+    dplyr::left_join(
+        gene_colors,
+        by = c("symbol" = "gene")
+    ) %>%
+    dplyr::mutate(
+        label = dplyr::if_else(
+            cardio_IPSC_TPM >= 20 | cardio_primary_TPM >= 10,
+            dplyr::if_else(
+                color_group == "no-overlap",
+                symbol,
+                color_group
+            ),
+            NA_character_
+        )
+    )
+
+library(ggplot2)
+library(ggrepel)
+
+
+p <- ggplot(
+    plot_df,
+    aes(
+        x = cardio_IPSC_TPM,
+        y = cardio_primary_TPM,
+        size = n_occurrences,
+        shape = factor(n_occurrences),
+        colour = color_group
+    )
+) +
+    geom_point(alpha = 0.7) +
+    ggrepel::geom_text_repel(
+        aes(label = label),
+        na.rm = TRUE,
+        size = 3,
+        force = 10,
+        max.overlaps = Inf,
+        show.legend = FALSE
+    ) +
+    scale_size_continuous(
+        breaks = 1:4,
+        range = c(2, 8),
+        name = "Reduction in unique guides per gene(s)"
+    ) +
+    scale_shape_manual(
+        values = c(
+          "1" = 16,  # circle
+          "2" = 17,  # triangle
+          "3" = 15,  # square
+          "4" = 16   # diamond
+        ),
+        name = "Reduction in unique guides per gene(s)"
+    ) +
+    scale_colour_manual(
+        values = c(
+            "no-overlap" = "black",
+            setNames(
+                scales::hue_pal()(
+                    length(setdiff(unique(plot_df$color_group), "no-overlap"))
+                ),
+                setdiff(unique(plot_df$color_group), "no-overlap")
+            )
+        )
+    ) +
+    labs(
+        x = "Cardio iPSC TPM",
+        y = "Cardio primary TPM",
+        colour = "sgRNA overlap group"
+    ) +
+    theme_bw() +
+    theme(
+        aspect.ratio = 1,
+        legend.position = "right"
+    )
+
+ggsave(
+    "/g/steinmetz/link/sharing/Novartis/expression_duplicated_guides.png",
+    p,
+    width = 12,
+    height = 12,
+    units = "in",
+    limitsize = FALSE
+)
+writexl::write_xlsx(duplicated_library, "/g/steinmetz/link/sharing/Novartis/guides_duplicated_in_CM_library.xlsx")
+```
+
+```{r add_origin_of_gene}
+panglao_markers <- read.delim(
+    "/g/steinmetz/link/Gene_list_finalize/check_where_stuff_is_from/PanglaoDB_markers_27_Mar_2020.tsv",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+) %>% rename(gene = `official gene symbol`)
+
+doench_kinase <- readxl::read_xlsx(
+    "/g/steinmetz/link/Gene_list_finalize/check_where_stuff_is_from/doench_kinase.xlsx"
+) %>% rename(gene = `Target Gene Symbol`)
+
+morgens_membrane <- readxl::read_xlsx(
+    "/g/steinmetz/link/Gene_list_finalize/check_where_stuff_is_from/morgens_membrane.xlsx",
+    sheet = "Guide sequences",
+    col_names = c("guide_name", "seq")
+) %>%
+    tidyr::separate(
+        guide_name,
+        into = paste0("V", 1:10),
+        sep = "_",
+        fill = "right",
+        extra = "merge"
+    ) %>% 
+  dplyr::filter(V3 == "MEPR", V2 != "safe", V2 != "none") %>% 
+  rename(gene = V2) %>% 
+  select(V1, gene, seq)
+
+duplicated_library <- duplicated_library %>%
+    dplyr::mutate(
+        added_because = purrr::map_chr(
+            gene,
+            ~ {
+                reasons <- character()
+
+                if (.x %in% morgens_membrane$gene) reasons <- c(reasons, "Membrane")
+                if (.x %in% doench_kinase$gene) reasons <- c(reasons, "Kinase")
+                if (.x %in% panglao_markers$gene) reasons <- c(reasons, "CM_marker")
+
+                if (length(reasons) == 0) {
+                    "Overlap_xie_churko_galdos"
+                } else {
+                    paste(reasons, collapse = ";")
+                }
+            }
+        )
+    )
+```
+
+```{r B}
+count_summary <- reads_per_umi_count_df %>%
+    dplyr::count(count, name = "n") %>%
+    dplyr::arrange(count)
+
+print(count_summary)
+
+test_a <- reads_per_umi_count_df %>%
+    dplyr::summarise(
+        total = n(),
+        odd = sum(count %% 2L == 1L),
+        even = sum(count %% 2L == 0L),
+        odd_percent = 100 * odd / total
+    )
+
+test_b <- reads_per_umi_count_df %>%
+    dplyr::filter(count %% 2L == 1L) %>%
+    dplyr::summarise(
+        odd_combinations = dplyr::n(),
+        total_odd_reads = sum(count)
+    )
+
+compare_counts <- reads_per_umi_count_df %>%
+  group_by(sgRNA) %>%
+  summarise(count = sum(count), .groups = "drop") %>%
+  left_join(library %>% select(-any_of("align_seq")), by = c("sgRNA" = "sgrna_seq") ) %>%
+  rename(sgrna_seq = sgRNA,
+         sgRNA = sgrna_id,
+         count_bam = count) %>% 
+    dplyr::left_join(jia_read_counts, by = "sgRNA") %>% 
+  select(c(sgRNA, gene, count, count_bam, sgrna_seq))
+
+  
+print(head(compare_counts))
+```
+
+samtools view -f 64 \
+    /g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/bcwithqc_output/I_L1_sampleA/with_bc_umi.sorted.bam \
+    | grep 'CB:Z:AAAAAATTGCTCTACGACCA' \
+    | wc -l
+```{r}
+count_99 <- quantile(reads_per_umi_count_df$count, 0.99, na.rm = TRUE)
+
+ggplot(
+    dplyr::filter(reads_per_umi_count_df, count <= count_99),
+    aes(x = count)
+) +
+    geom_histogram(
+        aes(y = after_stat(count / sum(count) * 100)),
+        binwidth = 2,
+        boundary = 1, 
+        closed = "left"
+    ) +
+    labs(
+        x = "Reads per sgRNA-UMI combination",
+        y = "Percentage of sgRNA-UMI combinations (%)"
+    ) +
+    theme_bw()
+
+clone_counts <- reads_per_umi_count_df %>%
+    dplyr::count(sgRNA, name = "n_clones")
+
+ggplot(clone_counts, aes(x = n_clones)) +
+    geom_density() +
+    labs(
+        x = "Number of clones per sgRNA",
+        y = "Density"
+    ) +
+    theme_bw()
+```
+
+
+

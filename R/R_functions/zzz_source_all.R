@@ -33,10 +33,13 @@ source_snake_functions <- function(project_root_dir) {
   
   r_files <- r_files[!basename(r_files) %in% exclude_files]
   
+  
   for (f in r_files) {
-    message("Sourcing: ", f)
+    # KEEP THIS HERE AND TURN IT ON FOR DEBUGGING
+    # message("Sourcing: ", f)
+    
     source(f, local = .GlobalEnv)
   }
-  
+  message("Sourcing Complete, all functions loaded.")
   invisible(r_files)
 }

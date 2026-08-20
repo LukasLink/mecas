@@ -24,32 +24,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
       cfg = cfg
     )
   }
-  #-----------------------------------------------------------------------------
-  # Optional: strict mode
-  #-----------------------------------------------------------------------------
-  
-  if (isTRUE(cfg$filtering$strict_mode)) {
-    logger::log_info("Strict mode enabled.")
-    logger::log_info("Rows before strict mode: {nrow(count_df_long)}")
-    
-    n_groups_before <- count_df_long %>%
-      dplyr::distinct(sgRNA, sublib, sample) %>%
-      nrow()
-    
-    count_df_long <- count_df_long %>%
-      dplyr::group_by(sgRNA, sublib, sample) %>%
-      dplyr::filter(all(count > 0)) %>%
-      dplyr::ungroup()
-    
-    n_groups_after <- count_df_long %>%
-      dplyr::distinct(sgRNA, sublib, sample) %>%
-      nrow()
-    
-    logger::log_info("Guide-experiment groups before strict mode: {n_groups_before}")
-    logger::log_info("Guide-experiment groups after strict mode: {n_groups_after}")
-    logger::log_info("Rows after strict mode: {nrow(count_df_long)}")
-  }
-  
+
   #-----------------------------------------------------------------------------
   # Optional: normalize counts
   #-----------------------------------------------------------------------------
@@ -62,18 +37,23 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
       call. = FALSE
     )
   }
-  
+  log_info(
+    "before normalize_count_df_long | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   if (identical(norm_method, "control_median")) {
-    norm_result <- normalize_count_df_long(
-      count_df_long = count_df_long,
-      norm_method = norm_method,
-      return_info = TRUE
+    list2env(
+      normalize_count_df_long(
+        count_df_long = count_df_long,
+        umis_as_sublibs = cfg$counting$umis_as_sublibs,
+        norm_method = norm_method,
+        return_info = TRUE
+      ),
+      envir = environment()
     )
-    
-    count_df_long <- norm_result$count_df_long
-    pseudocount_already_added <- norm_result$pseudocount_already_added
   }
-  
+  log_info(
+    "After normalize_count_df_long | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   #-----------------------------------------------------------------------------
   # Convert long count table to MAUDE wide format
   #-----------------------------------------------------------------------------
@@ -84,9 +64,14 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
     print = FALSE,
     drop_0s = cfg$filtering$drop_0s,
     pseudocount_already_added = pseudocount_already_added,
-    recover_input = cfg$normalization$recover_input
+    recover_input = cfg$normalization$recover_input,
+    strict_mode = cfg$filtering$strict_mode,
+    umis_as_sublibs = cfg$counting$umis_as_sublibs
   )
-  
+  rm(count_df_long)
+  log_info(
+    "After count_df_long_to_wide | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   #-----------------------------------------------------------------------------
   # Replicate handling
   #-----------------------------------------------------------------------------

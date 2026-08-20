@@ -12,13 +12,27 @@ control_sanity_check <- function(maude_counts_df, cfg, print = TRUE) {
   
   plot_list <- list()
   
-  for (sublib in unique(maude_counts_df$sublib)) {
+  if (isTRUE(cfg$counting$umis_as_sublibs)) {
+    grouping_column <- "sample"
+    grouping_label <- "sample"
+  } else {
+    grouping_column <- "sublib"
+    grouping_label <- "sublibrary"
+  }
+  
+  group_values <- unique(maude_counts_df[[grouping_column]])
+  
+  
+  for (group_value in group_values) {
+    group_data <- maude_counts_df[
+      maude_counts_df[[grouping_column]] == group_value,
+    ]
     
-    sublib_data <- maude_counts_df[maude_counts_df$sublib == sublib, ]
-    control_data <- sublib_data %>% dplyr::filter(isNontargeting)
+    control_data <- group_data %>%
+      dplyr::filter(isNontargeting)
     
     if (nrow(control_data) == 0) {
-      logger::log_warn("No non-targeting sgRNAs found for sublibrary: {sublib}")
+      logger::log_warn("No non-targeting sgRNAs found for {grouping_label}: {group_value}")
       next
     }
     
@@ -56,7 +70,8 @@ control_sanity_check <- function(maude_counts_df, cfg, print = TRUE) {
           "Log2 Fold Change Between Sorted Bins and",
           unsorted_bin,
           "for",
-          sublib
+          grouping_label,
+          group_value
         ),
         x = "",
         y = "Log2 Fold Change"
@@ -72,8 +87,8 @@ control_sanity_check <- function(maude_counts_df, cfg, print = TRUE) {
         legend.position = "none"
       )
     
-    safe_sublib <- gsub("[^A-Za-z0-9_.-]+", "_", sublib)
-    plot_list[[paste0("control_sanity_", safe_sublib)]] <- p
+    safe_group <- gsub("[^A-Za-z0-9_.-]+", "_", group_value)
+    plot_list[[paste0("control_sanity_", grouping_label, "_", safe_group)]] <- p
   }
   
   control_data_all <- maude_counts_df %>% dplyr::filter(isNontargeting)

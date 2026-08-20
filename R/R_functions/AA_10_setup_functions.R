@@ -53,9 +53,9 @@ initialize_pipeline_logger <- function(log_file) {
       format = "{format(time, '%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
     )
   )
-  
+  logger::log_info("----------------------------------------------------------")
+  logger::log_info("----------------------------------------------------------")
   logger::log_info("Logger initialized. Find log file at: {log_file}")
-  
   invisible(log_file)
 }
 
@@ -106,4 +106,24 @@ get_file_info_suffix <- function(file_suffix) {
   x <- sub("\\.rds$", "", file_suffix)
   x <- sub("^_", "", x)
   x
+}
+
+memory_used_gb <- function() {
+  sum(gc()[, 2]) / 1024
+}
+
+
+memory_rss_gb <- function() {
+  status <- readLines("/proc/self/status")
+  rss_line <- grep("^VmRSS:", status, value = TRUE)
+  
+  if (length(rss_line) != 1) {
+    return(NA_real_)
+  }
+  
+  rss_kb <- as.numeric(
+    sub("^VmRSS:\\s+([0-9]+).*", "\\1", rss_line)
+  )
+  
+  rss_kb / 1024^2
 }

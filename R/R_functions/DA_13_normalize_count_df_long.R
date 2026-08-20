@@ -1,6 +1,7 @@
 # R/R_functions/DA_13_normalize_count_df_long.R
 
 normalize_count_df_long <- function(count_df_long,
+                                    umis_as_sublibs = FALSE,
                                     norm_method = "control_median",
                                     return_info = FALSE) {
   allowed_norm_methods <- c("control_median")
@@ -14,6 +15,16 @@ normalize_count_df_long <- function(count_df_long,
   pseudocount_added <- FALSE
   
   if (norm_method == "control_median") {
+    log_info("Performing Normalization for each input file (pair) using the median of the control sgRNAs.")
+    
+    # Define Grouping Columns for our two cases: 
+    # 1. Sublibs define seperately sequenced samples
+    # 2. Sublibs define a UMI
+    if (isTRUE(umis_as_sublibs)) {
+      norm_group_cols <- c("bin_name", "sample")
+    } else {
+      norm_group_cols <- c("bin_name", "sublib", "sample")
+    }
     
     norm_fac <- count_df_long %>%
       dplyr::filter(group_category %in% c(
@@ -21,7 +32,9 @@ normalize_count_df_long <- function(count_df_long,
         "non_targeting_control",
         "kept_control"
       )) %>%
-      dplyr::group_by(bin_name, sublib, sample) %>%
+      dplyr::group_by(
+        dplyr::across(dplyr::all_of(norm_group_cols))
+      ) %>%
       dplyr::summarise(norm_factor = median(count), .groups = "drop")
     
     med_count <- median(count_df_long$count)
@@ -51,7 +64,9 @@ normalize_count_df_long <- function(count_df_long,
             "non_targeting_control",
             "kept_control"
           )) %>%
-          dplyr::group_by(bin_name, sublib, sample) %>%
+          dplyr::group_by(
+            dplyr::across(dplyr::all_of(norm_group_cols))
+          ) %>%
           dplyr::summarise(norm_factor = median(count), .groups = "drop")
         
         med_count <- median(count_df_long_plus_one$count)
@@ -63,7 +78,7 @@ normalize_count_df_long <- function(count_df_long,
     }
     
     return_df <- count_df_long_continue %>%
-      dplyr::inner_join(norm_fac, by = c("bin_name", "sublib", "sample")) %>%
+      dplyr::inner_join(norm_fac, by = norm_group_cols) %>%
       dplyr::mutate(norm_count = (count * med_count) / norm_factor) %>%
       dplyr::mutate(count = round(norm_count, 2)) %>%
       dplyr::select(-c(norm_factor, norm_count))
@@ -75,7 +90,7 @@ normalize_count_df_long <- function(count_df_long,
   if (isTRUE(return_info)) {
     return(list(
       count_df_long = return_df,
-      pseudocount_added = pseudocount_added
+      pseudocount_already_added = pseudocount_added
     ))
   }
   

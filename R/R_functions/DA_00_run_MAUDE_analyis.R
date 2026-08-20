@@ -23,13 +23,17 @@ run_MAUDE_analysis <- function(cfg){
   #-----------------------------------------------------------------------------
   # Run MAUDE
   #-----------------------------------------------------------------------------
-
+  log_info(
+    "Before run_prepare_data_for_MAUDE | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   # Prepare data for MAUDE
   maude_counts_df <- run_prepare_data_for_MAUDE(
     count_df_long = count_df_long,
     cfg = cfg
   )
-  
+  log_info(
+    "After run_prepare_data_for_MAUDE | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   logger::log_info("Starting initial MAUDE run ...")
   
   maude_results <- run_MAUDE(
@@ -39,14 +43,18 @@ run_MAUDE_analysis <- function(cfg){
     run_maude_stage = TRUE,
     run_plots_stage = FALSE
   )
-  
+  log_info(
+    "After run_MAUDE | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   # Export MAUDE results + combine replicates
   export_df <- handle_auto_combine_replicates_and_export(
     file_suffix = cfg$suffix$file_suffix,
     maude_results = maude_results,
     cfg = cfg
   )
-    
+  log_info(
+    "After export | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )  
   #-----------------------------------------------------------------------------
   # Finding Consensus Hits: MAUDE
   #-----------------------------------------------------------------------------
@@ -59,7 +67,9 @@ run_MAUDE_analysis <- function(cfg){
       run_plots_stage = TRUE
     )
   }
-
+  log_info(
+    "After run_consensus call | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
+  )
   logger::log_info("DONE!")
   
   invisible(cfg)

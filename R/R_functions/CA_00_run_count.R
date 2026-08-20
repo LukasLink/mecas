@@ -2,13 +2,18 @@
 
 run_count <- function(cfg) {
   
-  log_info("Starting conversion of Read/UMI counts from bcwithqc sparse matrix...")
   
-  count_df_long <- get_count_df_long_and_make_coverage_file(cfg = cfg)
+  if(isTRUE(cfg$counting$umis_as_sublibs)){
+    log_info("Starting Consolidation of UMI counts...")
+    count_df_long <- get_reads_per_umi_count_df_long_and_make_coverage_file(cfg = cfg)
+  } else {
+    log_info("Starting conversion of Read/UMI counts from bcwithqc sparse matrices...")
+    count_df_long <- get_count_df_long_and_make_coverage_file(cfg = cfg)
+  }
   
   # If we are processing umis, might as well already provide the reads_counts too. 
   if (identical("umis", cfg$counting$data_type)){
-    count_df_long_reads <- get_read_count_df_long(cfg)
+    count_df_long_reads <- get_read_count_df_long(cfg, return_df = FALSE)
   }
   
   count_df_tsv_gz <- file.path(
