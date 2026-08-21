@@ -71,6 +71,10 @@ handle_auto_combine_replicates_and_export <- function(maude_results,
     }
   }
   
+  print(
+    names(export_df)[vapply(export_df, is.list, logical(1))]
+  )
+  
   logger::log_info("Exporting results of initial MAUDE run...")
   
   csv_file_path <- sub(
@@ -82,8 +86,7 @@ handle_auto_combine_replicates_and_export <- function(maude_results,
     )
   )
   
-  readr::write_csv(export_df, csv_file_path)
-  logger::log_info("Results of initial MAUDE run exported to: {csv_file_path}")
+
   
   excel_file_path <- sub(
     "\\.rds$",
@@ -98,8 +101,25 @@ handle_auto_combine_replicates_and_export <- function(maude_results,
     file.path(cfg$paths$results_output_folder, paste0("MAUDE_Hits", file_suffix))
     )
   
-  writexl::write_xlsx(export_df, excel_file_path)
+  
+  # Flatten list-columns for tabular exports
+  export_df_for_writing <- export_df %>%
+    dplyr::mutate(
+      dplyr::across(
+        where(is.list),
+        ~ vapply(
+          .x,
+          function(x) paste(x, collapse = ";"),
+          character(1)
+        )
+      )
+    )
+  
+  readr::write_csv(export_df_for_writing, csv_file_path)
+  logger::log_info("Results of initial MAUDE run exported to: {csv_file_path}")
+  writexl::write_xlsx(export_df_for_writing, excel_file_path)
   logger::log_info("Results of initial MAUDE run exported to: {excel_file_path}")
+  
   
   return(export_df)
 }
