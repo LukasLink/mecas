@@ -5,6 +5,7 @@ prepare_fastq_inputs <- function(
     fastq_dir,
     fastq_name_table_file_path,
     bins,
+    cfg,
     output_symlink_dir,
     manifest_output_path = NULL,
     overwrite_symlinks = TRUE
@@ -244,6 +245,20 @@ prepare_fastq_inputs <- function(
       make_error_list(invalid_read)
     )
   }
+  # ---------------------------------------------------------------------------
+  # umis_as_sublibs manifest conditions
+  # ---------------------------------------------------------------------------
+  n_sublibraries <- dplyr::n_distinct(parser$sublibrary)
+  
+  if (isTRUE(cfg$counting$umis_as_sublibs) && n_sublibraries != 1) {
+    stop_log(
+      "Multiple different sublibraries are not supported for umis_as_sublibs mode. ",
+      "Found ", n_sublibraries, " sublibraries: ",
+      paste(unique(parser$sublibrary), collapse = ", "),
+      ". Please check the Experiment-info-file."
+    )
+  }
+
   
   # ---------------------------------------------------------------------------
   # Construct internal names
