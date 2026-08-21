@@ -28,6 +28,11 @@ CLI_TO_CONFIG = {
     "fastq_name_table_xlsx": ("paths", "fastq_name_table_xlsx"),
     "data_type": ("counting", "data_type"),
     "umis_as_sublibs": ("counting", "umis_as_sublibs"),
+    "run_qc_filtering": ("qc_filtering", "run"),
+    "replicate_method": ("replicates", "method"),
+    "combine_for_guide_stats": ("replicates", "combine_for_guide_stats"),
+    "combine_for_gene_stats": ("replicates", "combine_for_gene_stats"),
+    "run_consensus_call": ("consensus", "run"),
 }
 
 for cli_key, (section, key) in CLI_TO_CONFIG.items():

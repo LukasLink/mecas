@@ -111,7 +111,8 @@ manifest <- prepare_fastq_inputs(
   fastq_name_table_file_path = cfg$paths$fastq_name_table_xlsx,
   bins = cfg$bins,
   output_symlink_dir = cfg$paths$fastq_symlinks_folder,
-  manifest_output_path = cfg$paths$manifest
+  manifest_output_path = cfg$paths$manifest,
+  cfg = cfg
 )
 cfg$manifest <- manifest
 if (!file.exists(cfg$paths$manifest)) {

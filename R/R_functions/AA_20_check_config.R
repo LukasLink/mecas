@@ -651,7 +651,11 @@
   "output.extra_suffix" = function(option, name) {
     .validate_string(option, name, required = FALSE, allow_empty = TRUE)
   },
-
+  
+  "output.full_add_info" = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
   # Consensus calling
   "consensus.run" = function(option, name) {
     .validate_logical(option, name)

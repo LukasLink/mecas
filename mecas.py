@@ -76,6 +76,18 @@ COMMAND_SPECS = {
     },
     
 }
+REPLICATE_METHOD_MAP = {
+    "none": "",
+    "sample": "rep_sample",
+    "sublib": "rep_sublib",
+    "bin_group": "rep",
+}
+
+COMBINE_FOR_GUIDE_STATS_MAP = {
+    "none": "",
+    "sample": "sample",
+    "sublib": "sublib",
+}
 
 #-------------------------------------------------------------------------------
 # Dependency checks
@@ -450,6 +462,42 @@ def add_common_arguments(parser):
         help="Each sgRNA-UMI combination is treated as a replicate in its own sublibrary.",
         
     )
+    
+    parser.add_argument(
+        "--separate-statistics-by",
+        choices=("none", "sample", "sublib", "bin-group"),
+        default="none",
+        help="Calculate statistics separately by the selected grouping dimension (default: none).",
+    )
+    
+    parser.add_argument(
+        "--separate-statistics-for-gene-level-by",
+        choices=("none", "sample", "sublib", "all"),
+        default="none",
+        help="Calculate statistics separately by the selected grouping dimension only for the gene level (after guide level statistics are already calculated) (default: none).",
+    )
+    
+    parser.add_argument(
+        "--sum-sgrna-counts-for-guide-level-by",
+        choices=("none", "sample", "sublib"),
+        default="none",
+        help="Before guide-level statistics, sum counts of the same sgRNA across the selected dimension while keeping the other dimensions separate (default: none).",
+    )
+    
+    parser.add_argument(
+        "--run-consensus-call",
+        action="store_true",
+        default=False,
+        help="Run MAUDE analyses 20 times and perform consensus calling to minimize random sampling effects. (default: disabled).",
+    )
+    
+    parser.add_argument(
+        "--skip-qc-filtering",
+        action="store_true",
+        default=False,
+        help="Skip cutadapt QC filtering and pass the input FASTQ files directly to downstream processing (default: QC filtering enabled).",
+    )
+    
     parser.add_argument("--account", default=None)
     parser.add_argument("--partition", default=None)
     parser.add_argument("--qos", default=None)
@@ -578,6 +626,11 @@ def main():
         f"fastq_name_table_xlsx={args.experiment_info_file}",
         f"data_type={args.reads_or_umis}",
         f"umis_as_sublibs={args.umis_as_sublibs}",
+        f"run_qc_filtering={not args.skip_qc_filtering}",
+        f"replicate_method={REPLICATE_METHOD_MAP[args.separate_statistics_by]}",
+        f"combine_for_gene_stats={args.separate_statistics_for_gene_level_by}",
+        f"combine_for_guide_stats={COMBINE_FOR_GUIDE_STATS_MAP[args.sum_sgrna_counts_for_guide_level_by]}",
+        f"run_consensus_call={args.run_consensus_call}",
         f"mecas_command={args.command}"
     ]
     

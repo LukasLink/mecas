@@ -540,7 +540,8 @@ project_setup <- function(project_root_dir,
   )
   
   cfg$output <- list(
-    extra_suffix = check_input(config$output$extra_suffix %||% "", "output.extra_suffix")
+    extra_suffix = check_input(config$output$extra_suffix %||% "", "output.extra_suffix"),
+    full_add_info = check_input(config$output$full_add_info %||% FALSE, "output.full_add_info")
   )
   
   cfg$plots <- list(
@@ -752,7 +753,10 @@ project_setup <- function(project_root_dir,
   cfg$merged_sgRNA_df <- read_library_file(
     library_path = cfg$paths$library_path
   )
-  
+  #=============================================================================
+  # Validate cfg dependencies
+  #=============================================================================
+  validate_cfg_dependencies(cfg)
   #=============================================================================
   # Print setup summary
   #=============================================================================

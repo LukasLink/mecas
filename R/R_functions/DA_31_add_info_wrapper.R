@@ -44,53 +44,123 @@ add_info_to_gene_stats <- function(maude_guide_stats,
     ) %>% 
     dplyr::arrange(significanceZ)
   
-  # Add Liangfu's expression data
-  HepG2_cpm_Xie <- readRDS(file.path(data_dir, "Xie_hepato_df_cpm_RNAseq.rds"))
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      HepG2_cpm_Xie %>%
-        dplyr::filter(!is.na(entrez_id)) %>%
-        dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
-        dplyr::select(
-          entrez_id,
-          HepG2_CPM_Xie = HepG2,
-          primary_hepato_CPM_Xie = primary
-        ),
-      by = c("entrez" = "entrez_id")
+  if (isTRUE(cfg$output$add_full_info)){
+    # Add Liangfu's expression data
+    HepG2_cpm_Xie <- readRDS(file.path(data_dir, "Xie_hepato_df_cpm_RNAseq.rds"))
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        HepG2_cpm_Xie %>%
+          dplyr::filter(!is.na(entrez_id)) %>%
+          dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
+          dplyr::select(
+            entrez_id,
+            HepG2_CPM_Xie = HepG2,
+            primary_hepato_CPM_Xie = primary
+          ),
+        by = c("entrez" = "entrez_id")
+      )
+    
+    HepG2_tpm_Xie <- readRDS(file.path(data_dir, "Xie_hepato_df_tpm_RNAseq.rds"))
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        HepG2_tpm_Xie %>%
+          dplyr::filter(!is.na(entrez_id)) %>%
+          dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
+          dplyr::select(
+            entrez_id,
+            HepG2_TPM_Xie = HepG2,
+            primary_hepato_TPM_Xie = primary
+          ),
+        by = c("entrez" = "entrez_id")
+      )
+    
+    # Add Nico's HepG2 RNAseq expression data
+    HepG2_tpm_Battisti <- readRDS(file.path(data_dir, "Battisti_HepG2_dual_rep_RNAseq.rds"))
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        HepG2_tpm_Battisti %>%
+          dplyr::filter(!is.na(entrez)) %>%
+          dplyr::distinct(entrez, .keep_all = TRUE) %>% 
+          dplyr::select(
+            entrez,
+            HepG2_CPM_Battisti = CPM_WT,
+            HepG2_14D9_CPM_Battisti = CPM_dual_rep_14D9,
+            HepG2_14B11_CPM_Battisti = CPM_dual_rep_14B11
+          ),
+        by = "entrez"
+      )
+    cardio_cpm_Xie <- readRDS(file.path(data_dir, "Xie_cardio_df_cpm_RNAseq.rds"))
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        cardio_cpm_Xie %>%
+          dplyr::filter(!is.na(entrez_id)) %>%
+          dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
+          dplyr::select(
+            entrez_id,
+            cardio_IPSC_CPM = IPS_d,
+            cardio_primary_CPM = primary
+          ),
+        by = c("entrez" = "entrez_id")
+      )
+    
+    cardio_tpm_Xie <- readRDS(file.path(data_dir, "Xie_cardio_df_tpm_RNAseq.rds"))
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        cardio_tpm_Xie %>%
+          dplyr::filter(!is.na(entrez_id)) %>%
+          dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
+          dplyr::select(
+            entrez_id,
+            cardio_IPSC_TPM = IPS_d,
+            cardio_primary_TPM = primary
+          ),
+        by = c("entrez" = "entrez_id")
+      )
+    
+    cardio_cpm_Xie_Liangfu_own_data <- readRDS(
+      file.path(data_dir, "Xie_cardio_df_cpm_Liangfus_own_RNAseq.rds")
     )
-  
-  HepG2_tpm_Xie <- readRDS(file.path(data_dir, "Xie_hepato_df_tpm_RNAseq.rds"))
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      HepG2_tpm_Xie %>%
-        dplyr::filter(!is.na(entrez_id)) %>%
-        dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
-        dplyr::select(
-          entrez_id,
-          HepG2_TPM_Xie = HepG2,
-          primary_hepato_TPM_Xie = primary
-        ),
-      by = c("entrez" = "entrez_id")
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        cardio_cpm_Xie_Liangfu_own_data %>%
+          dplyr::filter(!is.na(entrez_id)) %>%
+          dplyr::distinct(entrez_id, .keep_all = TRUE) %>%
+          dplyr::mutate(
+            both = rowMeans(dplyr::across(c(Xie_CM_Rep_1, Xie_CM_Rep_2)), na.rm = TRUE)
+          ) %>% 
+          dplyr::select(
+            entrez_id,
+            cardio_IPSC_CPM_Xie = both
+          ),
+        by = c("entrez" = "entrez_id")
+      )
+    
+    cardio_tpm_Xie_Liangfus_own_data <- readRDS(
+      file.path(data_dir, "Xie_cardio_df_tpm_Liangfus_own_RNAseq.rds")
     )
-  
-  # Add Nico's HepG2 RNAseq expression data
-  HepG2_tpm_Battisti <- readRDS(file.path(data_dir, "Battisti_HepG2_dual_rep_RNAseq.rds"))
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      HepG2_tpm_Battisti %>%
-        dplyr::filter(!is.na(entrez)) %>%
-        dplyr::distinct(entrez, .keep_all = TRUE) %>% 
-        dplyr::select(
-          entrez,
-          HepG2_CPM_Battisti = CPM_WT,
-          HepG2_14D9_CPM_Battisti = CPM_dual_rep_14D9,
-          HepG2_14B11_CPM_Battisti = CPM_dual_rep_14B11
-        ),
-      by = "entrez"
-    )
+    
+    export_df <- export_df %>%
+      dplyr::left_join(
+        cardio_tpm_Xie_Liangfus_own_data %>%
+          dplyr::filter(!is.na(entrez_id)) %>%
+          dplyr::distinct(entrez_id, .keep_all = TRUE) %>%
+          dplyr::mutate(
+            both = rowMeans(dplyr::across(c(Xie_CM_Rep_1, Xie_CM_Rep_2)), na.rm = TRUE)
+          ) %>% 
+          dplyr::select(
+            entrez_id,
+            cardio_IPSC_TPM_Xie = both
+          ),
+        by = c("entrez" = "entrez_id")
+      )
+  }
+
   
   # Add information about essential genes
   essential_df <- readRDS(file.path(data_dir, "dependency_df.rds")) %>%
@@ -100,73 +170,7 @@ add_info_to_gene_stats <- function(maude_guide_stats,
   export_df <- export_df %>%
     dplyr::left_join(essential_df, by = "entrez")
   
-  cardio_cpm_Xie <- readRDS(file.path(data_dir, "Xie_cardio_df_cpm_RNAseq.rds"))
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      cardio_cpm_Xie %>%
-        dplyr::filter(!is.na(entrez_id)) %>%
-        dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
-        dplyr::select(
-          entrez_id,
-          cardio_IPSC_CPM = IPS_d,
-          cardio_primary_CPM = primary
-        ),
-      by = c("entrez" = "entrez_id")
-    )
-  
-  cardio_tpm_Xie <- readRDS(file.path(data_dir, "Xie_cardio_df_tpm_RNAseq.rds"))
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      cardio_tpm_Xie %>%
-        dplyr::filter(!is.na(entrez_id)) %>%
-        dplyr::distinct(entrez_id, .keep_all = TRUE) %>% 
-        dplyr::select(
-          entrez_id,
-          cardio_IPSC_TPM = IPS_d,
-          cardio_primary_TPM = primary
-        ),
-      by = c("entrez" = "entrez_id")
-    )
-  
-  cardio_cpm_Xie_Liangfu_own_data <- readRDS(
-    file.path(data_dir, "Xie_cardio_df_cpm_Liangfus_own_RNAseq.rds")
-  )
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      cardio_cpm_Xie_Liangfu_own_data %>%
-        dplyr::filter(!is.na(entrez_id)) %>%
-        dplyr::distinct(entrez_id, .keep_all = TRUE) %>%
-        dplyr::mutate(
-          both = rowMeans(dplyr::across(c(Xie_CM_Rep_1, Xie_CM_Rep_2)), na.rm = TRUE)
-        ) %>% 
-        dplyr::select(
-          entrez_id,
-          cardio_IPSC_CPM_Xie = both
-        ),
-      by = c("entrez" = "entrez_id")
-    )
-  
-  cardio_tpm_Xie_Liangfus_own_data <- readRDS(
-    file.path(data_dir, "Xie_cardio_df_tpm_Liangfus_own_RNAseq.rds")
-  )
-  
-  export_df <- export_df %>%
-    dplyr::left_join(
-      cardio_tpm_Xie_Liangfus_own_data %>%
-        dplyr::filter(!is.na(entrez_id)) %>%
-        dplyr::distinct(entrez_id, .keep_all = TRUE) %>%
-        dplyr::mutate(
-          both = rowMeans(dplyr::across(c(Xie_CM_Rep_1, Xie_CM_Rep_2)), na.rm = TRUE)
-        ) %>% 
-        dplyr::select(
-          entrez_id,
-          cardio_IPSC_TPM_Xie = both
-        ),
-      by = c("entrez" = "entrez_id")
-    )
+
   
   # Add GO term information
   go_map <- suppressMessages(
