@@ -52,8 +52,8 @@ plot_significance_by_rank <- function(Hits_df,
       axis.text = element_text(size = 14),
       plot.title = element_text(size = 18, hjust = 0.5)
     )
-
-
+  
+  
   
   # Mark control (NA in symbol column)
   if (mark_cntrl && "symbol" %in% names(Hits_df)) {
@@ -111,10 +111,29 @@ plot_significance_by_rank <- function(Hits_df,
     # Add lines if requested
     if (isTRUE(signif_lines)) {
       
-      ## Lowest positive significanceZ (closest to zero, > 0)
-      pos_df <- signif_df %>% filter(significanceZ > 0)
-      if (nrow(pos_df) > 0) {
-        y_pos <- min(pos_df$significanceZ, na.rm = TRUE)
+      ## Positive significance threshold
+      ## Place the line halfway between the lowest significant Z-score and
+      ## the highest non-significant Z-score below it.
+      pos_sig_df <- Hits_df %>%
+        filter(significanceZ > 0, FDR <= mark_all_signif_level)
+      
+      if (nrow(pos_sig_df) > 0) {
+        lowest_sig <- min(pos_sig_df$significanceZ, na.rm = TRUE)
+        
+        pos_nonsig_df <- Hits_df %>%
+          filter(
+            significanceZ > 0,
+            FDR > mark_all_signif_level,
+            significanceZ < lowest_sig
+          )
+        
+        if (nrow(pos_nonsig_df) > 0) {
+          highest_nonsig <- max(pos_nonsig_df$significanceZ, na.rm = TRUE)
+          y_pos <- mean(c(highest_nonsig, lowest_sig))
+        } else {
+          y_pos <- lowest_sig
+        }
+        
         p <- p +
           geom_hline(
             yintercept = y_pos,
@@ -124,11 +143,29 @@ plot_significance_by_rank <- function(Hits_df,
           )
       }
       
-      ## Negative significanceZ with smallest absolute value (closest to zero)
-      neg_df <- signif_df %>% filter(significanceZ < 0)
-      if (nrow(neg_df) > 0) {
-        # largest negative value, e.g. -1 is "closer to zero" than -3
-        y_neg <- max(neg_df$significanceZ, na.rm = TRUE)
+      ## Negative significance threshold
+      ## Place the line halfway between the highest significant Z-score
+      ## (closest to zero) and the lowest non-significant Z-score above it.
+      neg_sig_df <- Hits_df %>%
+        filter(significanceZ < 0, FDR <= mark_all_signif_level)
+      
+      if (nrow(neg_sig_df) > 0) {
+        highest_sig <- max(neg_sig_df$significanceZ, na.rm = TRUE)
+        
+        neg_nonsig_df <- Hits_df %>%
+          filter(
+            significanceZ < 0,
+            FDR > mark_all_signif_level,
+            significanceZ > highest_sig
+          )
+        
+        if (nrow(neg_nonsig_df) > 0) {
+          lowest_nonsig <- min(neg_nonsig_df$significanceZ, na.rm = TRUE)
+          y_neg <- mean(c(highest_sig, lowest_nonsig))
+        } else {
+          y_neg <- highest_sig
+        }
+        
         p <- p +
           geom_hline(
             yintercept = y_neg,
@@ -258,4 +295,3 @@ plot_significance_by_rank <- function(Hits_df,
   }
   return(p)
 }
-

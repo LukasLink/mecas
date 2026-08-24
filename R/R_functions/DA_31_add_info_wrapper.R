@@ -167,10 +167,16 @@ add_info_to_gene_stats <- function(maude_guide_stats,
     dplyr::mutate(entrez = as.character(entrez_id)) %>% 
     dplyr::select(-c(gene_symbol, entrez_id))
   
-  export_df <- export_df %>%
-    dplyr::left_join(essential_df, by = "entrez")
-  
 
+  
+  if (isTRUE(cfg$output$add_full_info)){
+    export_df <- export_df %>%
+      dplyr::left_join(essential_df, by = "entrez")
+  } else {
+    export_df <- export_df %>%
+      dplyr::left_join(essential_df, by = "entrez") %>%
+      select(-c(dependency_HepG2, essential_HepG2, dependency_liver, essential_liver))
+  }
   
   # Add GO term information
   go_map <- suppressMessages(

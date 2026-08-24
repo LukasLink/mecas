@@ -13,45 +13,45 @@ run_MAUDE <- function(maude_counts_df,
   
   # TESTING ONLY REMOVE THIS IN FINAL VERSION
   #############################################################################
-  set.seed(123)
-  test_pre_guide <- maude_counts_df
-  
-  # Add random background variation of 1-3 counts to every bin.
-  bin_cols <- c("I", "L", "U")
-  
-  for (bin_col in bin_cols) {
-    test_pre_guide[[bin_col]] <- test_pre_guide[[bin_col]] +
-      sample(1:3, nrow(test_pre_guide), replace = TRUE)
-  }
-  
-  # Add a strong positive effect to U for selected genes.
-  upper_genes <- c("ABCA1", "ACSS3", "AAMP")
-  
-  upper_rows <- grepl(
-    paste0("^(", paste(upper_genes, collapse = "|"), ")_[0-9]+$"),
-    test_pre_guide$sgRNA
-  )
-  
-  test_pre_guide$U[upper_rows] <-
-    test_pre_guide$U[upper_rows] +
-    sample(10:20, sum(upper_rows), replace = TRUE)
-  
-  # Add a strong negative effect to L for selected genes.
-  lower_genes <- c("ZP3", "ZNF710", "ZCWPW2")
-  
-  lower_rows <- grepl(
-    paste0("^(", paste(lower_genes, collapse = "|"), ")_[0-9]+$"),
-    test_pre_guide$sgRNA
-  )
-  
-  test_pre_guide$L[lower_rows] <-
-    test_pre_guide$L[lower_rows] +
-    sample(10:20, sum(lower_rows), replace = TRUE)
-  
-  maude_counts_df <- test_pre_guide
-  rm(test_pre_guide)
-  
-  log_warn("TESTING ENABLED FALSE DATA WILL BE USED!!!!!!!!")
+  # set.seed(123)
+  # test_pre_guide <- maude_counts_df
+  # 
+  # # Add random background variation of 1-3 counts to every bin.
+  # bin_cols <- c("I", "L", "U")
+  # 
+  # for (bin_col in bin_cols) {
+  #   test_pre_guide[[bin_col]] <- test_pre_guide[[bin_col]] +
+  #     sample(1:3, nrow(test_pre_guide), replace = TRUE)
+  # }
+  # 
+  # # Add a strong positive effect to U for selected genes.
+  # upper_genes <- c("ABCA1", "ACSS3", "AAMP")
+  # 
+  # upper_rows <- grepl(
+  #   paste0("^(", paste(upper_genes, collapse = "|"), ")_[0-9]+$"),
+  #   test_pre_guide$sgRNA
+  # )
+  # 
+  # test_pre_guide$U[upper_rows] <-
+  #   test_pre_guide$U[upper_rows] +
+  #   sample(10:20, sum(upper_rows), replace = TRUE)
+  # 
+  # # Add a strong negative effect to L for selected genes.
+  # lower_genes <- c("ZP3", "ZNF710", "ZCWPW2")
+  # 
+  # lower_rows <- grepl(
+  #   paste0("^(", paste(lower_genes, collapse = "|"), ")_[0-9]+$"),
+  #   test_pre_guide$sgRNA
+  # )
+  # 
+  # test_pre_guide$L[lower_rows] <-
+  #   test_pre_guide$L[lower_rows] +
+  #   sample(10:20, sum(lower_rows), replace = TRUE)
+  # 
+  # maude_counts_df <- test_pre_guide
+  # rm(test_pre_guide)
+  # 
+  # log_warn("TESTING ENABLED FALSE DATA WILL BE USED!!!!!!!!")
   #############################################################################
   
   maude_gene_stats_fpath <- file.path(

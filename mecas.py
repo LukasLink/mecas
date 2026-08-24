@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
 import argparse
-# import importlib.resources
 import os
 from os import path
 import shutil
 import sys
 from pathlib import Path
 import yaml
+import subprocess
 
+VERSION = "0.5.0"
 
-VERSION = "0.1.0"
-
+PACKAGE_ROOT = Path(__file__).resolve().parent
 
 PIPELINE_ITEMS = [
     "Snakefile",
@@ -74,17 +74,21 @@ COMMAND_SPECS = {
         "description": "Removes intermediary results and large .bam files.",
         "snakemake_target": "cleanup",
     },
-    
+    "examples": {
+        "help": "Copy MECAS example files.",
+        "description": "Copy the bundled MECAS example files into OUTPUT_DIR/mecas_examples.",
+        "snakemake_target": None,
+    },
 }
 REPLICATE_METHOD_MAP = {
-    "none": "",
+    "none": '""',
     "sample": "rep_sample",
     "sublib": "rep_sublib",
     "bin_group": "rep",
 }
 
 COMBINE_FOR_GUIDE_STATS_MAP = {
-    "none": "",
+    "none": '""',
     "sample": "sample",
     "sublib": "sublib",
 }
@@ -305,7 +309,32 @@ def set_nested(cfg, dotted_key, value):
     for part in parts[:-1]:
         cur = cur.setdefault(part, {})
     cur[parts[-1]] = value
+#-------------------------------------------------------------------------------
+# Copy example directory
+#-------------------------------------------------------------------------------
+def copy_examples(args):
+    source_dir = PACKAGE_ROOT / "example"
+    output_dir = Path(args.output_dir).resolve()
+    destination_dir = output_dir / "mecas_example"
 
+    if not source_dir.is_dir():
+        sys.exit(
+            "\nERROR\n"
+            f"MECAS example directory does not exist:\n{source_dir}"
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    shutil.copytree(
+        source_dir,
+        destination_dir,
+        dirs_exist_ok=True,
+    )
+
+    print(
+        "Copied MECAS example files to:\n"
+        f"{destination_dir}"
+    )
 #-------------------------------------------------------------------------------
 # Override Profiles
 #-------------------------------------------------------------------------------
@@ -510,7 +539,14 @@ def build_parser():
         description="Run the MECAS amplicon barcode analysis pipeline.\n\nUse 'mecas COMMAND --help' for stage-specific help.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    
+    output_only_parser = argparse.ArgumentParser(add_help=False)
 
+    output_only_parser.add_argument(
+        "--output-dir",
+        required=True,
+        help="Destination directory.",
+    )
     subparsers = parser.add_subparsers(
         dest="command",
         # required=True, # This needs python 3.7+
@@ -532,7 +568,10 @@ def build_parser():
 
     for command_name, command_spec in COMMAND_SPECS.items():
 
-        parents = [common_parser]
+        if command_name in {"cleanup", "examples"}:
+            parents = [output_only_parser]
+        else:
+            parents = [common_parser]
 
         if command_name in heavy_resource_commands:
             parents.append(heavy_resource_parser)
@@ -558,6 +597,62 @@ def build_parser():
 
     return parser
 
+def run_cleanup(args, snakemake_args):
+    snakemake_path = check_snakemake_available()
+
+    output_dir = Path(args.output_dir).resolve()
+
+    pipeline_root = PACKAGE_ROOT
+    pipeline_dir = output_dir / "pipeline"
+
+    print(f"Preparing pipeline directory:\n{pipeline_dir}\n")
+
+    prepare_pipeline(
+        pipeline_root,
+        pipeline_dir,
+    )
+
+    cleanup_paths = [
+        str(output_dir),
+        str(pipeline_root),
+    ]
+
+    cleanup_mounts = sorted({
+        get_mount_root(user_path)
+        for user_path in cleanup_paths
+    })
+
+    apptainer_bind_string = ",".join(
+        f"{mount}:{mount}"
+        for mount in cleanup_mounts
+    )
+
+    os.chdir(pipeline_dir)
+
+    run_cmd = [
+        snakemake_path,
+        args.snakemake_target,
+        "--sdm",
+        "apptainer",
+        "--apptainer-args",
+        f"--bind {apptainer_bind_string}",
+        "--profile",
+        "sample_profiles/local",
+        "--config",
+        f"output_folder={output_dir}",
+        "mecas_command=cleanup",
+    ]
+
+    run_cmd.extend(snakemake_args)
+
+    print("\nLaunching MECAS cleanup\n")
+    print(" ".join(run_cmd))
+    print()
+
+    os.execvp(
+        snakemake_path,
+        run_cmd,
+    )  
 #-------------------------------------------------------------------------------
 # MAIN
 #-------------------------------------------------------------------------------
@@ -574,7 +669,20 @@ def main():
     if not getattr(args, "command", None):
         parser.print_help()
         raise SystemExit(2)
-      
+    
+    
+    if args.command == "examples":
+        if snakemake_args:
+            parser.error(
+                "unrecognized arguments: "
+                + " ".join(snakemake_args)
+            )
+
+        return copy_examples(args)
+
+    if args.command == "cleanup":
+        return run_cleanup(args, snakemake_args)
+
     snakemake_path = check_snakemake_available()
     
     resolve_user_paths(args)
@@ -582,7 +690,7 @@ def main():
     # Locate installed pipeline.
     #
     # pipeline_root = Path(importlib.resources.files("mecas"))
-    pipeline_root = Path(__file__).resolve().parent
+    pipeline_root = PACKAGE_ROOT
 
     output_dir = Path(args.output_dir)
     pipeline_dir = output_dir / "pipeline"
@@ -596,6 +704,7 @@ def main():
     
     # Bind all relevant paths to apptainer. 
     apptainer_bind_string = build_apptainer_bind_string(args, pipeline_root)
+    print(f"Apptainer bind mounts: {apptainer_bind_string}")
     
     # Use either a custom provided profile or one of the default ones
     default_profile = Path("sample_profiles") / args.profile
@@ -608,10 +717,7 @@ def main():
             pipeline_dir / "sample_profiles" / args.profile / "config.yaml",
             args,
         )
-        
-    cmd = [
-        snakemake_path,
-        args.snakemake_target,
+    common_snakemake_args = [
         "--sdm",
         "apptainer",
         "--apptainer-args",
@@ -631,32 +737,84 @@ def main():
         f"combine_for_gene_stats={args.separate_statistics_for_gene_level_by}",
         f"combine_for_guide_stats={COMBINE_FOR_GUIDE_STATS_MAP[args.sum_sgrna_counts_for_guide_level_by]}",
         f"run_consensus_call={args.run_consensus_call}",
-        f"mecas_command={args.command}"
+        f"mecas_command={args.command}",
     ]
-    
-    if args.command == "plot":
-        cmd.extend([
-            "--forcerun",
-            "plot",
-        ])
-        
-    cmd.extend(build_resource_overrides(args))
-    cmd.extend(snakemake_args)
 
-    print("Launching Snakemake\n")
-    print(" ".join(cmd))
-    print()
+
+        
+    resource_args = build_resource_overrides(args)
 
     os.chdir(pipeline_dir)
     
-    print(f"Apptainer bind mounts: {apptainer_bind_string}")
+    if args.command != "setup" and args.command != "cleanup":
     
-    # Replace ourselves with Snakemake.
+        setup_cmd = [
+            snakemake_path,
+            "setup",
+        ] + common_snakemake_args + [
+            "--force",
+        ]
+        
+        touch_cmd = [
+            snakemake_path,
+            args.snakemake_target,
+        ] + common_snakemake_args + [
+            "--touch",
+        ]
+        # Run Setup
+        print("Running MECAS setup\n")
+        print(" ".join(setup_cmd))
+        print()
+        
+        setup_result = subprocess.run(setup_cmd)
+        
+        if setup_result.returncode != 0:
+            sys.exit(
+                f"\nERROR\n"
+                f"MECAS setup failed with exit code {setup_result.returncode}. "
+                f"The requested pipeline command will not be run."
+            )
+            
+        # Refreshtimestamps of existing outputs
+        print("\nRefreshing timestamps of existing outputs\n")
+        print(" ".join(touch_cmd))
+        print()
+        
+        touch_result = subprocess.run(touch_cmd)
+        
+        if touch_result.returncode != 0:
+            sys.exit(
+                f"\nERROR\n"
+                f"Snakemake --touch failed with exit code {touch_result.returncode}. "
+                f"The requested pipeline command will not be run."
+            )
+    
+    run_cmd = [
+        snakemake_path,
+        args.snakemake_target,
+    ] + common_snakemake_args + resource_args
+    
+    if args.command == "plot":
+        run_cmd.extend([
+            "--forcerun",
+            "plot",
+    ])
+    
+    run_cmd.extend(snakemake_args)
+    
+    
+    
+
+        
+    # Replace ourselves with Snakemake, and run the actual command
+    print("\nLaunching Snakemake\n")
+    print(" ".join(run_cmd))
+    print()
+    
     os.execvp(
         snakemake_path,
-        cmd,
+        run_cmd,
     )
-
 
 if __name__ == "__main__":
     main()

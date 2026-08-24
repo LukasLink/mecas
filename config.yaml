@@ -245,6 +245,7 @@ output:
   # Useful for distinguishing different parameter runs.
   extra_suffix: ""
   # Includes HepG2 and cardiomycocyte expression data and other information in final output
+  # These were mostly useful for our speficic experiment and are disabled by default. 
   full_add_info: false
 # ------------------------------------------------------------------------------
 # Plotting options

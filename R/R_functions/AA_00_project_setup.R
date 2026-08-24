@@ -270,6 +270,7 @@ log_project_setup <- function(cfg) {
   logger::log_info("Project setup options")
   logger::log_info("==========================================================")
   
+  logger::log_info("PATHS")
   logger::log_info("output_folder:                     {cfg$paths$output_folder}")
   logger::log_info("input_folder:                      {cfg$paths$input_folder}")
   logger::log_info("library_path:                      {cfg$paths$library_path}")
@@ -277,40 +278,87 @@ log_project_setup <- function(cfg) {
   logger::log_info("fastq_name_table_xlsx:             {cfg$paths$fastq_name_table_xlsx}")
   logger::log_info("----------------------------------------------------------")
   
-  logger::log_info("include_controls_list:             {paste(cfg$controls$include_controls, collapse = ', ')}")
+  logger::log_info("COUNTING")
+  logger::log_info("data_type:                         {cfg$counting$data_type}")
+  logger::log_info("umis_as_sublibs:                   {cfg$counting$umis_as_sublibs}")
+  logger::log_info("----------------------------------------------------------")
+  
+  logger::log_info("QC FILTERING")
+  logger::log_info("run:                               {cfg$qc_filtering$run}")
+  logger::log_info("min_qual:                          {cfg$qc_filtering$min_qual}")
+  logger::log_info("min_length_state:                  {cfg$qc_filtering$min_length_state}")
+  
+  if (identical(cfg$qc_filtering$min_length_state, "provided_single")) {
+    logger::log_info("min_length:                        {cfg$qc_filtering$min_length_single}")
+  } else if (identical(cfg$qc_filtering$min_length_state, "provided_R1R2")) {
+    logger::log_info("min_length_R1:                     {cfg$qc_filtering$min_length_R1}")
+    logger::log_info("min_length_R2:                     {cfg$qc_filtering$min_length_R2}")
+  } else {
+    logger::log_info("min_length:                        <automatically inferred>")
+  }
+  
+  logger::log_info("----------------------------------------------------------")
+  
+  logger::log_info("REPLICATES / STATISTICAL GROUPING")
+  logger::log_info("method:                            {cfg$replicates$method}")
+  logger::log_info("combine_for_guide_stats:           {cfg$replicates$combine_for_guide_stats}")
+  logger::log_info("combine_for_gene_stats:            {cfg$replicates$combine_for_gene_stats}")
+  logger::log_info("auto_combine_replicates:           {cfg$replicates$auto_combine_replicates}")
+  logger::log_info("----------------------------------------------------------")
+  
+  logger::log_info("NORMALIZATION")
+  logger::log_info("norm_method:                       {cfg$normalization$norm_method}")
+  logger::log_info("recover_input:                     {cfg$normalization$recover_input}")
+  logger::log_info("use_custom_bins:                   {cfg$normalization$use_custom_bins}")
+  logger::log_info("upper_lower_percentage:            {cfg$normalization$upper_lower_percentage}")
+  logger::log_info("----------------------------------------------------------")
+  
+  logger::log_info("CONTROLS")
   logger::log_info(
-    "use_only_these_controls_list:      {x}",
+    "include_controls:                   {x}",
+    x = if (length(cfg$controls$include_controls) > 0) {
+      paste(cfg$controls$include_controls, collapse = ", ")
+    } else {
+      "<not set>"
+    }
+  )
+  logger::log_info(
+    "use_only_these_controls:            {x}",
     x = if (length(cfg$controls$use_only_these_controls) > 0) {
       paste(cfg$controls$use_only_these_controls, collapse = ", ")
     } else {
       "<not set>"
     }
   )
-  logger::log_info("----------------------------------------------------------")
-  
-  logger::log_info("data_type:                         {cfg$counting$data_type}")
-  logger::log_info("umis_as_sublibs:                   {cfg$counting$umis_as_sublibs}")
-  logger::log_info("method:                            {cfg$replicates$method}")
-  logger::log_info("norm_method:                       {cfg$normalization$norm_method}")
-  logger::log_info("combine_for_guide_stats:           {cfg$replicates$combine_for_guide_stats}")
-  logger::log_info("combine_for_gene_stats:            {cfg$replicates$combine_for_gene_stats}")
-  logger::log_info("----------------------------------------------------------")
-  
-  logger::log_info("recover_input:                     {cfg$normalization$recover_input}")
-  logger::log_info("subsample_controls:                {cfg$controls$subsample_controls}")
-  logger::log_info("use_custom_bins:                   {cfg$normalization$use_custom_bins}")
   logger::log_info("same_controls_in_all_sublibraries: {cfg$controls$same_controls_in_all_sublibraries}")
+  logger::log_info("subsample_controls:                {cfg$controls$subsample_controls}")
   logger::log_info("----------------------------------------------------------")
   
+  logger::log_info("FILTERING")
   logger::log_info("drop_0s:                           {cfg$filtering$drop_0s}")
   logger::log_info("strict_mode:                       {cfg$filtering$strict_mode}")
   logger::log_info("min_guides_per_gene:               {cfg$filtering$min_guides_per_gene}")
-  logger::log_info("auto_combine_replicates:           {cfg$replicates$auto_combine_replicates}")
   logger::log_info("----------------------------------------------------------")
   
-  logger::log_info("file_suffix:                       {cfg$suffix$file_suffix}")
-  logger::log_info("file_info_suffix:                  {cfg$suffix$file_info_suffix}")
-  logger::log_info("log_file:                          {cfg$paths$log_file}")
+  logger::log_info("CONSENSUS")
+  logger::log_info("run:                               {cfg$consensus$run}")
+  logger::log_info("n_reps:                            {cfg$consensus$n_reps}")
+  
+  if (isTRUE(cfg$consensus$run)) {
+    logger::log_info("high_confidence.FDR_threshold:      {cfg$consensus$high_confidence$FDR_threshold}")
+    logger::log_info("high_confidence.hits_in_X_reps:     {cfg$consensus$high_confidence$hits_in_X_reps}")
+    logger::log_info("explorative.FDR_threshold:          {cfg$consensus$explorative$FDR_threshold}")
+    logger::log_info("explorative.hits_in_X_reps:         {cfg$consensus$explorative$hits_in_X_reps}")
+  }
+  
+  logger::log_info("----------------------------------------------------------")
+  
+  logger::log_info("OUTPUT")
+  logger::log_info("extra_suffix:                       {ifelse(nzchar(cfg$output$extra_suffix), cfg$output$extra_suffix, '<not set>')}")
+  logger::log_info("file_suffix:                        {cfg$suffix$file_suffix}")
+  logger::log_info("file_info_suffix:                   {cfg$suffix$file_info_suffix}")
+  logger::log_info("log_file:                           {cfg$paths$log_file %||% '<stage-specific log>'}")
+  logger::log_info("==========================================================")
   
   invisible(cfg)
 }
@@ -489,7 +537,7 @@ project_setup <- function(project_root_dir,
   )
   
   cfg$consensus <- list(
-    run = check_input(config$consensus$run %||% TRUE, "consensus.run"),
+    run = check_input(config$consensus$run %||% FALSE, "consensus.run"),
     n_reps = check_input(config$consensus$n_reps %||% 19, "consensus.n_reps"),
     
     high_confidence = list(

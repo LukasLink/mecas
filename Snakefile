@@ -35,9 +35,20 @@ CLI_TO_CONFIG = {
     "run_consensus_call": ("consensus", "run"),
 }
 
+# TO DO: change parsing of replicate_method and combine_for_guide stats away from empty string!
+CLI_EMPTY_STRING_KEYS = {
+    "replicate_method",
+    "combine_for_guide_stats",
+}
+
 for cli_key, (section, key) in CLI_TO_CONFIG.items():
     if cli_key in config:
-        config[section][key] = config[cli_key]
+        value = config[cli_key]
+
+        if cli_key in CLI_EMPTY_STRING_KEYS and value is None:
+            value = ""
+
+        config.setdefault(section, {})[key] = value
 
 
 #-------------------------------------------------------------------------------
@@ -46,19 +57,28 @@ for cli_key, (section, key) in CLI_TO_CONFIG.items():
 
 required = [
     ("paths", "output_folder"),
-    ("paths", "input_folder"),
-    ("paths", "library_path"),
-    ("paths", "bcwithqc_config_path"),
-    ("paths", "fastq_name_table_xlsx"),
-    ("counting", "data_type"),
 ]
 
+if config.get("mecas_command") != "cleanup":
+    required.extend([
+        ("paths", "input_folder"),
+        ("paths", "library_path"),
+        ("paths", "bcwithqc_config_path"),
+        ("paths", "fastq_name_table_xlsx"),
+        ("counting", "data_type"),
+    ])
+
 missing = []
+
+allow_empty = {
+    ("replicates", "method"),
+    ("replicates", "combine_for_guide_stats"),
+}
 
 for section, key in required:
     value = config.get(section, {}).get(key)
 
-    if value is None or str(value).strip() == "":
+    if value is None or (str(value).strip() == "" and (section, key) not in allow_empty):
         missing.append(f"{section}.{key}")
 
 if missing:
@@ -416,7 +436,7 @@ def estimate_qc_filter_runtime(paths):
 
     observed_minutes_per_gb = 0.6
     safety_factor = 1.5
-    startup_buffer_minutes = 10
+    startup_buffer_minutes = 5
 
     estimated_runtime = input_size_gb * observed_minutes_per_gb * safety_factor + startup_buffer_minutes
 
@@ -1248,10 +1268,10 @@ rule MAUDE:
         done = os.path.join(STATE_DIR, "08_MAUDE.done")
     threads: 1
     resources:
-        # mem_mb = get_MAUDE_mb,
-        # runtime = get_MAUDE_runtime
-        mem_mb = 120000,
-        runtime = 14400
+        mem_mb = get_MAUDE_mb,
+        runtime = get_MAUDE_runtime
+        # mem_mb = 120000,
+        # runtime = 14400
     shell:
         r"""
         echo "============================================================"

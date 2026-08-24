@@ -132,35 +132,8 @@ Alternative column names are allowed and are listed below.
 
 Optional columns
 ----------------
-6. Alignment Sequence (required for make_reference; optional otherwise)
 
-   Canonical name:
-   - align_seq
-   
-    Alternative accepted name:
-   - alignment_sequence
-   - alignment_seq
-   - align_sequence
-
-   Requirements:
-   - If provided, no missing values are allowed.
-   - Values must be strings containing only [A, T, G, C, N].
-
-   Examples of valid values:
-   - GTTTAAGAGCTATGCTGGANNANNNGNNAACAGCATAGCAAGTTTAAATAAGGCTAGTCCGTTATCA
-   - ATAGCAAGTTTAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACC
-
-   If this column is not provided:
-   - You will not be able to use make_reference, and will have to create your
-      own STAR_index
-
-   Description:
-   This column should contain the the sequences that STAR will try to align
-   your reads to. It should contain the sgRNA, and all
-   Constant parts that are not discarded during read/UMI counting.
-   (UMIs are always removed from the read and should not be included in the aligment sequence!)
-
-7. Sublibrary (required for sublibrary matching; optional otherwise)
+6. Sublibrary (required for sublibrary matching; optional otherwise)
 
    Canonical name:
    - sublib
@@ -181,7 +154,7 @@ Optional columns
    This column identifies the sublibrary to which the sgRNA belongs.
    It should 
    
-8. Count (optional)
+7. Count (optional)
 
    Canonical name:
    - count
