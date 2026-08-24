@@ -1,173 +1,98 @@
 # ==============================================================================
-# Amplicon Barcode Analysis Pipeline Configuration
+# MECAS Pipeline Configuration
 # ==============================================================================
 # This file contains user-configurable options for the pipeline.
-# Values here can later be overridden via CLI arguments if desired.
+#
+# Settings with a corresponding MECAS CLI option are overridden by the CLI
+# value when the pipeline is launched through mecas.py.
+# CLI options (even defaults) always take precedent!
+# The corresponding CLI option is documented below where applicable.
 # ==============================================================================
-
-
-# ------------------------------------------------------------------------------
-# Run behavior
-# ------------------------------------------------------------------------------
-run:
-  # Defines at which Stage the Pipeline begins, only relevant for count command.
-  # Assumes that there are results from previous pipeline runs. 
-  # Allowed values:
-  #   - "beginning"             : run entire pipeline start to finish
-  #   - "read_counting"         : start with the read counting step
-  #   - "MAUDE_analysis"        : start with running MAUDE 
-  #   - "generate_plots"        : start with creating the plots (see plots options further below)
-  start_with: "beginning"
-  
-  # Decides if we are running on a local machine or a slurm cluster
-  # When running on a slurm cluster the the slurm section of this yaml (further below)
-  # should be filled out. 
-  machine: "slurm" #local or slurm 
-
 
 # ------------------------------------------------------------------------------
 # Input and output paths
 # ------------------------------------------------------------------------------
 paths:
   # Mandatory output directory for all pipeline results.
-  # output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/ref_test"
-  output_folder: "/scratch/link/Amplicon_barcode_analysis/PA_no_STAR_test"
-  
-  # Mandatory input directory for fastq files
-  # input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/tiny_test_set"
-  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/QC_filtered"
+  # CLI: --output-dir
+  output_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/snake_test/tiny_test_set_pe_3x_v1"
 
-  # Mandatory library file, supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
-  # See 'library_formatting_requirements.txt' 
-  library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds"
-  
-  # Mandatory reference star_index file.
-  # Can be generated via the make_reference.R script if the align_sequence column is included in the library file. 
-  star_index_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/library/star_index_whole_genome_sublibs_1_to_4_sgRNA_only"
-  
-  # Optional but recommended input_fastq_name_parser.xlsx
-  # For matching file names to pipeline specific names. 
-  # fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/bcwithqc_test/input_fastq_name_table_template.xlsx"
-  fastq_name_table_xlsx: ""
-  # strict_file_match: true
-  #   -> Every file in fastq_name_table_xlsx needs a match in input_folder 
-  # strict_file_match: false
-  #   -> Pipeline will process only files named in fastq_name_table_xlsx and ignore the rest. 
-  strict_file_match: true 
+  # Mandatory input directory containing the FASTQ files.
+  # CLI: --input-dir
+  input_folder: "/g/steinmetz/link/Amplicon_barcode_analysis/RAW/tiny_test_set_pe_3x"
+
+  # Mandatory library annotation file.
+  # Supported formats: .tsv, .csv, .xlsx, .rds (dataframe)
+  # See 'library_formatting_requirements.txt'.
+  # CLI: --library-file
+  library_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds"
+
+  # Mandatory bcwithqc configuration file.
+  # CLI: --bcwithqc-config-file
+  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_CM_specific_library.json"
+
+  # Experiment information spreadsheet used to match FASTQ files to pipeline
+  # sample names, sublibraries, bins, and read directions.
+  # CLI: --experiment-info-file
+  fastq_name_table_xlsx: "/g/steinmetz/link/Amplicon_barcode_analysis/library/tiny_test_set_pe_3x.xlsx"
 
 # ------------------------------------------------------------------------------
 # Read counting settings
 # ------------------------------------------------------------------------------
 counting:
-  # Method used to count reads or UMIs.
-  # Allowed values:
-  #   - "bcwithqc" (This will use bcwithqc to count reads and UMIs)  #         
-  #   - "align_UMI_tools" (This will use simple STAR alignment to count reads,
-  #                        and UMI-tools to identify UMIs (requires regex expression)
-  #                       )
-  read_counting: "bcwithqc"
-
   # Type of count data used downstream.
   # Allowed values:
   #   - "reads"
   #   - "umis"
-  data_type: "reads"
-  
-  
-# ------------------------------------------------------------------------------
-# SLURM cluster settings
-# ------------------------------------------------------------------------------
-slurm:
-  account: "lsteinme"   # Name of the Slurm cluster account
-  qos: "normal"
-  cpus: 10              # cpus per task
-  mem: "80g"            # memory allocated to each Job
-  wall_time: "50:00:00" # Time-out limit before process is killed. hours:minutes:seconds
-  partition: null       # Specific partition
-  array: 12             # Resources consumed = Base_Resources * array 
-                        # Runtime = Base_runtime / array 
-                        # must be at least 1
-  email: null           # E-Mail is sent to user when job starts, completes, or fails
+  # CLI: --reads-or-umis {reads,umis}
+  data_type: "umis"
 
-
+  # Treat each sgRNA-UMI combination as belonging to its own pseudo-sublibrary.
+  # This allows individual UMIs to act as replicates during downstream analysis.
+  # CLI: --umis-as-sublibs
+  # The CLI flag enables this option; omitting it leaves it disabled.
+  umis_as_sublibs: true
+ 
 # ------------------------------------------------------------------------------
-# align_UMI_tools Options
-# ------------------------------------------------------------------------------
-align_UMI_tools:
-  # Regular expression used to extract UMIs from reads (see UMI tools documentation).
-  # Required only when read counting with align_UMI_tools.
-  # I recommend putting everything except your guide sequence and umi in discard blocks, and build the star_index accordingly.
-  umi_regex: "^(?P<discard_1>.{0,5})(?P<umi_1>.{1})(?P<discard_2>(?:CTTGTGGAAAGGACGAAACACCG){e<=1})(?:[ACGTN]+?)(?P<discard_3>(?:GTTTAAGAGCTATGCTGGA){e<=1}.*)"
-  # Example pattern for extracting UMIs from our HepG2 screen
-  # "^(?P<discard_1>.{0,5})(?P<umi_1>.{10})(?P<discard_2>[AGC]{2})(?P<discard_3>GTGGAAAGGACGAAACACCG){e<=1}"
-  # Discard stagger of 0-5 nt, extract 10 nt UMI, discard 3 nt spacer, discard constantRegion
-  # Regex Pattern for CM library
-  # "^(?P<discard_1>.{0,5})(?:TCTTGTGGAAAGGACGAAACACCG){e<=1}(?:[ACGTN]+?)(?:GTTTAAGAGCTATGCTGGA){e<=1}(?P<umi_1>.{9})(?:AACAGCATAG){e<=1}"
-  
-# ------------------------------------------------------------------------------
-# bcwithqc Options
-# ------------------------------------------------------------------------------
-bcwithqc:
-  # Path to bcwithqc, only necessary when bcwithqc is not on PATH. 
-  # Absolut path to executable is still recommended on clusters. run which bcwithqc on your cluster to find the path. 
-  bcwithqc_bin: "/home/link/.conda/envs/py313/bin/bcwithqc"
-  # Path to a bcwithqc config.json file.
-  # Required only when using bcwithqc for read counting.
-  bcwithqc_config_path: "/g/steinmetz/link/Amplicon_barcode_analysis/library/bcwithqc_config_whole_genome_sublibs_1_to_4.json"
-  
-  # Optional directory containing pre-existing results from a bcwithqc count run.
-  # Leave empty if bcwithqc results should not be reused.
-  bcwithqc_dir: ""
-  
-# ------------------------------------------------------------------------------
-# Modules for slurm Cluster
-# ------------------------------------------------------------------------------
-modules:
-  # If true, will try to use module load for the specified modules.
-  # If false, the specified modules need to be in PATH. (you can use export path/to/module to achieve that)
-  # only seqtk is required when read_counting = align_UMI_tools. 
-  use_modules: true
-  star_module: "STAR/2.7.11b-GCC-13.2.0"
-  samtools_module: "SAMtools/1.21-GCC-13.3.0"
-  umi_tools_module: "UMI-tools/1.1.2-foss-2021b-Python-3.9.6"
-  seqtk_module: "seqtk/1.3-GCC-11.2.0"
-  
-# ------------------------------------------------------------------------------
-# QC filtering with seqtk
+# QC filtering with cutadapt
 # ------------------------------------------------------------------------------
 qc_filtering:
-  # If true, FASTQ files are quality-filtered before read counting.
-  # If false, the pipeline skips QC filtering.
-  run: false
-
-  # Minimum base quality passed to `seqtk seq -q`.
+  # If true, FASTQ files are quality-filtered with cutadapt before read counting.
+  # If false, QC filtering is skipped and the input FASTQ files are passed
+  # directly to downstream processing.
+  #
+  # Default: true
+  # CLI: --skip-qc-filtering
+  # The CLI flag sets this option to false.
+  run: true
+  # Minimum base quality passed to cutadapt.
   # Default: 20
   min_qual: 20
 
-  # Quality offset passed to `seqtk seq -Q`.
-  # Default: 20
-  qual_offset: 20
-
-  # Minimum read length passed to `seqtk seq -L`.
-  # If null, the pipeline will determine this automatically.
-  # Suggested automatic behavior: use sjdbOverhang + 1 if available,
-  # or infer from read length / STAR settings.
+  # Minimum read length passed to cutadapt.
+  # If null, the pipeline determines this automatically from the most common
+  # read length * 0.8. bcwithqc separately removes reads that can no longer
+  # match the required constant sequences.
   min_length: null
+      # Forward and reverse reads can alternatively be configured separately.
+      # In that case, remove the min_length entry above entirely.
+      # R1: 150
+      # R2: 161
   
 # ------------------------------------------------------------------------------
 # Files, sublibraries, or samples to exclude
 # ------------------------------------------------------------------------------
 skip:
   # Individual files to skip.
-  # Example: ["I_L3_5", "U_L1_2"]
+  # Example: ["top20_library3_sample1", "unsorted_bin.fastq.gz"]
   files: []
 
   # Entire sublibraries to skip.
-  # Example: ["L4", "L5"]
+  # Example: ["L4", "sublib5"]
   sublibraries: []
 
   # Entire sample numbers to skip.
-  # Example: ["1", "24"]
+  # Example: ["1", "sampleA"]
   samples: []
 
 
@@ -200,33 +125,62 @@ controls:
 
 
 # ------------------------------------------------------------------------------
-# Replicate and grouping behavior
+# Replicate and statistical grouping behavior
 # ------------------------------------------------------------------------------
 replicates:
-  # Defines what should be treated as replicates in the experiment.
-  # Allowed values:
-  #   - ""             : no replicate grouping
-  #   - "rep"          : each group of bins is its own replicate
-  #   - "rep_sample"   : group by sample 
-  #   - "rep_sublib"   : group by sublibrary
+  # Defines which groups are treated as separate experiments when calculating
+  # guide-level statistics.
+  #
+  # YAML values:
+  #   - ""           : no separation
+  #   - "rep"        : separate by bin group
+  #   - "rep_sample" : separate by sample
+  #   - "rep_sublib" : separate by sublibrary
+  #
+  # CLI: --separate-statistics-by {none,sample,sublib,bin-group}
+  #
+  # CLI -> YAML mapping:
+  #   none      -> ""
+  #   sample    -> "rep_sample"
+  #   sublib    -> "rep_sublib"
+  #   bin-group -> "rep"
   method: ""
 
   # Automatically combine replicates where appropriate.
   auto_combine_replicates: false
 
-  # How to combine data for guide-level statistics.
-  # Allowed values:
-  #   - "" <- none (don't type "none" just "")
-  #   - "sample"
-  #   - "sublib"
+  # How to combine raw count data BEFORE calculating guide-level statistics.
+  # Counts for the same sgRNA are summed across the selected dimension while
+  # the other dimensions remain separate.
+  #
+  # YAML values:
+  #   - ""       : do not sum counts across samples or sublibraries
+  #   - "sample" : for each sgRNA, sublibrary, and bin, sum across samples
+  #   - "sublib" : for each sgRNA, sample, and bin, sum across sublibraries
+  #
+  # CLI: --sum-sgrna-counts-for-guide-level-by {none,sample,sublib}
+  #
+  # CLI -> YAML mapping:
+  #   none   -> ""
+  #   sample -> "sample"
+  #   sublib -> "sublib"
+  #
+  # Example for "sample":
+  #   sgRNA1, L1, bin1, sampleA = 10
+  #   sgRNA1, L1, bin1, sampleB = 15
+  #   -> sgRNA1, L1, bin1, combined_samples = 25
   combine_for_guide_stats: "sample"
 
-  # How to combine data for gene-level statistics.
-  # Allowed values:
-  #   - "none"
-  #   - "all"
-  #   - "sample"
-  #   - "sublib"
+  # Overrides the experiment separation used for gene-level statistics after
+  # guide-level statistics have already been calculated.
+  #
+  # YAML values:
+  #   - "none"   : retain the existing experiment separation
+  #   - "sample" : combine samples while keeping sublibraries separate
+  #   - "sublib" : combine sublibraries while keeping samples separate
+  #   - "all"    : combine samples and sublibraries into one gene-level result
+  #
+  # CLI: --separate-statistics-for-gene-level-by {none,sample,sublib,all}
   combine_for_gene_stats: "none"
 
 
@@ -241,15 +195,7 @@ normalization:
   norm_method: "control_median"
 
   # Estimate missing input/unsorted data based on existing input/unsorted data.
-  recover_input: true
-
-  # Fraction used for the upper and lower sorted bins.
-  # Example: 0.10 means upper 10% and lower 10%.
-  upper_lower_percentage: 0.10
-
-  # Use custom bin fractions instead of upper_lower_percentage.
-  use_custom_bins: false
-
+  recover_input: false
 
 # ------------------------------------------------------------------------------
 # Filtering behavior
@@ -267,11 +213,18 @@ filtering:
 # ------------------------------------------------------------------------------
 # MAUDE consensus calling
 # ------------------------------------------------------------------------------
-# Due to subsampeling MAUDE has a small amount of internal randomness. 
-# This can be handled by consensus calling -> running MAUDE multiple times. 
+# MAUDE contains a small amount of randomness due to subsampling.
+# Consensus calling can reduce the effect of this randomness by running MAUDE
+# repeatedly and combining the results.
 consensus:
+  # Enable repeated MAUDE runs and consensus calling.
+  # CLI: --run-consensus-call
+  # The CLI flag enables this option; omitting it leaves it disabled.
   run: false
-  n_reps: 19 # repetitions IN ADDITION to the inital MAUDE run
+
+  # Number of repetitions IN ADDITION to the initial MAUDE run.
+  # 19 therefore results in 20 MAUDE runs in total.
+  n_reps: 19
 
   high_confidence:
     FDR_threshold: 0.05
@@ -291,14 +244,17 @@ output:
   # Optional suffix added to output files/folders.
   # Useful for distinguishing different parameter runs.
   extra_suffix: ""
+  # Includes HepG2 and cardiomycocyte expression data and other information in final output
+  # These were mostly useful for our speficic experiment and are disabled by default. 
+  full_add_info: false
 # ------------------------------------------------------------------------------
 # Plotting options
 # ------------------------------------------------------------------------------  
 plots:
-
   read_count_violin:
-    
-    violin_y_limit: 4000 # limit for the Y axis: Number of reads per sgRNA
+    # Optional fixed Y-axis limit for read/UMI count violin plots.
+    # null = determine the limit automatically.
+    violin_y_limit: null
     
   waterfall:
   

@@ -1,0 +1,556 @@
+# Apptainer definition for the binned PCR amplicon / UMI Snakemake pipeline.
+# Build with:
+#   apptainer build --fakeroot containers/bcwithqc_maude.sif apptainer/bcwithqc_maude.def
+#
+# v9 changes:
+# - replaced seqtk with Cutadapt for single-end and paired-end QC filtering
+# - pins the base-image R installation at R 4.5.2
+# - installs Matrix and codetools through R rather than live apt repositories
+# - pins Bioconductor to 3.22
+# - adds explicit checks after package installation
+# - installs CRAN packages sequentially to avoid parallel 00LOCK conflicts
+
+Bootstrap: docker
+From: ghcr.io/bioconductor/bioc2u-user:24.04-bioc-3.22-r-4.5.2
+
+%labels
+    Author Lukas-Link
+    Description "R/MAUDE + Cutadapt + bcwithqc container for Snakemake pipeline"
+%files
+    apptainer/MAUDE-master.tar.gz /opt/MAUDE-master.tar.gz
+    
+%post -c /bin/bash
+    set -euo pipefail
+
+    export DEBIAN_FRONTEND=noninteractive
+    export BUILD_TMP=/opt/build-tmp
+    export TMPDIR="${BUILD_TMP}"
+    export PIP_CACHE_DIR="${BUILD_TMP}/pip-cache"
+    export XDG_CACHE_HOME="${BUILD_TMP}/xdg-cache"
+
+    mkdir -p \
+        "${BUILD_TMP}" \
+        "${PIP_CACHE_DIR}" \
+        "${XDG_CACHE_HOME}"
+
+    EXPECTED_R_VERSION="4.5.2"
+
+    assert_r_version() {
+        local actual_r_version
+
+        actual_r_version="$(Rscript --vanilla -e 'cat(as.character(getRversion()))')"
+
+        if [[ "$actual_r_version" != "$EXPECTED_R_VERSION" ]]; then
+            echo "ERROR: Expected R ${EXPECTED_R_VERSION}, found R ${actual_r_version}" >&2
+            exit 1
+        fi
+
+        echo "Confirmed R version: ${actual_r_version}"
+    }
+
+    echo "Checking R version supplied by the base image..."
+    assert_r_version
+
+    # Prevent apt from upgrading the R installation supplied by the base image.
+    mapfile -t R_APT_PACKAGES < <(
+        dpkg-query -W -f='${binary:Package}\n' 2>/dev/null |
+        grep -E '^(r-base|r-recommended)($|-)' |
+        sort -u || true
+    )
+
+    if [[ "${#R_APT_PACKAGES[@]}" -gt 0 ]]; then
+        echo "Holding the following R apt packages:"
+        printf '  %s\n' "${R_APT_PACKAGES[@]}"
+        apt-mark hold "${R_APT_PACKAGES[@]}"
+    else
+        echo "WARNING: No installed R apt packages were identified for holding." >&2
+    fi
+
+    apt-get update
+
+    echo "R-related apt package state before installing system dependencies:"
+    apt-cache policy \
+        r-base \
+        r-base-core \
+        r-base-dev \
+        r-recommended \
+        r-cran-rcpp \
+        r-cran-matrix \
+        r-cran-codetools || true
+
+    # Install operating-system and compilation dependencies only.
+    #
+    # R packages are deliberately not installed through apt because the live
+    # r2u/bioc2u repository may contain builds for a newer R release.
+    apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+        curl \
+        git \
+        wget \
+        build-essential \
+        gfortran \
+        pkg-config \
+        zlib1g-dev \
+        libbz2-dev \
+        liblzma-dev \
+        libblas-dev \
+        liblapack-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libtiff-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libgit2-dev
+
+    echo "Checking that apt did not upgrade R..."
+    assert_r_version
+
+    # Ensure Matrix and codetools are available for the pinned R version.
+    Rscript --vanilla - <<'RS'
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+required_packages <- c(
+    "Matrix",
+    "codetools"
+)
+
+missing_packages <- required_packages[
+    !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages) > 0L) {
+    message(
+        "Installing missing R packages: ",
+        paste(missing_packages, collapse = ", ")
+    )
+
+    install.packages(
+        missing_packages,
+        dependencies = NA,
+        Ncpus = 1L
+    )
+}
+
+still_missing <- required_packages[
+    !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(still_missing) > 0L) {
+    stop(
+        "Failed to install required R packages: ",
+        paste(still_missing, collapse = ", ")
+    )
+}
+
+message("Matrix version: ", as.character(packageVersion("Matrix")))
+message("Matrix path: ", find.package("Matrix"))
+message("codetools version: ", as.character(packageVersion("codetools")))
+message("codetools path: ", find.package("codetools"))
+RS
+
+    # Install Miniforge and create a Python 3.10 environment for bcwithqc
+    # and Cutadapt.
+    curl -L -o "${BUILD_TMP}/Miniforge3.sh" \
+        https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+
+    bash "${BUILD_TMP}/Miniforge3.sh" -b -p /opt/conda
+    rm -f "${BUILD_TMP}/Miniforge3.sh"
+
+    /opt/conda/bin/conda config --system --set channel_priority strict
+
+    /opt/conda/bin/conda create -y \
+        -p /opt/bcwithqc-env \
+        -c conda-forge \
+        python=3.10 \
+        pip \
+        setuptools \
+        wheel \
+        packaging \
+        cython
+
+    BC_PY=/opt/bcwithqc-env/bin/python
+
+    "${BC_PY}" --version
+
+    "${BC_PY}" -m pip install \
+        --no-cache-dir \
+        --upgrade \
+        'pip<26' \
+        setuptools \
+        wheel \
+        packaging \
+        Cython
+
+    # Install Cutadapt.
+    "${BC_PY}" -m pip install \
+        --no-cache-dir \
+        'cutadapt==5.2'
+
+    # Install bcwithqc runtime and build dependencies.
+    "${BC_PY}" -m pip install \
+        --no-cache-dir \
+        'numpy>=2.0.0' \
+        'docopt-ng' \
+        'biopython==1.79' \
+        'matplotlib>=3.5.2' \
+        'pysam>=0.23.0' \
+        'scipy>=1.10.1' \
+        'regex>=2024.11.6'
+
+    "${BC_PY}" -m pip install \
+        --no-cache-dir \
+        --no-build-isolation \
+        'freebarcodes @ git+https://github.com/lukaslink/freebarcodes.git@master'
+
+    "${BC_PY}" -m pip install \
+        --no-cache-dir \
+        --no-build-isolation \
+        'pywfa @ git+https://github.com/kcleal/pywfa.git@master'
+
+    # Install bcwithqc without dependencies because they were installed above.
+    "${BC_PY}" -m pip install \
+        --no-cache-dir \
+        --no-deps \
+        --no-build-isolation \
+        'git+https://github.com/hawkjo/bcwithqc.git@reopen-lukas-branch'
+
+    echo "Checking R version before installing CRAN packages..."
+    assert_r_version
+
+    # Remove any stale installation locks before package installation.
+    rm -rf /usr/local/lib/R/site-library/00LOCK*
+
+    # Install general CRAN packages sequentially.
+    Rscript --vanilla - <<'RS'
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+packages <- c(
+    "Rcpp",
+    "conflicted",
+    "writexl",
+    "readxl",
+    "stringr",
+    "yaml",
+    "logger",
+    "remotes",
+    "BiocManager",
+    "plyr",
+    "reshape"
+)
+
+install.packages(
+    packages,
+    dependencies = NA,
+    Ncpus = 1L
+)
+
+for (package in packages) {
+    tryCatch(
+        loadNamespace(package),
+        error = function(error) {
+            stop(
+                "Package ",
+                package,
+                " could not be loaded after installation: ",
+                conditionMessage(error)
+            )
+        }
+    )
+
+    message(
+        package,
+        " ",
+        as.character(packageVersion(package)),
+        " installed at ",
+        find.package(package)
+    )
+}
+RS
+
+    # Install ggplot2 in a fresh R process so no old dependency namespaces
+    # remain loaded from the previous installation.
+    Rscript --vanilla - <<'RS'
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+install.packages(
+    "ggplot2",
+    dependencies = NA,
+    Ncpus = 1L
+)
+
+tryCatch(
+    loadNamespace("ggplot2"),
+    error = function(error) {
+        stop(
+            "ggplot2 could not be loaded after installation: ",
+            conditionMessage(error)
+        )
+    }
+)
+
+message(
+    "ggplot2 ",
+    as.character(packageVersion("ggplot2")),
+    " installed at ",
+    find.package("ggplot2")
+)
+RS
+
+    # Install ggplot2 extensions in another fresh R process.
+    Rscript --vanilla - <<'RS'
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+packages <- c(
+    "ggrepel",
+    "ggbreak"
+)
+
+install.packages(
+    packages,
+    dependencies = NA,
+    Ncpus = 1L
+)
+
+for (package in packages) {
+    tryCatch(
+        loadNamespace(package),
+        error = function(error) {
+            stop(
+                "Package ",
+                package,
+                " could not be loaded after installation: ",
+                conditionMessage(error)
+            )
+        }
+    )
+
+    message(
+        package,
+        " ",
+        as.character(packageVersion(package)),
+        " installed at ",
+        find.package(package)
+    )
+}
+RS
+
+    # Install tidyverse after ggplot2 has been confirmed.
+    Rscript --vanilla - <<'RS'
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+install.packages(
+    "tidyverse",
+    dependencies = NA,
+    Ncpus = 1L
+)
+
+tryCatch(
+    loadNamespace("tidyverse"),
+    error = function(error) {
+        stop(
+            "tidyverse could not be loaded after installation: ",
+            conditionMessage(error)
+        )
+    }
+)
+
+message(
+    "tidyverse ",
+    as.character(packageVersion("tidyverse")),
+    " installed at ",
+    find.package("tidyverse")
+)
+RS
+
+    echo "Checking R version before installing Bioconductor packages..."
+    assert_r_version
+
+    # Pin Bioconductor to the release associated with R 4.5.2.
+    Rscript --vanilla - <<'RS'
+expected_r <- "4.5.2"
+actual_r <- as.character(getRversion())
+
+if (actual_r != expected_r) {
+    stop("Expected R ", expected_r, ", found R ", actual_r)
+}
+
+BiocManager::install(
+    c(
+        "AnnotationDbi",
+        "org.Hs.eg.db",
+        "Rsamtools"
+    ),
+    version = "3.22",
+    ask = FALSE,
+    update = FALSE,
+    Ncpus = 1L
+)
+
+required_packages <- c(
+    "AnnotationDbi",
+    "org.Hs.eg.db",
+    "Rsamtools"
+)
+
+missing_packages <- required_packages[
+    !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages) > 0L) {
+    stop(
+        "Failed to install required Bioconductor packages: ",
+        paste(missing_packages, collapse = ", ")
+    )
+}
+
+actual_bioc_version <- as.character(BiocManager::version())
+
+if (actual_bioc_version != "3.22") {
+    stop(
+        "Expected Bioconductor 3.22, found Bioconductor ",
+        actual_bioc_version
+    )
+}
+
+message("Bioconductor version: ", actual_bioc_version)
+RS
+
+    # Install the locally supplied MAUDE source archive.
+    R CMD INSTALL /opt/MAUDE-master.tar.gz
+
+    Rscript --vanilla - <<'RS'
+if (!requireNamespace("MAUDE", quietly = TRUE)) {
+    stop("MAUDE installation failed")
+}
+
+message("MAUDE version: ", as.character(packageVersion("MAUDE")))
+message("MAUDE path: ", find.package("MAUDE"))
+RS
+
+    echo "Performing final R version check..."
+    assert_r_version
+
+    # Keep the final image smaller.
+    /opt/conda/bin/conda clean -a -y || true
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    rm -rf /opt/build-tmp
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export PATH=/opt/bcwithqc-env/bin:/opt/conda/bin:$PATH
+    export PYTHONNOUSERSITE=1
+
+    unset PYTHONPATH
+    unset PYTHONHOME
+    unset R_LIBS
+    unset R_LIBS_USER
+
+%test
+    #!/bin/bash
+    set -euo pipefail
+
+    /opt/bcwithqc-env/bin/python --version
+
+    /opt/bcwithqc-env/bin/python - <<'PY'
+import sys
+
+assert sys.version_info[:2] == (3, 10), sys.version
+
+import csv
+import cutadapt
+import numpy
+import Bio
+import pysam
+import scipy
+import regex
+import freebarcodes
+
+print("Python dependencies OK")
+PY
+
+    /opt/bcwithqc-env/bin/cutadapt --version
+
+    Rscript --vanilla - <<'RS'
+expected_r <- "4.5.2"
+actual_r <- as.character(getRversion())
+
+if (actual_r != expected_r) {
+    stop(
+        "Unexpected R version: expected ",
+        expected_r,
+        ", found ",
+        actual_r
+    )
+}
+
+required_packages <- c(
+    "Rcpp",
+    "Matrix",
+    "codetools",
+    "tidyverse",
+    "conflicted",
+    "ggplot2",
+    "ggrepel",
+    "writexl",
+    "readxl",
+    "stringr",
+    "ggbreak",
+    "yaml",
+    "logger",
+    "remotes",
+    "BiocManager",
+    "plyr",
+    "reshape",
+    "AnnotationDbi",
+    "org.Hs.eg.db",
+    "Rsamtools", 
+    "MAUDE"
+)
+
+missing_packages <- required_packages[
+    !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages) > 0L) {
+    stop(
+        "Missing R packages: ",
+        paste(missing_packages, collapse = ", ")
+    )
+}
+
+actual_bioc_version <- as.character(BiocManager::version())
+
+if (actual_bioc_version != "3.22") {
+    stop(
+        "Unexpected Bioconductor version: expected 3.22, found ",
+        actual_bioc_version
+    )
+}
+
+cat("R version:", actual_r, "\n")
+cat("Bioconductor version:", actual_bioc_version, "\n")
+cat("Rcpp version:", as.character(packageVersion("Rcpp")), "\n")
+cat("Rcpp path:", find.package("Rcpp"), "\n")
+cat("Matrix version:", as.character(packageVersion("Matrix")), "\n")
+cat("Matrix path:", find.package("Matrix"), "\n")
+cat("codetools version:", as.character(packageVersion("codetools")), "\n")
+cat("codetools path:", find.package("codetools"), "\n")
+cat("MAUDE version:", as.character(packageVersion("MAUDE")), "\n")
+cat("R packages OK\n")
+RS
+
+    /opt/bcwithqc-env/bin/bcwithqc --help >/dev/null
+
+    echo "Container tests passed"
+
+%runscript
+    echo "This container is meant to be used by Snakemake/Apptainer rules."
+    echo "Available tools: Rscript, cutadapt, bcwithqc"

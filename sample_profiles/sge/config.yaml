@@ -1,0 +1,14 @@
+executor: sge
+
+jobs: 100
+
+printshellcmds: true
+rerun-incomplete: true
+
+latency-wait: 60
+
+default-resources:
+  mem_mb: 16000
+  runtime: 60
+  # for parallel environments:
+  # sge_pe: 

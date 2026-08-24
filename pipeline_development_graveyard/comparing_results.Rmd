@@ -1,0 +1,2969 @@
+---
+title: "comparing_results"
+author: "Lukas"
+date: "2025-12-04"
+output: html_document
+params:
+  config: null
+---
+
+```{r setup, include=FALSE}
+
+#===============================================================================
+# Run setup 
+#===============================================================================
+
+print(.libPaths()) # Debugging; can be commented out.
+
+#-------------------------------------------------------------------------------
+# Find a specific file by walking up parent directories
+#-------------------------------------------------------------------------------
+
+find_up_file <- function(start_dir, filename, max_up = 15) {
+  d <- normalizePath(start_dir, mustWork = TRUE)
+
+  for (i in 0:max_up) {
+    candidate <- file.path(d, filename)
+    if (file.exists(candidate)) return(candidate)
+
+    parent <- dirname(d)
+    if (identical(parent, d)) break
+    d <- parent
+  }
+
+  stop("Could not find '", filename, "' searching upward from: ", start_dir)
+}
+
+#-------------------------------------------------------------------------------
+# Determine project root
+#-------------------------------------------------------------------------------
+
+# Now we find the location of the Rmd file we are running.
+# This can be set externally via SOURCE_RMD.
+rmd_path <- Sys.getenv("SOURCE_RMD", unset = "")
+
+start_dir <- if (nzchar(rmd_path) && file.exists(rmd_path)) {
+  dirname(normalizePath(rmd_path, mustWork = TRUE))
+} else {
+  getwd()
+}
+
+# Anchor file used to identify project root.
+# compare_results.Rmd should live next to, or below, data_analysis_with_MAUDE.Rmd.
+anchor_rmd <- find_up_file(start_dir, "data_analysis_with_MAUDE.Rmd", max_up = 1)
+
+# The anchor's directory is the project root that contains functions/, config.yaml, etc.
+project_root_dir <- dirname(anchor_rmd)
+
+
+#-------------------------------------------------------------------------------
+# Source pipeline functions
+#-------------------------------------------------------------------------------
+
+source(file.path(project_root_dir, "R/R_functions", "s00_bootstrap.R"))
+bootstrap_pipeline(project_root_dir)
+
+#-------------------------------------------------------------------------------
+# Run setup
+#-------------------------------------------------------------------------------
+
+cfg <- project_setup(
+  project_root_dir,
+  config_path = file.path(project_root_dir, "config.yaml")
+)
+cfg <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/.pipeline_state/resolved_config.rds")
+
+
+################################################################################
+############# LOAD COMPARISON SPECIFIC LIBS #####################################
+################################################################################
+
+library(VennDiagram)
+library(grid)
+library(gridExtra)
+library(clusterProfiler)
+library(ggbreak)
+library(STRINGdb)
+library(igraph)
+library(GO.db)
+library(scales)
+```
+
+``` {r load_comparision_specific_libs, eval=TRUE}
+# library(VennDiagram)
+# library(grid)
+# library(gridExtra)
+# library(clusterProfiler)
+# library(ggbreak)
+# library(STRINGdb)
+# library(igraph)
+# library(GO.db)
+# library(scales)
+```
+# The following codeblock exists to do some basic familiarization with MAUDE,
+and to troubleshoot it if things fail. You can ignore it.  
+```{r make_example_df, eval=FALSE}
+if (FALSE){
+  getAnywhere(findGuideHitsAllScreens)
+  getAnywhere(getElementwiseStats)
+  getAnywhere(findGuideHits)
+  getAnywhere(getZScalesWithNTGuides())
+  getAnywhere(optim())
+}
+
+
+# Create the data for maude
+maude_example_df_1 <- data.frame(sgRNA = c(LETTERS[1:6], "CONTROL_C_NONTARG_G", "CONTROL_C_NONTARG_H", "CONTROL_C_I", "CONTROL_C_J"),
+                               input = c(4.1, 3, 5, 3, 8, 7, 5, 6, 7, 5),
+                               upper = c(1, 9, 5, 0, 4, 2, 0, 1, 3, 2),
+                               lower = c(4, 4, 1, 1, 3, 1, 0, 2, 2, 1),
+                               sublib = "sublib_1")
+maude_example_df_2 <- maude_example_df_1 %>%
+  mutate(input = input + 1,
+         upper = upper + 1,
+         lower = lower + 1,
+         exp = 'rep1',
+         isNontargeting = case_when(str_detect(sgRNA, "^CONTROL_C_NONTARG_") ~ FALSE, # Anything else → FALSE
+                                    str_detect(sgRNA, "^CONTROL_C_") ~ TRUE, # CONTROL_C_X → TRUE
+                                    TRUE ~ FALSE # Anything else → FALSE) %>%
+                                    )
+  )
+
+# Define bin stats with 10% for lower/upper each
+lower_bin_end = 0.1
+upper_bin_start = 1 - 0.1
+
+maude_example_bins <- tibble(
+  Bin = rep(c("upper", "lower"), length(unique(maude_example_df_2[["exp"]]))),  # Repeat 'upper' and 'lower' for each exp
+  exp = rep(unique(maude_example_df_2[["exp"]]), each = 2),  # Repeat each exp value twice
+  binStartQ = ifelse(rep(c("upper", "lower"), length(unique(maude_example_df_2[["exp"]]))) == "lower", 0.001, upper_bin_start),
+  binEndQ = ifelse(rep(c("upper", "lower"), length(unique(maude_example_df_2[["exp"]]))) == "lower", lower_bin_end, 0.999),
+  fraction = binEndQ - binStartQ,
+  binStartZ = qnorm(binStartQ),
+  binEndZ = qnorm(binEndQ)
+) %>%
+  select(Bin, binStartQ, binEndQ, fraction, binStartZ, binEndZ, exp) %>%
+  as.data.frame()
+
+
+maude_example_guide_stats <- findGuideHitsAllScreens(
+  experiments = unique(maude_example_df_2['exp']),
+  countDataFrame = maude_example_df_2,
+  binStats = maude_example_bins,
+  sortBins = c('lower', 'upper'),
+  unsortedBin = 'input',
+  negativeControl = 'isNontargeting'
+)
+```
+
+## Generate the long format read/umi counts either from my pipline or from bcwithqcs
+Also provides information for each file about coverage and correct alignment
+
+```{r get_count_df_long, eval=TRUE}
+process_bcwithqc_data_backup <- process_bcwithqc_data
+pseudocount_added <- FALSE
+
+sink(get_file_path(rds_output_folder,paste0(file_info_suffix,"_coverage.txt")),
+     split = TRUE) # capture output into a file
+
+if (read_counting == "bcwithqc"){
+  count_df_long <- process_bcwithqc_data(bcwithqc_dir,
+                                     data_type = data_type,
+                                     merged_sgRNA_df = merged_sgRNA_df,
+                                     skip_list = skip_list)
+  if (extra_suffix == "rf"){
+      count_df_long <- count_df_long %>% 
+      mutate(count = ifelse(count < simplified_rf_threshold, 0, count))        
+      }
+} else {
+  if (read_counting == "align_UMI_tools"){
+    if (data_type == "umis"){
+      count_df_long <- process_folder_files(dedup_output_folder,
+                                            skip_list = skip_list) #Add threshold df if thresholds should be applied 
+    }
+    if (data_type == "reads"){
+      count_df_long <- process_folder_files(mapped_output_folder,
+                                            skip_list = skip_list) #Add threshold df if thresholds should be applied 
+      if (extra_suffix == "rf"){
+        count_df_long <- count_df_long %>% 
+        mutate(count = ifelse(count < simplified_rf_threshold, 0, count))        
+      }
+
+    }
+       
+  } else {
+    if (read_counting == "bcwithqc_rf"){
+      count_df_long <- process_bcwithqc_rf_data(bcwithqc_rf_folder,
+                                            data_type = data_type,
+                                            merged_sgRNA_df = merged_sgRNA_df,
+                                            skip_list = skip_list)
+      
+      process_bcwithqc_data <- process_bcwithqc_rf_data
+      if (extra_suffix == "rf"){
+        count_df_long <- count_df_long %>% 
+        mutate(count = ifelse(count < simplified_rf_threshold, 0, count))        
+      }
+    } else {
+      stop("Unsupported read_counting specified. Exiting. Pipline must be bcwithqc, bcwithqc_rf or align_UMI_tools.")
+    }
+  }  
+}
+sink()
+if (extra_suffix == "cf"){
+  count_df_long <- count_df_long %>%
+    filter(!(group != "targeting" & count < simplified_cf_threshold))
+}
+
+# Extend the include_controls_list if use_only_these_controls_list is given
+if (exists("use_only_these_controls_list")) {
+  if (length(use_only_these_controls_list) > 0){
+    # list of sgRNAs that were not targeting (before) and not in allowed controls
+    excluded_controls <- count_df_long %>%
+      filter(group_category != "targeting", !sgRNA %in% use_only_these_controls_list) %>%
+      distinct(sgRNA) %>%
+      pull(sgRNA)
+  
+    include_controls_list <- c(include_controls_list, excluded_controls)
+  }
+}
+if (length(include_controls_list) > 0){
+  for (control_gene in include_controls_list){
+    count_df_long$group_category[grepl(control_gene, count_df_long$sgRNA)] <- "targeting"
+  }
+}
+
+```
+
+```{r prepare_data_for_maude, eval=TRUE}
+if (subsample_controls == TRUE){
+  # count_df_long_old <- subsample_controls_func_old(count_df_long, merged_sgRNA_df)
+  count_df_long <- subsample_controls_func(count_df_long, merged_sgRNA_df)
+}
+
+if (!(norm_method %in% c("","control_median"))){
+  stop("Error: 'norm_method' must be one of '', 'control_median'. The script will now stop.")
+}
+if (norm_method == "control_median"){
+  count_df_long <- normalize_count_df_long(count_df_long,
+                                           norm_method = norm_method)
+}
+
+
+  
+maude_counts_df <- count_df_long_to_wide(count_df_long = count_df_long,
+                                         print = FALSE,
+                                         drop_0s = drop_0s,
+                                         recover_input = recover_input)
+if (!(method %in% c("","rep","sum",'rep_sample','rep_sublib'))){
+  stop("Error: 'method' must be one of '', 'rep', 'rep_sample', 'rep_sublib', or 'sum'. The script will now stop.")
+}
+
+if (method == ""){
+  maude_counts_df <- maude_counts_df %>% 
+    mutate(exp = "rep1")
+}
+if (method == "rep"){
+
+}
+if (method == "rep_sample"){
+  maude_counts_df <- maude_counts_df %>%
+    mutate(exp = sample)
+}
+if (method == "rep_sublib"){
+  maude_counts_df <- maude_counts_df %>%
+    mutate(exp = sublib)
+}
+if (method == "sum"){
+  stop("Method 'sum' is deprecated, use the option combine_for_guide_stats instead")
+  maude_counts_df <- count_df_long_to_wide(count_df_long = count_df_long,
+                                         print = FALSE,
+                                         drop_0s = drop_0s,
+                                         recover_input = TRUE,
+                                         for_sum = TRUE)
+  # Group by sgRNA and summarize the required columns
+  maude_counts_df <- maude_counts_df %>%
+    group_by(sgRNA, sublib) %>%
+    summarize(
+      input = pmax(sum(input, na.rm = TRUE), 0),  # Sum and ensure minimum is 0
+      upper = pmax(sum(upper, na.rm = TRUE), 0),  # Sum and ensure minimum is 0
+      lower = pmax(sum(lower, na.rm = TRUE), 0),  # Sum and ensure minimum is 0
+      isNontargeting = dplyr::first(isNontargeting),  # Take the first value of isNontargeting (same for all in the group)
+      .groups = 'drop'  # Drop the group structure after summarizing
+    ) %>%
+    mutate(
+      exp = "rep1",
+      input = input + 1,
+      upper = upper + 1,
+      lower = lower + 1
+    )
+}
+
+if (strict_mode){
+  if (pseudocount_added){
+    umi_threshold <- 2
+  } else {
+    umi_threshold <- 1
+  } 
+  cat("Strict Mode enabled\n")
+  cat("Rows before strict mode: \t", nrow(maude_counts_df),"\n")
+  maude_counts_df <- maude_counts_df %>%
+    filter(if_any(c(input, upper, lower), ~ . <= umi_threshold))
+  cat("Rows after strict mode: \t", nrow(maude_counts_df),"\n")
+}
+if (length(include_controls_list) > 0) {
+  for (control_gene in include_controls_list) {
+    maude_counts_df$isNontargeting[grepl(control_gene, maude_counts_df$sgRNA)] <- FALSE
+  }
+}
+if (exists("use_only_these_controls_list")) {
+  if (length(use_only_these_controls_list) > 0){
+    maude_counts_df$isNontargeting[ !(maude_counts_df$sgRNA %in% use_only_these_controls_list) ] <- FALSE
+  }
+}
+if (combine_for_guide_stats != ""){
+  if (combine_for_guide_stats == "sample"){
+    maude_counts_df <- maude_counts_df %>%
+      group_by(sgRNA, sublib) %>%
+      summarise(
+        # set sample name for the combined rows
+        sample = "sample_1",
+        
+        # add up integer count columns
+        input = sum(input, na.rm = TRUE),
+        lower = sum(lower, na.rm = TRUE),
+        upper = sum(upper, na.rm = TRUE),
+        
+        # keep the first value for everything else
+        exp = dplyr::first(exp),
+        isNontargeting = dplyr::first(isNontargeting),
+        
+        # keep one sublib/sgRNA (also fine even though they're grouping keys)
+        .groups = "drop"
+      )
+  }
+  if (combine_for_guide_stats == "sublib"){
+    maude_counts_df <- maude_counts_df %>%
+      group_by(sgRNA, sample) %>%
+      summarise(
+        # set sample name for the combined rows
+        sublib = "sublib_1",
+        
+        # add up integer count columns
+        input = sum(input, na.rm = TRUE),
+        lower = sum(lower, na.rm = TRUE),
+        upper = sum(upper, na.rm = TRUE),
+        
+        # keep the first value for everything else
+        exp = dplyr::first(exp),
+        isNontargeting = dplyr::first(isNontargeting),
+        
+        # keep one sublib/sgRNA (also fine even though they're grouping keys)
+        .groups = "drop"
+      )    
+  }
+}  
+```
+## Some exploration options for the raw reads/umi counts
+Mostly for comparing this read_counting to bcwithqcs bcwithqc, ignore this. 
+```{r basic_read_counting_comparision, eval=FALSE}
+
+
+PA_count_diff_df <- compare_bcwithqc_align_UMI_tools(
+  data_type = "reads",
+  cfg = cfg,
+  bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output",
+  align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/mapped",
+  read_diff_histo_x_lim = c(-1000,10),
+  read_diff_histo_bin_width = 10
+  )
+DCA_count_diff_df <- compare_bcwithqc_align_UMI_tools(
+  data_type = "reads",
+  cfg = cfg,
+  bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output",
+  align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/mapped",
+  read_diff_histo_x_lim = c(-1000,10),
+  read_diff_histo_bin_width = 10
+  )
+GAL_count_diff_df <- compare_bcwithqc_align_UMI_tools(
+  data_type = "reads",
+  cfg = cfg,
+  bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output",
+  align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/mapped",
+  read_diff_histo_x_lim = c(-1000,10),
+  read_diff_histo_bin_width = 10
+  )
+# test_df <- compare_bcwithqc_align_UMI_tools(
+#   data_type = "reads",
+#   cfg = cfg,
+#   bcwithqc_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/bcwithqc_output",
+#   align_UMI_tools_read_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/mapped",
+#   read_diff_histo_x_lim = c(-100,5),
+#   read_diff_histo_bin_width = 1
+#   )
+```
+
+``` {r compare_bcwithqc_vs_align_UMI_tools, eval=FALSE}
+
+# CURRENTLY I HAVE THESE SET TO THE OLD FILES!
+xlsx_files <- c(
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/results/align_UMI_tools_reads_control_median_RI_comb_sample_comb_none_mapping_results.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/mapping_results.xlsx"
+)
+
+names <- c(
+  "DCA align",
+  "DCA bcwithqc",
+  "PA align",  
+  "PA bcwithqc",
+  "GAL align",  
+  "GAL bcwithqc"
+)
+
+output_dir <- "/g/steinmetz/link/Presentations/"
+
+plots <- plot_mapping_qc_boxes(
+  xlsx_paths = xlsx_files,
+  sample_names = names,
+  output_dir = output_dir
+)
+
+
+```
+
+``` {r compare_hits_bcwithqc_vs_align_UMI_tools, eval=TRUE}
+
+xlsx_files <- c(
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_align/results/Hits_explorative_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/results/Hits_explorative.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_align/results/Hits_explorative_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/results/Hits_explorative.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_align/results/Hits_explorative_align_UMI_tools_reads_control_median_RI_comb_sample_comb_none.xlsx",
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/results/Hits_explorative.xlsx"
+)
+
+names <- c(
+  "DCA align",
+  "DCA bcwithqc",
+  "PA align",
+  "PA bcwithqc",
+  "GAL align",
+  "GAL bcwithqc"
+)
+
+output_dir <- "/g/steinmetz/link/Presentations/John_Update_2026_06/explorative_NEW"
+
+hit_compare_results <- compare_hit_xlsx_pairs(
+  xlsx_paths = xlsx_files,
+  sample_names = names,
+  output_dir = output_dir,
+  rank_method = "spearman"
+)
+
+``` 
+
+``` {r qq_rectangle_plot, eval=TRUE}
+
+pa_align_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/align/mean_results_PA.rds"
+dca_align_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/align/mean_results_DCA.rds"
+gal_align_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/align/mean_results_GALNAC.rds"
+pa_bcwithqc_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/bcwithqc/PA_mean_hits_bcwithqc.rds"
+dca_bcwithqc_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/bcwithqc/DCA_mean_hits_bcwithqc.rds"
+gal_bcwithqc_mean_rds_fpath <- 
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results/bcwithqc/GAL_mean_hits_bcwithqc.rds"
+nico_dir <- "/g/steinmetz/link/sharing/nico/qq_rectangle_plots"
+
+
+p <- qq_rectangle_plot(
+  align_rds_fpath = pa_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = pa_bcwithqc_mean_rds_fpath,
+  title = "PA bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 20, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "PA_squish.png")
+)
+print(p)
+p <- qq_rectangle_plot(
+  align_rds_fpath = dca_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = dca_bcwithqc_mean_rds_fpath,
+  title = "DCA bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 20, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "DCA_squish.png")
+)
+print(p)
+p <- qq_rectangle_plot(
+  align_rds_fpath = gal_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = gal_bcwithqc_mean_rds_fpath,
+  title = "GalNAc bcwithqc vs align rank comparison",
+  FDR_thresh = 0.05,
+  rank_gamma = 20, # rank_gamma = 1 is linear scalling
+  grey_frac = 0.2,
+  save_fpath = file.path(nico_dir, "GAL_squish.png")
+)
+print(p)
+combined_delta_pa <- make_combined_delta_df(
+  align_rds_fpath = pa_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = pa_bcwithqc_mean_rds_fpath,
+  FDR_thresh = 0.05
+)
+saveRDS(combined_delta_pa, file.path(nico_dir, "PA_changed_hits.rds"))
+combined_delta_dca <- make_combined_delta_df(
+  align_rds_fpath = dca_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = dca_bcwithqc_mean_rds_fpath,
+  FDR_thresh = 0.05
+)
+saveRDS(combined_delta_dca, file.path(nico_dir, "DCA_changed_hits.rds"))
+combined_delta_gal <- make_combined_delta_df(
+  align_rds_fpath = gal_align_mean_rds_fpath,
+  bcwithqc_rds_fpath = gal_bcwithqc_mean_rds_fpath,
+  FDR_thresh = 0.05
+)
+saveRDS(combined_delta_gal, file.path(nico_dir, "GAL_changed_hits.rds"))
+
+``` 
+
+
+```{r further_analysis_read_count_diff, eval=TRUE}
+df <- PA_count_diff_df
+df <- df %>% 
+  left_join(cfg$merged_sgRNA_df %>% 
+              select(-sublib), by = c("sgRNA" = "sgrna_id")) %>% 
+  select(-c(count, Gene, align_seq))
+df <- df %>% 
+  filter(condition == "input") %>% 
+  filter(exp == "L1_1")
+
+
+df <- df %>% 
+  filter(count_bcwithqc == 1)
+
+library(Matrix)
+
+mat <- readMM(gzfile("/home/link/John_UMIs/bcwithqc/tests/gDNA_single_end_no_STAR/raw_reads_bc_matrix/matrix.mtx.gz"))
+mat <- as(mat, "dgCMatrix")
+
+barcodes <- readLines(gzfile("/home/link/John_UMIs/bcwithqc/tests/gDNA_single_end_no_STAR/raw_reads_bc_matrix/barcodes.tsv.gz"))
+
+if (ncol(mat) == length(barcodes)) {
+  colnames(mat) <- barcodes
+} else if (nrow(mat) == length(barcodes)) {
+  rownames(mat) <- barcodes
+} else {
+  stop("Barcode number does not match matrix rows or columns.")
+}
+
+if (is.null(rownames(mat))) {
+  rownames(mat) <- paste0("feature_", seq_len(nrow(mat)))
+}
+
+df_3 <- data.frame(
+  barcode = colnames(mat),
+  value = as.numeric(mat[1, ])
+)
+```
+
+## Functions that add more information to the results, like the gene symbol
+
+```{r check_MAUDE_results, eval=TRUE}
+
+```
+
+## Create QQplots for the p-values. 
+Lots of debris from old runs in here. Use with caution
+
+```{r QQplot_functions, eval=TRUE}
+plot_qq_maude <- function(maude_gene_stats, data_name, mark_gene = "AHSA1") {
+  # Check that required columns exist
+  if (!"p.value" %in% names(maude_gene_stats) || !"symbol" %in% names(maude_gene_stats)) {
+    stop("Input data frame must contain 'p.value' and 'symbol' columns.")
+  }
+  
+  # Sort the observed p-values and keep corresponding symbols
+  sorted_stats <- maude_gene_stats[order(maude_gene_stats$p.value), ]
+  # observed_pvalues <- p.adjust(sorted_stats$p.value, method = "hochberg", n = length(sorted_stats$p.value))
+  observed_pvalues <- sorted_stats$p.value
+  gene_symbols <- sorted_stats$symbol
+  
+  # Expected p-values adjusted to observed max
+  max_p <- max(observed_pvalues)
+  expected_pvalues <- (1:length(observed_pvalues)) / (length(observed_pvalues) + 1) * max_p
+  
+  # Transform to -log10
+  log_observed <- -log10(observed_pvalues)
+  log_expected <- -log10(expected_pvalues)
+  
+  # Identify the point to mark
+  mark_index <- which(gene_symbols == mark_gene)
+  
+  # Plot Q-Q plot
+  plot(log_expected, log_observed,
+       main = paste("p-values Q-Q plot for", data_name),
+       xlab = "Expected -log(p-value)",
+       ylab = "Observed -log(p-value)",
+       pch = 20, col = "blue",
+       xlim = c(0, 5), ylim = c(0, 5))
+  
+  # Reference line
+  abline(0, 1, col = "red", lty = 2)
+  
+  # Highlight the specific gene
+  if (length(mark_index) > 0) {
+    points(log_expected[mark_index], log_observed[mark_index],
+           col = "darkorange", pch = 17, cex = 1.5)
+    text(log_expected[mark_index], log_observed[mark_index],
+         labels = mark_gene, pos = 4, offset = 0.5, col = "darkorange")
+  }
+}
+
+get_top_N <- function(df, N = 1000, lookup_df = merged_sgRNA_df){
+  N_half <- round(N / 2) 
+  df_N <- bind_rows(
+    df %>% arrange(significanceZ) %>% head(N_half),      # lowest Z
+    df %>% arrange(desc(significanceZ)) %>% head(N_half) # highest Z
+  )
+  return(df_N)
+}
+
+get_top_N_intersect <- function(df_1,df_2,N = 1000, lookup_df = merged_sgRNA_df){
+  
+  N_half <- round(N / 2)  
+  
+  # Get top and bottom N/2 from df_1
+  df1_extreme <- bind_rows(
+    df_1 %>% arrange(significanceZ) %>% head(N_half),      # lowest Z
+    df_1 %>% arrange(desc(significanceZ)) %>% head(N_half) # highest Z
+  )
+  
+  # Same for df_2
+  df2_extreme <- bind_rows(
+    df_2 %>% arrange(significanceZ) %>% head(N_half),
+    df_2 %>% arrange(desc(significanceZ)) %>% head(N_half)
+  )
+  # Find common entrez values
+  common_entrez <- base::intersect(df1_extreme$entrez, df2_extreme$entrez)
+  
+  # Filter both for common entrez
+  df1_common <- df1_extreme %>% filter(entrez %in% common_entrez)
+  df2_common <- df2_extreme %>% filter(entrez %in% common_entrez)
+  
+  # Create combined results
+  results_df <- bind_rows(df1_common, df2_common) %>%
+    distinct(entrez, .keep_all = TRUE)  # one row per entrez, from first found in either df
+  
+  # Join with lookup — only first match per entrez
+  lookup_first <- lookup_df %>%
+    group_by(entrez) %>%
+    dplyr::slice(1) %>%  # keep only the first match
+    ungroup() %>%
+    select(entrez, sgrna_id, symbol) %>% 
+    mutate(entrez = as.character(entrez))
+  
+  # Add to results
+  results_df <- results_df %>%
+    left_join(lookup_first, by = "entrez")
+  
+  return(results_df)
+}
+
+compare_versions <- function(base_name, file_path = "/home/link/NB_EXP030/MAUDE_gene_stats") {
+  # Create a vector of suffixes
+  suffixes <- c("", "_RI", "_D0", "_RI_D0")
+  
+  # Read the files based on combinations of base_name and suffixes
+  files <- lapply(suffixes, function(suffix) {
+    file <- paste0(file_path, "_", base_name, suffix, ".rds")
+    readRDS(file)
+  })
+  
+  # Assign meaningful names to each version (e.g., "align_UMI_tools_reads", "bcwithqc_reads", etc.)
+  names(files) <- paste0(base_name, suffixes)
+  
+  # Perform the comparisons (you can adjust this logic depending on your requirements)
+  comparisons <- list()
+  for (i in 1:length(files)) {
+    for (j in i:length(files)) {
+      if (i != j) {
+        comparison_name <- paste(names(files)[i], "vs", names(files)[j])
+        comparisons[[comparison_name]] <- get_top_N_intersect(files[[i]], files[[j]])
+      }
+    }
+  }
+  
+  return(comparisons)
+}
+
+
+compare_versions <- function(file_path = get("rds_output_folder", envir = .GlobalEnv),
+                             base_names = c("align_UMI_tools_reads", "bcwithqc_reads", "align_UMI_tools_umis", "bcwithqc_rf_umis")) {
+
+  # Create an empty list to store all comparisons
+  comparisons <- list()
+
+  # Suffixes to consider
+  suffixes <- c("", "_RI", "_D0", "_RI_D0")
+  
+  AHSA1_position_finder <- function(file, name){
+    # Sort the dataframe by 'significanceZ' in ascending order
+    sorted_df <- file %>%
+      arrange(significanceZ)  # Assuming 'significanceZ' is the column name
+  
+    # Find the row where the 'entrez' value is 10598
+    target_row <- sorted_df %>% filter(entrez == 10598)
+    
+    if (nrow(target_row) > 0) {
+      # Get the position (row number) and significanceZ value
+      position <- which(sorted_df$entrez == 10598)
+      significanceZ_value <- target_row$significanceZ
+      
+      # Print the result
+      cat(paste("AHSA1 position in", name, "is", position, "with significanceZ value of", significanceZ_value, "\n"))
+    } else {
+      cat(paste("AHSA1 (entrez 10598) not found in", name, "\n"))
+    }
+  }
+  
+  name_list <- list()
+  # Comparison 1: Compare all versions of each base name against each other
+  for (base_name in base_names) {
+    # Read files based on the base_name and suffixes
+    files <- lapply(suffixes, function(suffix) {
+      file <- paste0(file_path, "_", base_name, suffix, ".rds")
+      if (file.exists(file)) {
+        name_list <<- c(name_list, paste0(base_name, suffix))  # Use <<- to modify the global name_list
+        return(readRDS(file))
+      } else {
+        cat(paste("File not found, skipping:", file, "\n"))
+        return(NULL)  # Return NULL if file doesn't exist
+      }
+    })
+    
+    # Remove any NULL elements (files that were missing)
+    files <- files[!sapply(files, is.null)]
+    names(files) <- name_list
+
+    # Perform comparisons between all versions of the base name
+    for (i in 1:length(files)) {
+      for (j in i:length(files)) {
+        cat(paste("------------------------------------------------","\n"))
+        if (i != j) {
+          cat(paste("------------------------------------------------","\n"))
+          comparison_name <- paste(names(files)[i], "vs", names(files)[j])
+          intersect_df <- get_top_N_intersect(files[[i]], files[[j]], N = 100)
+          cat(paste(comparison_name, "Number of intersects:",nrow(intersect_df),"\n"))
+          AHSA1_position_finder(files[[i]], names(files)[i])
+          AHSA1_position_finder(files[[j]], names(files)[j])
+          comparisons[[paste(base_name, comparison_name)]] <- intersect_df
+        }
+      }
+    }
+  }
+  
+  # Comparison 2: Compare reads and umis between bcwithqc and align_UMI_tools
+  # Define pairs for align_UMI_tools vs. bcwithqc comparisons for "reads" and "umis"
+  bcwithqc_align_UMI_tools_comparisons <- list(
+    c("align_UMI_tools_reads", "bcwithqc_reads"),
+    c("align_UMI_tools_umis", "bcwithqc_rf_umis")
+  )
+  
+  for (pair in bcwithqc_align_UMI_tools_comparisons) {
+    for (suffix in suffixes) {
+      cat(paste("------------------------------------------------","\n"))
+      # Construct filenames for align_UMI_tools and bcwithqc based on base names and suffixes
+      align_UMI_tools_file <- paste0(file_path, "_", pair[1], suffix, ".rds")
+      bcwithqc_file <- paste0(file_path, "_", pair[2], suffix, ".rds")
+      
+      # Check if the files exist
+      if (file.exists(align_UMI_tools_file) & file.exists(bcwithqc_file)) {
+        # Read the files
+        align_UMI_tools_data <- readRDS(align_UMI_tools_file)
+        bcwithqc_data <- readRDS(bcwithqc_file)
+        
+        # Perform the comparison between align_UMI_tools and bcwithqc for each suffix combination
+        comparison_name <- paste(pair[1], "vs", pair[2], "(", suffix, ")")
+        intersect_df <- get_top_N_intersect(align_UMI_tools_data, bcwithqc_data, N = 100)
+        cat(paste(comparison_name, "Number of intersects:",nrow(intersect_df),"\n"))
+        comparisons[[paste(pair[1], pair[2], comparison_name)]] <- intersect_df
+      } else {
+        cat(paste("One or both files not found, skipping:", align_UMI_tools_file, "and", bcwithqc_file, "\n"))
+      }
+    }
+  }
+
+  return(comparisons)
+}
+plot_all_qq_plots <- function(dir_path) {
+  # List all files in the directory ending with ".rds"
+  rds_files <- list.files(dir_path, pattern = "\\.rds$", full.names = TRUE)
+
+  # Filter files that start with "MAUDE_guide_stats_"
+  matching_files <- rds_files[grepl("MAUDE_guide_stats_", basename(rds_files))]
+
+  # Loop over each matching file
+  for (file in matching_files) {
+    # Extract the info_suffix
+    filename <- basename(file)
+    info_suffix <- sub("^MAUDE_guide_stats_", "", sub("\\.rds$", "", filename))
+
+    # Run the commands
+    Hits_current_settings <- add_info_wrapper(info_suffix)
+    plot_qq_maude(Hits_current_settings, info_suffix)
+  }
+}
+
+
+generate_qq_plots <- function(base_name,
+                              file_path = get("rds_output_folder", envir = .GlobalEnv),
+                              suffixes = c("", "_RI", "_D0", "_RI_D0")) {
+  
+  file_path <- paste0(file_path, "MAUDE_gene_stats")
+  # Use invisible() to suppress unwanted NULL outputs
+  invisible(lapply(suffixes, function(suffix) {
+    # Create the file path for each suffix
+    file <- paste0(file_path, "_", base_name, suffix, ".rds")
+    
+    # Check if the file exists before attempting to read it
+    if (file.exists(file)) {
+      maude_gene_stats <- readRDS(file)
+      plot_qq_maude(maude_gene_stats, paste(base_name, suffix))
+    } else {
+      # If the file doesn't exist, print a message and skip this iteration
+      cat(paste("File not found, skipping:", file, "\n"))
+    }
+  }))
+}
+compare_Hits <- function(df1, df2, top_N = 50) {
+  
+  # Sort both dataframes by FDR (low to high)
+  df1_sorted <- df1[order(df1$FDR), ]
+  df2_sorted <- df2[order(df2$FDR), ]
+  
+  # Get the top N entries based on FDR
+  df1_top <- df1_sorted[1:top_N, ]
+  df2_top <- df2_sorted[1:top_N, ]
+  
+  # 1. Overlap among top_N (by FDR)
+  overlap <- merge(df1_top, df2_top, by = "entrez", all = FALSE)
+  
+  # 2. Dropouts among top_N (by FDR)
+  dropouts <- base::setdiff(df1_top$entrez, df2_top$entrez)
+  df1_dropouts <- df1_top[df1_top$entrez %in% dropouts, ]
+  
+  # 3. Statistics dataframe
+  # Number of overlaps
+  num_overlaps <- nrow(overlap)
+  
+  # Number of dropouts
+  num_dropouts <- nrow(df1_dropouts)
+  
+  # Calculate ranks for FDR in both dataframes
+  df1_sorted$rank_FDR <- rank(df1_sorted$FDR)
+  df2_sorted$rank_FDR <- rank(df2_sorted$FDR)
+  
+  # Merge the two sorted dataframes by 'entrez' to match pairs
+  merged_df <- merge(df1_sorted[, c("entrez", "rank_FDR")], 
+                     df2_sorted[, c("entrez", "rank_FDR")], 
+                     by = "entrez", 
+                     suffixes = c("_df1", "_df2"))
+  
+  # 4. Correlation between ranks in top N (paired test)
+  rank_correlation_topN <- cor(merged_df$rank_FDR_df1[1:top_N], merged_df$rank_FDR_df2[1:top_N], method = "pearson")
+  
+  # 5. Correlation between ranks for all entries (paired test)
+  rank_correlation_all <- cor(merged_df$rank_FDR_df1, merged_df$rank_FDR_df2, method = "pearson")
+  
+  # Split significanceZ into > 0 and <= 0
+  df1_top_posZ <- df1_top[df1_top$significanceZ > 0, ]
+  df2_top_posZ <- df2_top[df2_top$significanceZ > 0, ]
+  
+  df1_top_negZ <- df1_top[df1_top$significanceZ <= 0, ]
+  df2_top_negZ <- df2_top[df2_top$significanceZ <= 0, ]
+  
+  # Median and mean changes in significance Z and FDR for significanceZ > 0
+  median_change_Z_pos <- median(df1_top_posZ$significanceZ - df2_top_posZ$significanceZ)
+  mean_change_Z_pos <- mean(df1_top_posZ$significanceZ - df2_top_posZ$significanceZ)
+  
+  # Median and mean changes in significance Z and FDR for significanceZ <= 0
+  median_change_Z_neg <- median(df1_top_negZ$significanceZ - df2_top_negZ$significanceZ)
+  mean_change_Z_neg <- mean(df1_top_negZ$significanceZ - df2_top_negZ$significanceZ)
+  
+  # Median and mean changes in FDR
+  median_change_FDR <- median(df1_top$FDR - df2_top$FDR)
+  mean_change_FDR <- mean(df1_top$FDR - df2_top$FDR)
+  
+  # Create the statistics dataframe
+  stats <- data.frame(
+    Statistic = c(paste0("Number of overlaps (top ",top_N,")"),paste0("Number of dropouts (top ",top_N,")"), 
+                  paste0("Correlation between ranks (top ",top_N,")"), "Correlation between ranks (all)", 
+                  "Median change in significance Z+", "Mean change in significance Z+", 
+                  "Median change in significance Z-", "Mean change in significance Z-", 
+                  "Median change in FDR", "Mean change in FDR"),
+    Value = c(num_overlaps, num_dropouts, rank_correlation_topN, rank_correlation_all, 
+              median_change_Z_pos, mean_change_Z_pos, median_change_Z_neg, mean_change_Z_neg, 
+              median_change_FDR, mean_change_FDR)
+  )
+  
+  # Return the list of dataframes
+  return(list(
+    Overlap = overlap,
+    Dropouts = df1_dropouts,
+    Statistics = stats
+  ))
+}
+
+# Create a smaller version of compare_versions for the specific four dataframes
+compare_methods <- function(N = 100) {
+  # List of the four dataframes
+  df_list <- list(
+    "Hits_align_UMI_tools_umis" = Hits_align_UMI_tools_umis,
+    "Hits_align_UMI_tools_umis_RI" = Hits_align_UMI_tools_umis_RI,
+    "Hits_align_UMI_tools_umis_sum_RI" = Hits_align_UMI_tools_umis_sum_RI,
+    "Hits_align_UMI_tools_umis_rep_RI" = Hits_align_UMI_tools_umis_rep_RI
+  )
+  
+  # Helper function to calculate AHSA1 position
+  AHSA1_position_finder <- function(df, name) {
+    sorted_df <- df %>%
+      arrange(significanceZ)  # Sort by significanceZ (assuming column exists)
+    
+    # Find the row where the 'entrez' value is 10598
+    target_row <- sorted_df %>% filter(entrez == 10598)
+    
+    if (nrow(target_row) > 0) {
+      position <- which(sorted_df$entrez == 10598)
+      significanceZ_value <- target_row$significanceZ
+      cat(paste("AHSA1 position in", name, "is", position, "with significanceZ value of", significanceZ_value, "\n"))
+    } else {
+      cat(paste("AHSA1 (entrez 10598) not found in", name, "\n"))
+    }
+  }
+  
+  # Compare all combinations of the dataframes
+  comparisons <- list()
+  
+  df_names <- names(df_list)
+  
+  # Loop through all possible pairs of dataframes
+  for (i in 1:(length(df_names) - 1)) {
+    cat(paste("------------------------------------------------","\n"))
+    for (j in (i + 1):length(df_names)) {
+      cat(paste("------------------------------------------------","\n"))
+      name_i <- df_names[i]
+      name_j <- df_names[j]
+      
+      # Get the dataframes
+      df_i <- df_list[[name_i]]
+      df_j <- df_list[[name_j]]
+      
+      # Calculate the intersection
+      intersect_df <- get_top_N_intersect(df_i, df_j, N = N)
+      n_intersect <- nrow(intersect_df)
+      
+      # Print intersection and AHSA1 positions
+      cat(paste(name_i, "vs", name_j, "Number of intersects:", n_intersect, "\n"))
+      AHSA1_position_finder(df_i, name_i)
+      AHSA1_position_finder(df_j, name_j)
+      
+      # Store the results
+      comparisons[[paste(name_i, "vs", name_j)]] <- list(
+        intersect = intersect_df,
+        n_intersect = n_intersect
+      )
+    }
+  }
+  
+  return(comparisons)
+}
+
+```
+
+## Create QQplots for the p-values. 
+Lots of debris from old runs in here. Use with caution
+
+```{r QQplot, eval=FALSE}
+#===============================================================================
+# Batch generate ALL qq plots
+# add suffixes <- c(list_of_suffixes_without_.rds); example <- c("", "_RI")
+#===============================================================================
+plot_all_qq_plots(rds_output_folder)
+#===============================================================================
+# Batch generate specific qq plots
+# add suffixes <- c(list_of_suffixes_without_.rds); example <- c("", "_RI")
+#===============================================================================
+generate_qq_plots("align_UMI_tools_reads")
+generate_qq_plots("align_UMI_tools_umis")
+generate_qq_plots("bcwithqc_reads")
+generate_qq_plots("bcwithqc_rf_umis")
+
+#===============================================================================
+# Create Hit lists
+#===============================================================================
+# use my_Hits <- add_info_wrapper("my_file_suffix")
+Hits_current_settings <- add_info_wrapper(file_info_suffix)
+plot_qq_maude(Hits_current_settings, "Sublibraries as replicates combined")
+plot_qq_maude(export_df, "Sublibraries as replicates combined")
+Hits_sublib <- add_info_wrapper("align_UMI_tools_umis_rep_sublib_control_median_RI")
+Hits_align_UMI_tools_umis_control_median_RI <- add_info_wrapper("align_UMI_tools_umis_control_median_RI")
+Hits_align_UMI_tools_umis_sum_control_median_RI <- add_info_wrapper("align_UMI_tools_umis_sum_control_median_RI")
+Hits_sublib_combined <- add_info_wrapper("align_UMI_tools_umis_rep_sublib_control_median_RI_0")
+
+#===============================================================================
+# Intersect 2 different Hit lists
+#===============================================================================
+top_1000_umis_intersect <- get_top_N_intersect(Hits_default,Hits_sublib_combined, N=1000)
+top_100_umis_intersect <- get_top_N_intersect(Hits_default,Hits_sublib_combined, N=100)
+top_100 <- get_top_N_intersect(Hits_current_settings,Hits_default, N=100)
+top_100_2 <- get_top_N_intersect(Hits_current_settings,Hits_sum, N=100)
+
+
+
+top_50_umis_intersect <- get_top_N_intersect(Hits_align_UMI_tools_umis_RI,Hits_align_UMI_tools_umis_sum_RI, N=50)
+top_20_umis_intersect <- get_top_N_intersect(Hits_align_UMI_tools_umis_RI,Hits_align_UMI_tools_umis_sum_RI, N=20)
+top_50_umis_intersect_sum_rep <- get_top_N_intersect(Hits_align_UMI_tools_reads_sum_RI,Hits_align_UMI_tools_reads_rep_RI_rf, N=50)
+top_10_umis_intersect___sum <- get_top_N_intersect(Hits_align_UMI_tools_umis_sum_RI,Hits_align_UMI_tools_umis_RI, N=10)
+top_15_umis_intersect_control_median <- get_top_N_intersect(Hits_align_UMI_tools_umis_sum_control_median_RI,Hits_align_UMI_tools_umis_control_median_RI, N=100)
+top_10_umis_intersect_both <- get_top_N_intersect(top_15_umis_intersect_control_median,top_10_umis_intersect___sum, N=10)
+top_10_umis_sum_control_median <- get_top_N_intersect(Hits_align_UMI_tools_umis_sum_control_median_RI,Hits_align_UMI_tools_umis_sum_control_median_RI, N=10)
+saveRDS(get_top_N(Hits_align_UMI_tools_umis_sum_RI, N=100), "/g/steinmetz/link/Amplicon_barcode_analysis/NB_EXP030/heatmaps/top_100.rds")
+saveRDS(get_top_N(Hits_align_UMI_tools_umis_sum_RI, N=50), "/g/steinmetz/link/Amplicon_barcode_analysis/NB_EXP030/heatmaps/top_50.rds")
+saveRDS(get_top_N(Hits_align_UMI_tools_umis_sum_RI,N=20), "/g/steinmetz/link/Amplicon_barcode_analysis/NB_EXP030/heatmaps/top_20.rds")
+#===============================================================================
+# Make individual qq-plots for the p-values of the hits. 
+#===============================================================================
+plot_qq_maude(Hits_align_UMI_tools_umis_RI, "UMIs (one replicate method)")
+plot_qq_maude(Hits_align_UMI_tools_umis_sum_RI, "UMIs (sum method)")
+plot_qq_maude(Hits_align_UMI_tools_reads_RI, "reads (one replicate method)")
+plot_qq_maude(Hits_align_UMI_tools_reads_sum_RI, "reads (sum method)")
+
+plot_qq_maude(Hits_align_UMI_tools_umis_control_median_RI, "UMIs (one replicate method)(normalized)")
+plot_qq_maude(Hits_align_UMI_tools_umis_sum_control_median_RI, "UMIs (sum method)(normalized)")
+plot_qq_maude(Hits_align_UMI_tools_reads_control_median_RI, "reads (one replicate method)(normalized)")
+plot_qq_maude(Hits_align_UMI_tools_reads_sum_control_median_RI, "reads (sum method)(normalized)")
+
+plot_qq_maude(Hits_align_UMI_tools_reads, "Reads (no IR no RF)")
+plot_qq_maude(Hits_bcwithqc_reads, "bcwithqc Reads (no IR no RF)")
+plot_qq_maude(Hits_align_UMI_tools_umis, "UMIs (no IR)")
+plot_qq_maude(Hits_bcwithqc_umis, "bcwithqc UMIs (no IR no RF)")
+plot_qq_maude(Hits_bcwithqc_rf_umis, "bcwithqc_rf UMIs (no IR)")
+
+plot_qq_maude(Hits_align_UMI_tools_reads_RI, "Reads (no IR)")
+plot_qq_maude(Hits_bcwithqc_reads_RI, "bcwithqc Reads (no RF)")
+plot_qq_maude(Hits_align_UMI_tools_reads_RI_rf, "Reads")
+# plot_qq_maude(Hits_bcwithqc_reads_RI_rf, "bcwithqc Reads")
+
+plot_qq_maude(Hits_align_UMI_tools_umis_RI, "UMIs")
+plot_qq_maude(Hits_bcwithqc_rf_umis_RI, "bcwithqc UMIs")
+
+plot_qq_maude(Hits_align_UMI_tools_reads_sum_RI_rf, "Reads replicate summation")
+plot_qq_maude(Hits_bcwithqc_reads_sum_RI_rf, "bcwithqc Reads replicate summation")
+plot_qq_maude(Hits_align_UMI_tools_umis_sum_RI, "UMIs replicate summation")
+plot_qq_maude(Hits_bcwithqc_rf_umis_sum_RI, "bcwithqc UMIs replicate summation")
+
+plot_qq_maude(Hits_align_UMI_tools_reads_rep_RI_rf, "Reads multiple replicates")
+plot_qq_maude(Hits_bcwithqc_reads_rep_RI_rf, "bcwithqc Reads multiple replicates")
+plot_qq_maude(Hits_align_UMI_tools_umis_rep_RI, "UMIs multiple replicates")
+plot_qq_maude(Hits_bcwithqc_rf_umis_rep_RI, "bcwithqc UMIs multiple replicates")
+
+
+
+
+
+# Call the function to perform the comparisons
+results_methods <- compare_methods(N = 50)
+
+
+
+# maude_gene_stats_align_UMI_tools <- readRDS(paste0("/home/link/NB_EXP030/MAUDE_gene_stats", "_align_UMI_tools_reads.rds"))
+# maude_gene_stats_bcwithqc <- readRDS(paste0("/home/link/NB_EXP030/MAUDE_gene_stats", "_bcwithqc_reads.rds"))
+# 
+# top_1000_reads_intersect <- get_top_N_intersect(maude_gene_stats_align_UMI_tools,maude_gene_stats_bcwithqc)
+# top_100_reads_intersect <- get_top_N_intersect(maude_gene_stats_align_UMI_tools,maude_gene_stats_bcwithqc, N=100)
+
+```
+
+``` {r compare_mapping_results, eval=FALSE}
+pa_mapping_file_path <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA/results/align_UMI_tools_reads_control_median_RI_comb_sample_mapping_results.xlsx"
+dca_mapping_file_path <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA/results/align_UMI_tools_reads_control_median_RI_comb_sample_mapping_results.xlsx"
+gal_mapping_file_path <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC/results/align_UMI_tools_reads_control_median_RI_comb_sample_mapping_results.xlsx"
+library(readxl)
+map_pa_df  <- read_excel(pa_mapping_file_path)
+map_dca_df <- read_excel(dca_mapping_file_path)
+map_gal_df <- read_excel(gal_mapping_file_path)
+
+# helper to convert "10.12%" -> 10.12
+convert_percent <- function(x) {
+  as.numeric(str_remove(x, "%"))
+}
+
+# combine into one plotting dataframe
+plot_df <- bind_rows(
+  data.frame(group = "PA",     wrong_perc = convert_percent(map_pa_df$wrong_perc)),
+  data.frame(group = "DCA",    wrong_perc = convert_percent(map_dca_df$wrong_perc)),
+  data.frame(group = "GalNAc", wrong_perc = convert_percent(map_gal_df$wrong_perc))
+)
+
+# optional: remove missing values
+plot_df <- plot_df %>% filter(!is.na(wrong_perc))
+
+# boxplot
+ggplot(plot_df, aes(x = group, y = wrong_perc, fill = group)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c(
+    "PA" = "#4DAF4A",
+    "DCA" = "#377EB8",
+    "GalNAc" = "#E41A1C"
+  )) +
+  labs(
+    x = NULL,
+    y = "Percentage of reads mapped to wrong sublibrary (%)",
+    title = "Reads mapped to the wrong sublibrary"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+``` 
+
+
+``` {r Calculated_replicated_analysis, eval=False}
+if(first_time){
+  high_confidence_hits <- automate_calc_replicate_comparison(FDR_threshold = 0.05,
+                                                           hits_in_X_reps = 16,
+                                                           correlation_heatmap = FALSE,
+                                                           venn_diagram = FALSE)
+  explorative_hits <- automate_calc_replicate_comparison(FDR_threshold = 0.05,
+                                                       hits_in_X_reps = 10,
+                                                       correlation_heatmap = TRUE,
+                                                       venn_diagram = FALSE)
+
+  excel_file_path <- sub("\\.rds$", ".xlsx", paste0(results_output_folder, "/", "Hits_high_confidence", file_suffix))
+  write_xlsx(high_confidence_hits$Hits_in_X_df, excel_file_path)
+  saveRDS(high_confidence_hits$Hits_in_X_df, get_file_path(rds_output_folder, paste0("high_confidence_hits","_",file_info_suffix,".rds")))
+  
+  excel_file_path <- sub("\\.rds$", ".xlsx", paste0(results_output_folder, "/", "Hits_explorative", file_suffix))
+  write_xlsx(explorative_hits$Hits_in_X_df, excel_file_path)
+  saveRDS(explorative_hits$Hits_in_X_df, get_file_path(rds_output_folder, paste0("explorative_hits","_",file_info_suffix,".rds")))
+  
+  
+  PA_means <- automate_calc_replicate_means(
+    cfg,
+    file_suffix = ".rds",
+    rds_output_folder="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds")
+  DCA_means <- automate_calc_replicate_means(
+    cfg,
+    file_suffix = ".rds",
+    rds_output_folder="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/rds")
+  GALNAC_means <- automate_calc_replicate_means(
+    cfg,
+    file_suffix = ".rds",
+    rds_output_folder="/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds")
+  
+  dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+  
+  saveRDS(PA_means,"/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds/PA_mean_hits_bcwithqc.rds")
+  saveRDS(DCA_means,"/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/rds/DCA_mean_hits_bcwithqc.rds")
+  saveRDS(GALNAC_means,"/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds/GAL_mean_hits_bcwithqc.rds")
+  
+  write_xlsx(PA_means,"/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds/PA_mean_hits_bcwithqc.xlsx")
+  write_xlsx(DCA_means,"/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/rds/DCA_mean_hits_bcwithqc.xlsx")
+  write_xlsx(GALNAC_means,"/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds/GAL_mean_hits_bcwithqc.xlsx")
+  
+  mean_results_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/Mean_results_bcwithqc"
+  
+  saveRDS(PA_means, file.path(mean_results_dir, "PA_mean_hits_bcwithqc.rds"))
+  saveRDS(DCA_means, file.path(mean_results_dir, "DCA_mean_hits_bcwithqc.rds"))
+  saveRDS(GALNAC_means, file.path(mean_results_dir, "GAL_mean_hits_bcwithqc.rds"))
+  
+  write_xlsx(PA_means, file.path(mean_results_dir, "PA_mean_hits_bcwithqc.xlsx"))
+  write_xlsx(DCA_means, file.path(mean_results_dir, "DCA_mean_hits_bcwithqc.xlsx"))
+  write_xlsx(GALNAC_means, file.path(mean_results_dir, "GAL_mean_hits_bcwithqc.xlsx"))
+} else {
+  high_confidence_hits <- readRDS(get_file_path(rds_output_folder, paste0("high_confidence_hits","_",file_info_suffix,".rds")))
+  explorative_hits <- readRDS(get_file_path(rds_output_folder, paste0("explorative_hits","_",file_info_suffix,".rds")))
+  
+  PA_means <- readRDS(file.path(mean_results_dir, "mean_results_PA.rds"))
+  DCA_means <- readRDS(file.path(mean_results_dir, "mean_results_DCA.rds"))
+  GALNAC_means <- readRDS(file.path(mean_results_dir, "mean_results_GALNAC.rds"))
+}
+
+```
+## Compare Sublibraries 
+For this to function You need to run data_analysis_with_MAUDE multiple times,
+once without excluding sublibraries, and then at least once more with
+one or more sublibraries excluded using the skip_list_sublib setting.
+``` {r compare_sublibraries_analysis, eval=False}
+test <- automate_sublibrary_comparison(FDR_threshold = 0.05)
+```
+
+``` {r compare_subsamples_analysis, eval=False}
+if (FALSE){
+  # run this once to move subsamples from the target dir, to the rds dir
+  # of the current output folder
+  move_subsamples("/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/1/HepG2_dual_rep_PA_subsample", subsample_prefix = "A")
+  move_subsamples("/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/2/HepG2_dual_rep_PA_subsample", subsample_prefix = "B")
+  move_subsamples("/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/3/HepG2_dual_rep_PA_subsample", subsample_prefix = "C")
+  move_subsamples("/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling/4/HepG2_dual_rep_PA_subsample", subsample_prefix = "D")
+
+ 
+automate_subsample_comparison(FDR_threshold = 0.05)
+```
+
+``` {r get_validation_list, eval=False}
+source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+
+if (first_time) {
+  all_conjugates_overlap_df <- read.csv2(
+    file.path(dual_rep_dir,"Explorative_Hits_Overlap_between_conjugates.csv"),
+    header = TRUE
+  ) 
+  all_conjugates_overlap_df <- calculate_category_based_Z_score(all_conjugates_overlap_df)
+  all_conjugates_overlap_classified <- assign_broad_classes_and_go(all_conjugates_overlap_df)
+  
+  validation_candidates <- filter_candidates_expression(
+    hits_df = all_conjugates_overlap_classified,
+    expression_threshold = 0,
+    method = "AND"
+    )$kept
+  
+  # validation_hits <- simple_validation_selection(validation_candidates, n = 290)
+  validation_hits <- select_validation_hits_balanced_classes(validation_candidates, n = 290)$selected_df
+  validation_hits <- calculate_category_based_Z_score(validation_hits)
+  
+  saveRDS(all_conjugates_overlap_classified, file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+  saveRDS(validation_hits, file.path(dual_rep_dir, "validation_hits.rds"))
+} else {
+  all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+  validation_hits <- readRDS(file.path(dual_rep_dir, "validation_hits.rds"))
+}
+```
+
+``` {r compare_hits_against_cardio_lib, eval=False}
+cardio_library <- readRDS(file.path("/g/steinmetz/link/Gene_list_finalize","cardio_sgRNA_df_final.rds")) %>%
+  distinct(entrez_id, .keep_all = TRUE) %>%
+  select(entrez_id, gene)
+
+# unique Entrez IDs from cardio_library
+cardio_entrez <- unique(cardio_library$entrez_id)
+
+genes_not_in_cardio <- all_conjugates_overlap_classified %>%
+  filter(!(entrez %in% cardio_entrez))
+
+# summary for plotting
+plot_df <- all_conjugates_overlap_classified %>%
+  mutate(in_cardio = entrez %in% cardio_entrez) %>%
+  group_by(category) %>%
+  summarise(
+    n_entries = n(),
+    n_in_cardio = sum(in_cardio, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = c(n_entries, n_in_cardio),
+    names_to = "bar_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    bar_type = recode(
+      bar_type,
+      n_entries = "All entries",
+      n_in_cardio = "In cardio_library"
+    )
+  )
+
+# barplot
+ggplot(plot_df, aes(x = category, y = count, fill = bar_type)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_text(
+    aes(label = count),
+    position = position_dodge(width = 0.8),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "Category",
+    y = "Number of entries",
+    fill = NULL
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+write_xlsx(genes_not_in_cardio, file.path(dual_rep_dir, "Hits_not_in_cardio_specific_lib.xlsx"))
+
+```
+
+``` {r histogram_Z-score_distribution, eval=False}
+plot_significanceZ_histogram(all_conjugates_overlap_df, normalize = TRUE, plot_title = "Explorative Hits", fill_color = "forestgreen")
+plot_significanceZ_histogram(validation_hits, normalize = TRUE, plot_title = "Class Distribution Validation selection", fill_color = "steelblue")
+plot_significanceZ_histogram(all_conjugates_overlap_df, normalize = FALSE, plot_title = "Explorative Hits", fill_color = "forestgreen")
+plot_significanceZ_histogram(validation_hits, normalize = FALSE, plot_title = "Class Distribution Validation selection", fill_color = "steelblue")
+```
+
+``` {r horizontal_barplot_broad_class_percentage, eval=False}
+# All Hits
+plot_class_distribution(
+  df_all = all_conjugates_overlap_classified,
+  df_validation = validation_hits
+)
+# All Hits
+plot_class_distribution(
+  df_all = all_conjugates_overlap_classified,
+  df_validation = validation_hits,
+  sign_split = TRUE
+)
+# shared Hits
+plot_class_distribution(
+  df_all = all_conjugates_overlap_classified %>% filter(!category %in% c("unique_PA", "unique_DCA", "unique_GalNAc")),
+  df_validation = validation_hits %>% filter(!category %in% c("unique_PA", "unique_DCA", "unique_GalNAc")),
+  sign_split = TRUE
+)
+# Unique Hits
+plot_class_distribution(
+  df_all = all_conjugates_overlap_classified %>% filter(category %in% c("unique_PA", "unique_DCA", "unique_GalNAc")),
+  df_validation = validation_hits %>% filter(category %in% c("unique_PA", "unique_DCA", "unique_GalNAc")),
+  sign_split = TRUE
+)
+
+```
+
+``` {r filter_candidates_functions, eval=False}
+
+
+validation_hits_s1 <- filter_candidates_expression(
+  hits_df = explorative_hits,
+  expression_threshold = 0,
+  method = "AND"
+  )$kept
+hits_removed_bc_expression <- filter_candidates_expression(
+  hits_df = explorative_hits,
+  expression_threshold = 0,
+  method = "AND"
+  )$removed
+
+if (first_time){
+  pathways_Z_enriched <- perform_pathway_analysis(
+    file_info_suffix,
+    FDR_threshold = 0.05,
+    go_enrichment = "ALL",
+    go_terms_qvalueCutoff = 0.05)
+  pathways_Z_enriched_all <- pathways_Z_enriched$gsea_all
+  pathways_Z_enriched_consensus <- pathways_Z_enriched$gsea_consensus
+  
+  
+  pathways_hit_enriched <- perform_pathway_analysis(
+    file_info_suffix,
+    FDR_threshold = 0.05,
+    go_enrichment = "ALL",
+    method = "enrichGO",
+    consensus = TRUE,
+    enrichGO_consensus_df = explorative_hits,
+    go_terms_qvalueCutoff = 0.05)
+  
+  
+  ####
+  # Manually adding GO terms, that sound intersting, but did not pass consensus calling
+  manual_pathway_additions <- c(
+    "protein localization to vacuole",
+    "endocytic recycling",
+    "lysosome localization",
+    "regulation of ER to Golgi vesicle-mediated transport",
+    "vacuolar localization",
+    "vesicle transport along microtubule",
+    "exocytic process"
+  )
+  ####
+  
+  pathways_combined <- bind_rows(
+    pathways_hit_enriched,
+    pathways_Z_enriched_consensus,
+    pathways_Z_enriched_all %>% 
+      filter(Description %in% manual_pathway_additions)) %>%
+    distinct(ID, .keep_all = TRUE)
+  
+  gene_centrality <- get_gene_centrality(file_info_suffix, pathways_combined, use_local = TRUE) %>% 
+    filter(!entrez %in% hits_removed_bc_expression$entrez)
+  
+  validation_results <- select_validation_genes(
+    core_genes = gene_centrality,
+    hits_df = explorative_hits,
+    consensus_pathways = pathways_combined,
+    top_n = 1
+  )
+  
+  val_validation_genes <- validation_results$validation_genes
+  val_hits_no_pathway <- validation_results$hits_without_pathway
+  val_not_picked <- validation_results$hits_not_selected
+  val_pathways_no_hits <- validation_results$pathways_without_hits
+  
+  pathway_analysis_results <- list(
+    val_validation_genes = val_validation_genes,
+    val_hits_no_pathway = val_hits_no_pathway,
+    val_not_picked = val_not_picked,
+    val_pathways_no_hits = val_pathways_no_hits,
+    gene_centrality = gene_centrality,
+    pathways_combined = pathways_combined,
+    pathways_Z_enriched_all = pathways_Z_enriched_all,
+    pathways_Z_enriched_consensus = pathways_Z_enriched_consensus
+  )
+  
+  saveRDS(
+    pathway_analysis_results,
+    file.path(rds_output_folder,
+              paste0(file_info_suffix,"_pathway_analysis_results.rds")))
+} else {
+  pathway_analysis_results <- readRDS(file.path(
+    rds_output_folder,
+    paste0(file_info_suffix,"_pathway_analysis_results.rds")))
+
+  val_validation_genes <- pathway_analysis_results$val_validation_genes
+  val_hits_no_pathway <- pathway_analysis_results$val_hits_no_pathway
+  val_not_picked <- pathway_analysis_results$val_not_picked
+  val_pathways_no_hits <- pathway_analysis_results$val_pathways_no_hits
+  gene_centrality <- pathway_analysis_results$gene_centrality
+  pathways_combined <- pathway_analysis_results$pathways_combined
+  pathways_Z_enriched_all <- pathway_analysis_results$pathways_Z_enriched_all
+  pathways_Z_enriched_consensus <- pathway_analysis_results$pathways_Z_enriched_consensus
+}
+
+# saveRDS(pathway_analysis_results_PA, "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/pathway_analysis_results_PA")
+# saveRDS(pathway_analysis_results_DCA, "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/pathway_analysis_results_DCA")
+# saveRDS(pathway_analysis_results_GALNAC, "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/pathway_analysis_results_GALNAC")
+
+val_validation_genes_combined <- bind_rows(
+  pathway_analysis_results_PA$val_validation_genes %>%
+    mutate(pathway_analysis = "PA"),
+  pathway_analysis_results_DCA$val_validation_genes %>%
+    mutate(pathway_analysis = "DCA"),
+  pathway_analysis_results_GALNAC$val_validation_genes %>%
+    mutate(pathway_analysis = "GALNAC")) %>% 
+  distinct(entrez, .keep_all = TRUE)
+
+val_not_picked_combined <- bind_rows(
+  pathway_analysis_results_PA$val_not_picked %>%
+    mutate(pathway_analysis = "PA"),
+  pathway_analysis_results_DCA$val_not_picked %>%
+    mutate(pathway_analysis = "DCA"),
+  pathway_analysis_results_GALNAC$val_not_picked%>%
+    mutate(pathway_analysis = "GALNAC")) %>%
+  distinct(entrez, .keep_all = TRUE) %>% 
+  filter(!entrez %in% val_validation_genes_combined$entrez)
+
+val_hits_no_pathway_combined <- bind_rows(
+  pathway_analysis_results_PA$val_hits_no_pathway %>%
+    mutate(pathway_analysis = "PA"),
+  pathway_analysis_results_DCA$val_hits_no_pathway %>%
+    mutate(pathway_analysis = "DCA"),
+  pathway_analysis_results_GALNAC$val_hits_no_pathway%>%
+    mutate(pathway_analysis = "GALNAC")) %>%
+  distinct(entrez, .keep_all = TRUE) %>% 
+  filter(!entrez %in% val_validation_genes_combined$entrez) %>% 
+  filter(!entrez %in% val_not_picked_combined$entrez)
+
+
+category_summary_df <- full_join(
+  all_conjugates_overlap_df %>% count(category, name = "n_all"),
+  all_conjugates_overlap_df %>% 
+    filter(entrez %in% validation_hits$entrez) %>%
+    count(category, name = "n_validation"),
+  by = "category"
+) %>%
+  full_join(
+    all_conjugates_overlap_df %>% 
+      filter(entrez %in% val_hits_no_pathway_combined$entrez) %>% 
+      count(category, name = "n_no_pathway"),
+    by = "category"
+  ) %>%
+  full_join(
+    all_conjugates_overlap_df %>% 
+      filter(entrez %in% val_not_picked_combined$entrez) %>% 
+      count(category, name = "n_not_picked"),
+    by = "category"
+  ) %>%
+  mutate(across(-category, ~replace_na(., 0)))
+
+plot_df <- category_summary_df %>%
+  tidyr::pivot_longer(
+    cols = c(n_all, n_validation, n_no_pathway, n_not_picked),
+    names_to = "group",
+    values_to = "count"
+  ) %>%
+  mutate(
+    group = factor(
+      group,
+      levels = c("n_all", "n_validation", "n_no_pathway", "n_not_picked"),
+      labels = c("All", "Validation", "No pathway", "Not picked")
+    )
+  )
+
+p <- ggplot(plot_df, aes(x = group, y = count, fill = group)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = count), vjust = -0.3, size = 3.5) +
+  facet_grid(category ~ ., scales = "free_y", switch = "y") +
+  scale_fill_manual(values = c(
+    "All" = "grey40",
+    "Validation" = "forestgreen",
+    "No pathway" = "tomato",
+    "Not picked" = "steelblue"
+  )) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.2))) +
+  labs(
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.placement = "outside",
+    strip.background = element_blank(),
+    panel.spacing.y = unit(1.2, "lines")
+  )
+
+ggsave(
+  "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/category_barplots.png",
+  plot = p,
+  width = 7,
+  height = 12
+)
+
+
+draw_category_venn <- function(df, value_col, main_title = value_col) {
+  d <- setNames(df[[value_col]], df$category)
+  
+  venn.plot <- draw.triple.venn(
+    area1 = d["unique_DCA"] + d["shared_DCA_PA"] + d["shared_DCA_GalNAc"] + d["shared_all_three"],
+    area2 = d["unique_PA"] + d["shared_DCA_PA"] + d["shared_PA_GalNAc"] + d["shared_all_three"],
+    area3 = d["unique_GalNAc"] + d["shared_DCA_GalNAc"] + d["shared_PA_GalNAc"] + d["shared_all_three"],
+    
+    n12 = d["shared_DCA_PA"] + d["shared_all_three"],
+    n13 = d["shared_DCA_GalNAc"] + d["shared_all_three"],
+    n23 = d["shared_PA_GalNAc"] + d["shared_all_three"],
+    n123 = d["shared_all_three"],
+    
+    category = c("DCA", "PA", "GalNAc"),
+    fill = c("tomato", "steelblue", "forestgreen"),
+    alpha = 0.5,
+    cex = 1.3,
+    cat.cex = 1.2,
+    cat.pos = c(-20, 20, 180),
+    main = main_title
+  )
+  
+  grid.newpage()
+  grid.draw(venn.plot)
+}
+draw_category_venn(category_summary_df, "n_all", "All")
+draw_category_venn(category_summary_df, "n_all", "All")
+
+
+draw_category_venn(category_summary_df, "n_all", "All")
+draw_category_venn(category_summary_df, "n_validation", "Validation")
+draw_category_venn(category_summary_df, "n_no_pathway", "No pathway")
+draw_category_venn(category_summary_df, "n_not_picked", "Not picked")
+```
+
+``` {r filter_candidates, eval=False}
+nsZh <- TRUE
+
+val_validation_genes_combined <- val_validation_genes_combined %>%
+  left_join(
+    all_conjugates_overlap_df %>% select(entrez, significanceZ),
+    by = "entrez",
+    suffix = c("", ".new")
+  ) %>%
+  mutate(significanceZ = significanceZ.new) %>%
+  select(-significanceZ.new)
+
+
+
+
+plot_significanceZ_histogram(val_validation_genes_combined, normalize = nsZh, plot_title = "GO Term Hits", fill_color = "darkgreen")
+plot_significanceZ_histogram(val_not_picked, normalize = nsZh, plot_title = "Hits not chosen", fill_color = "orange")
+plot_significanceZ_histogram(val_hits_no_pathway, normalize = nsZh, plot_title = "Hits that don't match enriched GO Terms", fill_color = "red")
+
+```
+
+
+
+``` {r Comparing_GO-terms_of_different_moieties, eval=FALSE}
+source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
+
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+
+
+# pathways_hit_enriched_by_cat <- run_pathway_by_category(
+#   df = all_conjugates_overlap_classified,
+#   split_pos_neg = TRUE,
+#   include_shared_hits = c("shared_all_three", "DCA", "PA", "GalNAc"),
+#   plot_enrichment = TRUE,
+#   image_save_folder = file.path(dual_rep_dir, "GO_enrichment_plots/CC-pos_neg_split-shared_included"),
+#   go_enrichment = "CC",
+#   file_info_suffix = file_info_suffix,
+#   method = "enrichGO"
+# )
+if (first_time){
+  #careful this code takes a while to run ~1h
+  all_pathway_results <- run_all_pathway_combinations( 
+    df = all_conjugates_overlap_classified,
+    dual_rep_dir = dual_rep_dir,
+    file_info_suffix = file_info_suffix,
+    use_prior_results = TRUE,
+  )
+  saveRDS(all_pathway_results, file.path(dual_rep_dir, "GO_enrichment_plots/all_go_results.rds"))
+} else {
+  all_pathway_results <- readRDS(file.path(dual_rep_dir, "GO_enrichment_plots/all_go_results.rds"))
+}
+
+check_go_results_have_png <- function(root_dir) {
+  
+  go_result_files <- list.files(
+    path = root_dir,
+    pattern = "_go_results\\.rds$",
+    recursive = TRUE,
+    full. <- s = TRUE
+  )
+  
+  if (length(go_result_files) == 0) {
+    stop("No '*_go_results.rds' files found.")
+  }
+  
+  has_rows <- function(x) {
+    if (is.null(x)) {
+      return(FALSE)
+    }
+    
+    if (is.data.frame(x)) {
+      return(nrow(x) > 0)
+    }
+    
+    # fallback for objects that can be turned into data.frame
+    out <- tryCatch(as.data.frame(x), error = function(e) NULL)
+    if (!is.null(out)) {
+      return(nrow(out) > 0)
+    }
+    
+    FALSE
+  }
+  
+  check_df <- lapply(go_result_files, function(f) {
+    obj <- readRDS(f)
+    
+    non_empty <- has_rows(obj)
+    
+    expected_png <- file.path(
+      dirname(f),
+      sub("_go_results\\.rds$", ".png", basename(f))
+    )
+    
+    png_exists <- file.exists(expected_png)
+    
+    data.frame(
+      go_results_file = f,
+      expected_png = expected_png,
+      non_empty = non_empty,
+      png_exists = png_exists,
+      check_pass = (!non_empty) | png_exists,
+      stringsAsFactors = FALSE
+    )
+  }) %>%
+    dplyr::bind_rows()
+  
+  return(check_df)
+}
+png_check <- check_go_results_have_png(dual_rep_dir)
+png_missing <- png_check %>% filter(check_pass == "FALSE")
+
+run_pathway_by_category(all_conjugates_overlap_classified,
+                                    file_info_suffix,
+                                    category_col = "category",
+                                    FDR_threshold = 0.05,
+                                    go_enrichment = "CC",
+                                    method = "enrichGO",
+                                    consensus = TRUE,
+                                    go_terms_qvalueCutoff = 0.05,
+                                    include_shared_hits = NULL,
+                                    split_pos_neg = TRUE,
+                                    plot_enrichment = TRUE,
+                                    image_save_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/GO_enrichment_plots/CC-pos_neg_split-no_shared")
+	
+run_pathway_by_category(all_conjugates_overlap_classified,
+                                    file_info_suffix,
+                                    category_col = "category",
+                                    FDR_threshold = 0.05,
+                                    go_enrichment = "MF",
+                                    method = "enrichGO",
+                                    consensus = TRUE,
+                                    go_terms_qvalueCutoff = 0.05,
+                                    include_shared_hits = NULL,
+                                    split_pos_neg = FALSE,
+                                    plot_enrichment = TRUE,
+                                    image_save_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/GO_enrichment_plots/MF-no_pos_neg_split-no_shared")
+run_pathway_by_category(all_conjugates_overlap_classified,
+                                    file_info_suffix,
+                                    category_col = "category",
+                                    FDR_threshold = 0.05,
+                                    go_enrichment = "MF",
+                                    method = "enrichGO",
+                                    consensus = TRUE,
+                                    go_terms_qvalueCutoff = 0.05,
+                                    include_shared_hits = NULL,
+                                    split_pos_neg = TRUE,
+                                    plot_enrichment = TRUE,
+                                    image_save_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/GO_enrichment_plots/MF-pos_neg_split-no_shared")
+run_pathway_by_category(all_conjugates_overlap_classified,
+                                    file_info_suffix,
+                                    category_col = "category",
+                                    FDR_threshold = 0.05,
+                                    go_enrichment = "MF",
+                                    method = "enrichGO",
+                                    consensus = TRUE,
+                                    go_terms_qvalueCutoff = 0.05,
+                                    include_shared_hits = TRUE,
+                                    split_pos_neg = TRUE,
+                                    plot_enrichment = TRUE,
+                                    image_save_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/GO_enrichment_plots/MF-pos_neg_split-shared_included")
+diagnose_go_plot_missing <- function(go_results_file) {
+  
+  hits_file <- sub("_go_results\\.rds$", "_hits.rds", go_results_file)
+  
+  res_obj <- readRDS(go_results_file)
+  hits_df <- if (file.exists(hits_file)) readRDS(hits_file) else NULL
+  
+  res_df <- tryCatch(as.data.frame(res_obj), error = function(e) NULL)
+  
+  out <- list(
+    go_results_file = go_results_file,
+    hits_file = hits_file,
+    hits_file_exists = file.exists(hits_file),
+    res_is_null = is.null(res_obj),
+    res_df_is_null = is.null(res_df),
+    res_nrow = if (!is.null(res_df)) nrow(res_df) else NA_integer_,
+    has_required_cols = if (!is.null(res_df)) all(c("ID", "Description", "p.adjust") %in% colnames(res_df)) else FALSE,
+    hits_is_null = is.null(hits_df),
+    hits_nrow = if (!is.null(hits_df)) nrow(hits_df) else NA_integer_,
+    has_GO_terms_col = if (!is.null(hits_df)) "GO_terms" %in% colnames(hits_df) else FALSE
+  )
+  
+  if (!is.null(hits_df) && "GO_terms" %in% colnames(hits_df) && !is.null(res_df) && nrow(res_df) > 0) {
+    go_lists <- strsplit(
+      ifelse(is.na(hits_df$GO_terms), "", as.character(hits_df$GO_terms)),
+      ";",
+      fixed = TRUE
+    )
+    
+    counts <- vapply(
+      res_df$ID,
+      function(go_id) {
+        sum(vapply(go_lists, function(x) go_id %in% trimws(x), logical(1)))
+      },
+      numeric(1)
+    )
+    
+    out$n_hits_with_nonmissing_GO_terms <- sum(!is.na(hits_df$GO_terms) & hits_df$GO_terms != "")
+    out$n_result_terms = nrow(res_df)
+    out$n_result_terms_with_Count_gt_0 = sum(counts > 0)
+    out$max_Count = if (length(counts) > 0) max(counts) else NA_real_
+    out$all_Count_zero = all(counts == 0)
+    
+    if (sum(counts > 0) > 0) {
+      out$first_matching_terms <- head(res_df$ID[counts > 0], 10)
+    } else {
+      out$first_matching_terms <- character(0)
+    }
+  }
+  
+  return(out)
+}
+lapply(png_missing$go_results_file, diagnose_go_plot_missing)
+``` 
+
+``` {r make_STRINGI_images, eval=FALSE}
+source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+
+plot_string_from_saved_hits(dual_rep_dir) #careful this code takes a while to run ~1h
+
+
+``` 
+
+``` {r Hit_significance_heatmap, eval=FALSE}
+
+
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+
+heatmap_res <- plot_three_mean_hit_heatmap(
+  PA_means = PA_means,
+  DCA_means = DCA_means,
+  GALNAC_means = GALNAC_means,
+  all_conjugates_overlap_classified = all_conjugates_overlap_classified,
+  value_col = "significanceZ",
+  show_significance_stars = TRUE,
+  show_clustering_tree = TRUE,
+  show_colnames = TRUE,
+  cluster_rows = TRUE,
+  n_clusters = 14,
+  create_png_path = file.path(dual_rep_dir, "full_hit_heatmap.png")
+)
+``` 
+
+``` {r Hit_significance_UMAP, eval=FALSE}
+
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+umap_res <- plot_three_screen_significance_umap(
+  PA_means = PA_means,
+  DCA_means = DCA_means,
+  GALNAC_means = GALNAC_means,
+  all_conjugates_overlap_classified = all_conjugates_overlap_classified,
+  color_by = "category",
+  label_points = FALSE,
+  create_png_path = file.path(dual_rep_dir, "exlpore_hit_UMAP.png"),
+  use_only_overlap_genes = TRUE,
+)
+```
+
+``` {r control_distribution_heatmap, eval=FALSE}
+library(pheatmap)
+library(grid)
+# 1) Add RPM per (condition, sublib, sample)
+count_df_long2 <- count_df_long %>%
+  group_by(condition, sublib, sample) %>%
+  mutate(RPM = (count / sum(count)) * 1e6) %>%
+  ungroup()
+
+# 2) Remove targeting guides (not relevant for heatmap)
+count_df_long2 <- count_df_long2 %>%
+  filter(group_category != "targeting")
+
+# 3) Make a column ID for the heatmap columns
+count_df_long2 <- count_df_long2 %>%
+  mutate(col_id = paste(condition, sublib, sample, sep = "_"))
+
+# 4) Ensure 1 RPM value per (sgRNA, col_id)
+#    (If there are duplicates, sum them — or you could use mean)
+heatmap_df <- count_df_long2 %>%
+  group_by(sgRNA, col_id) %>%
+  summarise(RPM = sum(RPM), .groups = "drop")
+
+# 5) Pivot to wide format for heatmap input
+heatmap_wide <- heatmap_df %>%
+  pivot_wider(names_from = col_id, values_from = RPM, values_fill = 0) %>%
+  arrange(sgRNA)
+
+# 6) Convert to matrix with sgRNA as rownames
+heatmap_mat <- as.matrix(heatmap_wide[, -1])
+rownames(heatmap_mat) <- heatmap_wide$sgRNA
+
+chunk_size <- 60
+
+# (optional) order rows by variance so "interesting" ones appear first
+row_var <- apply(heatmap_mat, 1, var)
+heatmap_mat <- heatmap_mat[order(row_var, decreasing = TRUE), , drop = FALSE]
+
+# split row indices into chunks of 50
+idx_list <- split(seq_len(nrow(heatmap_mat)),
+                  ceiling(seq_len(nrow(heatmap_mat)) / chunk_size))
+
+# list of matrices, each with up to 50 rows
+heatmap_chunks <- lapply(idx_list, function(idx) heatmap_mat[idx, , drop = FALSE])
+
+for (k in seq_along(heatmap_chunks)) {
+  row_start <- min(idx_list[[k]])
+  row_end   <- max(idx_list[[k]])
+
+  pheatmap::pheatmap(
+    heatmap_chunks[[k]],
+    scale = "none",
+    fontsize_row = 6,
+    main = paste0("Heatmap ", k, " (rows ", row_start, "–", row_end, ")")
+  )
+}
+
+pdf_file <- get_file_path(results_output_folder, "heatmaps_chunks_60rows.pdf")
+
+grDevices::pdf(pdf_file, width = 10, height = 18, onefile = TRUE)
+pdf_dev <- grDevices::dev.cur()   # <- store the pdf device id
+
+for (k in seq_along(heatmap_chunks)) {
+
+  row_start <- min(idx_list[[k]])
+  row_end   <- max(idx_list[[k]])
+
+  ph <- pheatmap::pheatmap(
+    heatmap_chunks[[k]],
+    scale = "none",
+    main = paste0("Heatmap ", k, " (rows ", row_start, "–", row_end, ")"),
+    fontsize_row = 6,
+    silent = TRUE
+  )
+
+  grDevices::dev.set(pdf_dev)     # <- force drawing into the PDF device
+  grid::grid.newpage()
+  grid::grid.draw(ph$gtable)
+
+  invisible(ph)                  # <- prevents knitr from printing it
+}
+
+grDevices::dev.off()
+
+
+```
+
+
+```{r input_vs_plasmid, eval=FALSE}
+res <- scatter_merged_vs_input(merged_sgRNA_df, count_df_long,
+                               normalization = "CPM",
+                               group_category = "all",
+                               point_size = 0.5)
+res <- scatter_merged_vs_input(merged_sgRNA_df, count_df_long,
+                               normalization = "CPM",
+                               group_category = "all",
+                               remove_essential = TRUE,
+                               point_size = 0.5)
+
+res <- scatter_merged_vs_input(merged_sgRNA_df, count_df_long,
+                               normalization = "CPM",
+                               group_category = c("targeting"),
+                               sublib_chosen = "sublib_4",
+                               point_size = 0.5)
+res <- scatter_merged_vs_input(merged_sgRNA_df, count_df_long,
+                               normalization = "CPM",
+                               group_category = c("non_targeting_control"),
+                               sublib_chosen = "sublib_4",
+                               mark_outlier = FALSE,
+                               point_size = 0.5)
+res <- scatter_merged_vs_input(merged_sgRNA_df, count_df_long,
+                               normalization = "none",
+                               group_category = c("non_targeting_control"),
+                               sublib_chosen = "sublib_4",
+                               mark_outlier = FALSE,
+                               point_size = 0.5)
+
+```
+
+``` {r Manhattan_plot, eval=False}
+Hits_current_settings <- add_info_wrapper(file_info_suffix)
+if (length(include_controls_list) > 0) {
+  for (control_gene in include_controls_list) {
+    # here we remove everything after the last _, so stuff like AAVS1_9 and
+    # AAVS1_13 are both treated as AAVS1
+    control_gene <- sub("_[^_]*$", "", control_gene)
+    Hits_current_settings$symbol[grepl(control_gene, Hits_current_settings$entrez)] <- control_gene
+  }
+  # Filter out rows where the 'symbol' is in the include_controls_list
+  Hits_current_settings_no_controls <- Hits_current_settings %>% 
+    filter(!symbol %in% include_controls_list | is.na(symbol))
+}
+Hits_df <- Hits_current_settings %>% 
+  filter(significanceZ <= 0) %>% 
+  mutate(logP = -log10(FDR))
+
+# Define the cluster and protein names
+clusters <- data.frame(
+  cluster_name = c(
+    "Protein ufmylation", 
+    "mTORC1-mediated signalling (Ragulator complex/RagC protein)", 
+    "vesicles thetering complex (HOPS complex)", 
+    "ER membrane insertion complex, and GET complex", 
+    "GTPase activating proteins (GAP)", 
+    "Regulation of lysosome size (BLOC-1 and BORC complexes)", 
+    "Other VPS proteins", 
+    "Other Rab proteins"
+  ),
+  color = c(
+    "#ff0000", "#ffe065", "#47b200", "#65ffa3", 
+    "#008eb2", "#6566ff", "black", "black"
+  ),
+  proteins = c(
+    "UFL1, CDK5RAP3, UFM1, UBA5", 
+    "LAMTOR1, RRAGC, LAMTOR5", 
+    "VPS39, VPS33A, VPS41", 
+    "BAG6, GET1, GET4", 
+    "RAB3GAP1, RAB3GAP2, TBC1D20", 
+    "BLOC1S1, SNAPIN", 
+    "VPS13C, VPS53", 
+    "RAB18"
+  )
+)
+
+# Flatten protein names into a list
+protein_list <- unlist(strsplit(clusters$proteins, ", "))
+
+# Create a new column in Hits_df to mark the cluster for each protein
+Hits_df$cluster <- sapply(Hits_df$symbol, function(x) {
+  # Check which cluster the protein belongs to
+  match <- which(sapply(clusters$proteins, function(proteins) x %in% strsplit(proteins, ", ")[[1]]))
+  if (length(match) > 0) {
+    return(clusters$cluster_name[match])
+  } else {
+    return("Other")  # Default category for proteins not listed
+  }
+})
+
+Hits_df$cluster_color <- sapply(Hits_df$cluster, function(x) {
+  # Check if the cluster is in the list, else assign grey
+  if (x %in% clusters$cluster_name) {
+    return(clusters$color[clusters$cluster_name == x])
+  } else {
+    return("grey")  # Assign grey to other genes
+  }
+})
+# Define the clusters excluding "Other"
+clusters_excluding_other <- unique(Hits_df$cluster[Hits_df$cluster != "Other"])
+
+# Define the number of clusters excluding "Other"
+num_clusters <- length(clusters_excluding_other)
+
+# Define the size of each cluster's range (divide 1000 by the number of clusters - 1)
+range_size <- 1000 / (num_clusters)
+
+# Initialize a vector to store the ranks
+rank_vector <- numeric(nrow(Hits_df))
+
+# Loop through each cluster excluding "Other"
+for (cluster_name in clusters_excluding_other) {
+  # Get the rows for the current cluster
+  cluster_rows <- Hits_df$cluster == cluster_name
+  
+  # Calculate the range for this cluster
+  cluster_start <- (which(clusters_excluding_other == cluster_name) - 1) * range_size + 1
+  cluster_end <- cluster_start + range_size - 1
+  
+  # Assign random ranks within this cluster's range
+  rank_vector[cluster_rows] <- sample(cluster_start:cluster_end, sum(cluster_rows), replace = TRUE)
+}
+
+# Assign ranks to "Other" cluster (random ranks from 1 to 1000)
+rank_vector[Hits_df$cluster == "Other"] <- sample(1:1000, sum(Hits_df$cluster == "Other"), replace = TRUE)
+
+# Add the new rank column to the Hits_df dataframe
+Hits_df$rank <- rank_vector
+
+# Create the Manhattan plot
+p <- ggplot(Hits_df, aes(x = rank, y = significanceZ, color = cluster_color)) +
+  geom_point(aes(size = ifelse(cluster != "Other", 3, 1)), alpha = 0.8) +
+  scale_size_continuous(range = c(1, 5)) +
+  scale_y_reverse() +
+  #scale_y_log10() +
+  scale_color_identity() +  # Use the actual colors defined for each cluster
+  labs(
+    title = "Non-Essential Gene Groups",
+    y = "significanceZ"
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "none",  # Remove legend for clusters (you can add one if needed)
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    
+    # Remove X-axis and its label, ticks, and lines
+    axis.line.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) + 
+  # Use geom_text_repel to avoid label overlap and label non-"Other" points
+  geom_text_repel(
+    data = subset(Hits_df, cluster != "Other"),  # Only label non-"Other" points
+    aes(x = rank, y = significanceZ, label = symbol),
+    color = "black",
+    size = 3,
+    box.padding = 0.1,  # Increase to move text away from points if needed
+    point.padding = 0.2,  # Adjust text padding around points
+    max.overlaps = 10,   # Adjust this value to limit the number of overlaps
+    segment.color = NA,  # No lines connecting text and point
+    vjust = -2          # Position text above the dot
+  )
+
+# Display the plot
+print(p)
+
+cluster_labels <- clusters
+# Create a blank plot with adjusted limits
+# Create a blank plot with adjusted limits
+# Create a blank plot with adjusted limits
+plot(
+  x = 1, y = 1, type = "n", 
+  xlim = c(0, 500), ylim = c(1, nrow(cluster_labels) + 1),  # Increase xlim to make space for the text
+  xlab = "", ylab = "", 
+  axes = FALSE,  # Remove axes
+  main = "Cluster Names and Colors"
+)
+
+# Plot each cluster with a single dot and its name next to it
+for (i in 1:nrow(cluster_labels)) {
+  # Plot the dot on the left (x = 0) for each cluster (ensure the dot is visible)
+  points(1, nrow(cluster_labels) - i + 1, pch = 16, cex = 2, col = cluster_labels$color[i])  
+  # Add the cluster name to the right of the dot (slightly shifted right)
+  text(1.5, nrow(cluster_labels) - i + 1, cluster_labels$cluster_name[i], pos = 4, cex = 1.2)  
+}
+
+```
+
+``` {r test_1s, eval=FALSE}
+# 1. Count the number of 1s in the input, lower, and upper columns individually
+count_1s_input <- sum(maude_counts_df$input == 1)
+count_1s_lower <- sum(maude_counts_df$lower == 1)
+count_1s_upper <- sum(maude_counts_df$upper == 1)
+
+# Print individual counts
+cat("Count of 1's in 'input':", count_1s_input, "\n")
+cat("Count of 1's in 'lower':", count_1s_lower, "\n")
+cat("Count of 1's in 'upper':", count_1s_upper, "\n")
+
+# 2. Count rows where all three columns are 1 (input, lower, upper)
+count_all_ones <- sum(maude_counts_df$input == 1 & maude_counts_df$lower == 1 & maude_counts_df$upper == 1)
+cat("Rows where all three columns are 1:", count_all_ones, "\n")
+
+# 3. Separate counts based on 'isNontargeting' column (TRUE and FALSE)
+
+# For rows where 'isNontargeting' is TRUE
+df_true <- maude_counts_df[maude_counts_df$isNontargeting == TRUE, ]
+count_1s_input_true <- sum(df_true$input == 1)
+count_1s_lower_true <- sum(df_true$lower == 1)
+count_1s_upper_true <- sum(df_true$upper == 1)
+count_all_ones_true <- sum(df_true$input == 1 & df_true$lower == 1 & df_true$upper == 1)
+
+cat("\nFor isNontargeting == TRUE:\n")
+cat("Count of 1's in 'input':", count_1s_input_true, "\n")
+cat("Count of 1's in 'lower':", count_1s_lower_true, "\n")
+cat("Count of 1's in 'upper':", count_1s_upper_true, "\n")
+cat("Rows where all three columns are 1:", count_all_ones_true, "\n")
+
+# For rows where 'isNontargeting' is FALSE
+df_false <- maude_counts_df[maude_counts_df$isNontargeting == FALSE, ]
+count_1s_input_false <- sum(df_false$input == 1)
+count_1s_lower_false <- sum(df_false$lower == 1)
+count_1s_upper_false <- sum(df_false$upper == 1)
+count_all_ones_false <- sum(df_false$input == 1 & df_false$lower == 1 & df_false$upper == 1)
+
+cat("\nFor isNontargeting == FALSE:\n")
+cat("Count of 1's in 'input':", count_1s_input_false, "\n")
+cat("Count of 1's in 'lower':", count_1s_lower_false, "\n")
+cat("Count of 1's in 'upper':", count_1s_upper_false, "\n")
+cat("Rows where all three columns are 1:", count_all_ones_false, "\n")
+
+```
+
+
+``` {r Roche_compare, eval=FALSE}
+
+if (length(include_controls_list) > 0) {
+  for (control_gene in include_controls_list) {
+    # here we remove everything after the last _, so stuff like AAVS1_9 and
+    # AAVS1_13 are both treated as AAVS1
+    control_gene <- sub("_[^_]*$", "", control_gene)
+    Hits_current_settings$symbol[grepl(control_gene, Hits_current_settings$entrez)] <- control_gene
+  }
+  # Filter out rows where the 'symbol' is in the include_controls_list
+  Hits_current_settings_no_controls <- Hits_current_settings %>% 
+    filter(!symbol %in% include_controls_list | is.na(symbol))
+}
+
+
+conflicts_prefer(dplyr::select)
+conflicts_prefer(dplyr::rename)
+conflicts_prefer(dplyr::filter)
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+
+all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+
+roche_folder <- make_clean_dir(dual_rep_dir, "/Roche_compare")
+
+sup_3_path <- get_file_path(roche_folder, "41467_2025_61039_MOESM5_ESM-3.xls")
+sup_3 <- read_excel(sup_3_path)
+
+sup_3$GeneID <- gsub("GeneID:", "", sup_3$GeneID)
+sup_3_rename <- sup_3 %>%
+  rename(
+    entrez = GeneID,
+    Rho_enriched = Rho_Bulk_to_Reference_enriched,
+    MedianLFC_enriched = MedianLFC_Bulk_to_Reference_enriched,
+    AdjPval_enriched = AdjPval_Bulk_to_Reference_enriched,
+    Pval_enriched = Pval_Bulk_to_Reference_enriched,
+    RhoRank_enriched = RhoRank_Bulk_to_Reference_enriched,
+    Rho_depleted = Rho_Bulk_to_Reference_depleted,
+    MedianLFC_depleted = MedianLFC_Bulk_to_Reference_depleted,
+    AdjPval_depleted = AdjPval_Bulk_to_Reference_depleted,
+    Pval_depleted = Pval_Bulk_to_Reference_depleted,
+    RhoRank_depleted = RhoRank_Bulk_to_Reference_depleted
+  ) %>% 
+  select(
+    entrez,
+    Rho_enriched,
+    MedianLFC_enriched,
+    AdjPval_enriched,
+    Pval_enriched,
+    RhoRank_enriched,
+    Rho_depleted,
+    MedianLFC_depleted,
+    AdjPval_depleted,
+    Pval_depleted,
+    RhoRank_depleted
+  )
+compare_df <- merge(sup_3_rename, merged_sgRNA_df, by = "entrez") %>% 
+  dplyr::distinct(entrez, .keep_all = TRUE) %>% 
+###############################################################################
+# Venn Diagramm as requested by Nico
+nico_compare_df <- sup_3 %>% 
+  rename(Rho_pos = Rho_Round1Pos_to_Bulk_enriched,
+         Rho_neg = Rho_Round1Neg_to_Bulk_enriched,
+         entrez = GeneID,
+         symbol = Symbol,
+         LFC_pos = MedianLFC_Round1Pos_to_Bulk_enriched,
+         LFC_neg = MedianLFC_Round1Neg_to_Bulk_enriched) %>% 
+  select(entrez,
+         Rho_pos, Rho_neg, LFC_pos,LFC_neg)
+nico_compare_df <- merge(nico_compare_df, merged_sgRNA_df, by = "entrez") %>% 
+  dplyr::distinct(entrez, .keep_all = TRUE) %>% 
+  select(entrez, symbol,
+         Rho_pos, Rho_neg, LFC_pos,LFC_neg)
+
+  
+
+# nico_hits_intersect_top_neg <- nico_compare_df %>% filter(significanceZ > 0 & FDR <= 0.05 & Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5)
+# nico_hits_intersect_low_pos <- nico_compare_df %>% filter(significanceZ < 0 & FDR <= 0.05 & Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+# 
+# our_hits_df <- nico_compare_df %>% filter(significanceZ > 0 & FDR <= 0.05)
+# roche_hits_df <- nico_compare_df %>% filter(Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5)
+
+our_hits_df <- nico_compare_df 
+roche_hits_df <- nico_compare_df %>%
+  filter(
+    (Rho_neg <= 0.0001 & 2^LFC_neg >= 1.5) |
+    (Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+  )
+
+our_hits <- all_conjugates_overlap_classified$entrez
+roche_hits <- roche_hits_df$entrez
+
+overlap_our_hits_roche_hits <- merged_sgRNA_df %>% 
+  filter(
+    (entrez %in% our_hits) &
+    (entrez %in% roche_hits)
+  ) %>%
+  dplyr::distinct(entrez, .keep_all = TRUE) %>% 
+  select(entrez) %>% 
+  mutate(entrez = as.character(entrez)) %>% 
+  left_join(all_conjugates_overlap_classified, by = "entrez") %>% 
+  select(entrez, symbol,
+         significanceZ, significanceZ_PA,significanceZ_DCA,significanceZ_GalNAc,
+         category, broad_class,
+         essential_HepG2,essential_general,essential_liver,
+         HepG2_CPM_Xie, HepG2_CPM_Battisti, HepG2_14B11_CPM_Battisti,
+         GO_terms, GO_ontology, GO_terms_expanded) %>% 
+  rename(sigZ_PA = significanceZ_PA,
+         sigZ_DCA = significanceZ_DCA,
+         sigZ_GAL = significanceZ_GalNAc)
+
+write_xlsx(overlap_our_hits_roche_hits, "/g/steinmetz/link/sharing/20_Hits_overlap_between_roche_and_us.xlsx")
+
+# Create the Venn as a grob (plot object)
+venn_2 <- venn.diagram(
+  x = list(
+    our_hits = our_hits,
+    roche_hits = roche_hits
+  ),
+  filename = NULL,          # NULL = return a grid object instead of saving to file
+  fill = c("purple", "cyan"),
+  alpha = 0.5,              # transparency
+  cex = 1.5, 
+  cat.pos  = c(0, 0),      # 90° = above each circle
+  cat.dist = c(0.05, 0.05),  # distance from the circle border
+  cat.cex  = 1.5# size of set names
+)
+
+# Draw it in the plotting window
+grid.newpage()
+grid.draw(venn_2)
+
+
+# our_hits_df <- nico_compare_df %>% filter(significanceZ < 0 & FDR <= 0.05)
+# roche_hits_df <- nico_compare_df %>% filter(Rho_pos <= 0.0001 & 2^LFC_pos >= 1.5)
+# 
+# our_hits <- our_hits_df$entrez
+# roche_hits <- roche_hits_df$entrez
+# 
+# 
+# # Create the Venn as a grob (plot object)
+# venn_2 <- venn.diagram(
+#   x = list(
+#     our_hits = our_hits,
+#     roche_hits = roche_hits
+#   ),
+#   filename = NULL,          # NULL = return a grid object instead of saving to file
+#   fill = c("red", "yellow"),
+#   alpha = 0.5,              # transparency
+#   cex = 1.5, 
+#   cat.pos  = c(0, 0),      # 90° = above each circle
+#   cat.dist = c(0.05, 0.05),  # distance from the circle border
+#   cat.cex  = 1.5# size of set names
+# )
+# 
+# # Draw it in the plotting window
+# grid.newpage()
+# grid.draw(venn_2)
+###############################################################################
+
+
+
+
+
+waterfall_roche_compare(all_conjugates_overlap_classified, nico_compare_df)
+
+
+
+################################################################################
+upper_cut <- compare_df %>% 
+  filter(significanceZ > 0)
+under_cut <- compare_df %>% 
+  filter(significanceZ < 0)
+
+significant_df <- compare_df %>%
+  filter(FDR <= 0.05 | AdjPval_enriched <= 0.05 | AdjPval_depleted <= 0.05)
+
+significanter_df <- compare_df %>%
+  filter((FDR <= 0.05 & AdjPval_enriched <= 0.05) | (AdjPval_depleted <= 0.05 & FDR <= 0.05))
+
+colnames(compare_df)
+ggplot(compare_df, aes(x = MedianLFC_enriched, y = significanceZ)) +
+  geom_point() +  # Add points for scatter plot
+  labs(x = "Median LFC Enriched", y = "Significance Z", 
+       title = "compare_df: Median LFC Enriched vs. Significance Z") +
+  theme_bw()  # Optional: for a clean, minimalistic theme
+ggplot(significant_df, aes(x = MedianLFC_enriched, y = significanceZ)) +
+  geom_point() +  # Add points for scatter plot
+  labs(x = "Median LFC Enriched", y = "Significance Z", 
+       title = "significant_df: Median LFC Enriched vs. Significance Z") +
+  theme_bw()  # Optional: for a clean, minimalistic theme
+# Calculate Spearman rank correlation between two columns
+spearman_corr <- cor.test(compare_df$AdjPval_enriched, compare_df$FDR, method = "spearman")
+# Print the result
+print(spearman_corr)
+
+spearman_corr <- cor.test(compare_df$Pval_enriched, compare_df$p.value, method = "spearman")
+# Print the result
+print(spearman_corr)
+
+spearman_corr <- cor.test(compare_df$MedianLFC_enriched, compare_df$significanceZ, method = "spearman")
+# Print the result
+print(spearman_corr)
+spearman_corr <- cor.test(significant_df$MedianLFC_depleted, significant_df$significanceZ, method = "spearman")
+# Print the result
+print(spearman_corr)
+
+cor_df <- compare_df %>% select(-c(symbol, entrez, numGuides, seq, sgRNA, ))
+cor_matrix <- cor(cor_df, method = "pearson")
+
+
+
+make_cor_heatmap(compare_df, "compare_df")
+make_cor_heatmap(under_cut, "under_cut")
+make_cor_heatmap(upper_cut, "upper_cut")
+print(make_cor_heatmap(significant_df, "significant_df"))
+
+excel_file_path <- get_file_path(output_folder,"roche_us_overlap.xlsx")
+write_xlsx(significanter_df, excel_file_path)
+```
+
+``` {r Autophagy_compare, eval=FALSE}
+autophagy_path <- get_file_path(roche_folder, "Autophagy_Genes.xlsx")
+autophagy_df <- read_excel(autophagy_path)
+autophagy_compare_df <- merge(autophagy_df, Hits_current_settings, by = "entrez")
+
+print(setdiff(autophagy_df$Autophagy_gene, autophagy_compare_df$Autophagy_gene))
+```
+
+``` {r sublibrary_compare, eval=FALSE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(ggplot2)
+library(tibble)
+
+norm_count_df_long <- normalize_count_df_long(count_df_long, norm_method = "control_median")
+
+df <- norm_count_df_long %>%
+  left_join(
+    merged_sgRNA_df %>% select(sgrna_id, entrez),
+    by = c("sgRNA" = "sgrna_id")
+  ) %>%
+  mutate(
+    # EXACTLY what you asked: NA entrez -> sgRNA
+    feature = if_else(is.na(entrez), sgRNA, as.character(entrez))
+
+    # If you prefer matching across sublibs for the NA cases, use this instead:
+    # feature = if_else(is.na(entrez), str_remove(sgRNA, "_\\d+$"), as.character(entrez))
+  )
+df_aggr <- df %>%
+  group_by(condition, sublib, feature) %>%
+  summarise(value = sum(count), .groups = "drop")
+df_wide <- df_aggr %>%
+  pivot_wider(names_from = sublib, values_from = value)
+
+g <- df_wide %>% group_by(condition)
+keys <- group_keys(g)$condition
+
+cors_by_condition <- g %>%
+  group_map(~{
+    mat <- as.matrix(select(.x, where(is.numeric)))
+    cor(mat, method = "spearman", use = "pairwise.complete.obs")
+  }) %>%
+  set_names(keys)
+
+
+
+plot_cor_heatmap <- function(C, title = NULL) {
+  as.data.frame(C) %>%
+    rownames_to_column("lib1") %>%
+    pivot_longer(-lib1, names_to = "lib2", values_to = "rho") %>%
+    ggplot(aes(x = lib1, y = lib2, fill = rho)) +
+    geom_tile() +
+    geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
+    coord_equal() +
+    scale_fill_gradient2(limits = c(-1, 1)) +
+    labs(title = title, x = NULL, y = NULL, fill = "Spearman\nρ") +
+    theme_minimal(base_size = 12) +
+    theme(
+      panel.grid = element_blank(),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+}
+
+# Create one plot per condition (cors_by_condition is a named list)
+cor_plots <- imap(cors_by_condition, ~plot_cor_heatmap(.x, title = paste("Correlation heatmap:", .y)))
+# 
+# # Show one (e.g. input)
+# cor_plots$input
+
+# Or print all
+walk(cor_plots, print)
+```
+
+``` {r Liangfu_Plots_1, eval=FALSE}
+library(dplyr)
+library(ggplot2)
+
+count_df_long %>%
+  filter(count > 0) %>%                      # log2 needs >0
+  mutate(log2_count = log2(count)) %>%       # bins in log2 space
+  ggplot(aes(x = log2_count)) +
+  geom_histogram(bins = 50, boundary = 0) +
+  facet_grid(condition ~ sublib) +
+  labs(x = "log2(read count)", y = "Number of sgRNAs") +
+  theme_bw()
+# all unique (condition, sublib) combinations
+groups <- count_df_long %>%
+  distinct(condition, sublib)
+
+for (i in seq_len(nrow(groups))) {
+
+  this_condition <- groups$condition[i]
+  this_sublib    <- groups$sublib[i]
+
+  df_sub <- count_df_long %>%
+    filter(condition == this_condition,
+           sublib == this_sublib,
+           count > 0) %>%                # needed for log2()
+    mutate(log2_count = log2(count))
+
+  p <- ggplot(df_sub, aes(x = log2_count)) +
+    geom_histogram(bins = 50, fill = "blue", color = "white") +
+    labs(
+      title = paste("Condition:", this_condition, "| SubLib:", this_sublib),
+      x = "log2(read count)",
+      y = "Number of sgRNAs"
+    ) +
+    theme_bw() +
+    theme(
+      plot.margin = margin(t = 15, r = 10, b = 10, l = 10),
+      plot.title = element_text(margin = margin(b = 10))
+    ) +
+    coord_cartesian(xlim = c(0, 15), ylim = c(0, 3000))
+  print(p)  # important inside a loop
+}
+
+library(dplyr)
+library(tibble)
+
+coverage_df <- tibble(
+  sample = c("I_L1_1", "I_L3_1", "I_L5_1",
+             "L_L1_1", "L_L3_1", "L_L5_1",
+             "U_L1_1", "U_L3_1", "U_L5_1"),
+  coverage = c(100.00, 100.00, 100.00,
+               99.99,  99.99,  99.96,
+               99.99,  99.98,  99.99)
+)
+coverage_df <- tibble(
+  sample = c("I_L1_1", "I_L3_1", "I_L5_1",
+             "L_L1_1", "L_L3_1", "L_L5_1",
+             "U_L1_1", "U_L3_1", "U_L5_1"),
+  coverage = c(100.00, 100.00, 100.00,
+               100.00,  100.00,  100.00,
+               100.00,  100.00,  100.00)
+)
+coverage_df <- tibble(
+  sample = c("I_L1_1", "I_L3_1", "I_L5_1",
+             "L_L1_1", "L_L3_1", "L_L5_1",
+             "U_L1_1", "U_L3_1", "U_L5_1"),
+  coverage = c(100.00, 100.00, 100.00,
+               100.00,  100.00,  99.99,
+               99.99,  100.00,  100.00)
+)
+ggplot(coverage_df, aes(x = sample, y = coverage)) +
+  geom_col(fill = "blue") +
+  labs(
+    title = "Correlation coverage",
+    x = "Sample",
+    y = "sgRNA coverage (%)"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_cartesian(ylim = c(99.9, 100))   # zoom in so you can see differences
+
+library(dplyr)
+library(ggplot2)
+
+groups <- count_df_long %>%
+  distinct(condition, sublib)
+
+for (i in seq_len(nrow(groups))) {
+
+  this_condition <- groups$condition[i]
+  this_sublib    <- groups$sublib[i]
+
+  rank_df <- count_df_long %>%
+    filter(condition == this_condition,
+           sublib == this_sublib,
+           count > 0) %>%                 # needed for log scale
+    arrange(desc(count)) %>%              # highest -> lowest
+    mutate(rank = row_number()) %>%       # rank index
+    select(rank, count)
+
+  p <- ggplot(rank_df, aes(x = rank, y = count)) +
+    geom_line(color = "blue") +
+    labs(
+      title = paste("Knee plot of sgRNA read counts |", this_condition, "|", this_sublib),
+      x = "Rank (sorted by count)",
+      y = "Count (log10)"
+    ) +
+    scale_y_log10() +
+    theme_bw() +
+    theme(
+      plot.margin = margin(t = 15, r = 10, b = 10, l = 10),
+      plot.title = element_text(margin = margin(b = 10))
+    )
+
+  print(p)
+}
+
+```
+
+``` {r Liangfu_Plots_1, eval=FALSE}
+lg2fc_df <- maude_counts_df %>%
+    left_join(merged_sgRNA_df %>% select(sgrna_id, Gene, count), by = c("sgRNA" = "sgrna_id")) %>% 
+  rename(plasmid_count = count) %>% 
+  filter(!isNontargeting)
+
+
+vs_input <- plot_l2fc_scatter(lg2fc_df,
+                 baseline = "input",
+                 x_axis = "upper",
+                 y_axis = "lower",
+                 save_image_file_path = NULL,
+                 genes = c("EGFP","AGO2"),
+                 mark_N_special = 8,
+                 pseudocount = 1e-9)
+  
+vs_plasmid <- plot_l2fc_scatter(lg2fc_df,
+                 baseline = "plasmid_count",
+                 x_axis = "upper",
+                 y_axis = "lower",
+                 save_image_file_path = NULL,
+                 genes = c("EGFP","AGO2"),
+                 mark_N_special = 8,
+                 pseudocount = 1e-9)
+
+csv_file_path <- get_file_path(results_output_folder,"L2FC_vs_input.csv")
+write_csv(vs_input$means, csv_file_path)
+csv_file_path <- get_file_path(results_output_folder,"L2FC_vs_plasmid.csv")
+write_csv(vs_plasmid$means, csv_file_path)
+```
+
+```{r top_guide_per_gene, eval=FALSE}
+dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+merged_sgRNA_df <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds")
+PA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
+DCA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+GAL_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
+
+guide_summary_all <- build_conjugate_maude_summary(
+  conjugates_overlap = all_conjugates_overlap_classified,
+  merged_sgRNA_df = merged_sgRNA_df,
+  DCA_dir = DCA_dir,
+  PA_dir = PA_dir,
+  GAL_dir = GAL_dir,
+  mode = "use_all"
+)
+best_sgRNA_all <- guide_summary_all$modified_overlap_df
+
+guide_summary_confirmed <- build_conjugate_maude_summary(
+  conjugates_overlap = all_conjugates_overlap_classified,
+  merged_sgRNA_df = merged_sgRNA_df,
+  DCA_dir = DCA_dir,
+  PA_dir = PA_dir,
+  GAL_dir = GAL_dir,
+  mode = "use_only_confirmed_hits"
+)
+best_sgRNA_confirmed_hits <- guide_summary_confirmed$modified_overlap_df
+
+saveRDS(best_sgRNA_all,"/g/steinmetz/link/sharing/nico/best_guides_all.rds")
+saveRDS(best_sgRNA_confirmed_hits,"/g/steinmetz/link/sharing/nico/best_guides_confirmed_hits.rds")
+```
+
+
+```{r top_guide_mean_Z, eval=FALSE}
+# dual_rep_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep/"
+# all_conjugates_overlap_classified <- readRDS(file.path(dual_rep_dir, "all_conjugates_overlap_classified.rds"))
+merged_sgRNA_df <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/whole_genome_sublibs_1_to_4_merged_sgRNA_df.rds")
+PA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc"
+DCA_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc"
+GAL_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc"
+
+guide_z_ranks <- build_maude_guide_z_rank_df(
+  merged_sgRNA_df = merged_sgRNA_df,
+  DCA_dir = DCA_dir,
+  PA_dir = PA_dir,
+  GAL_dir = GAL_dir
+)
+
+guide_z_definitive_ranks <- guide_z_ranks %>%
+  group_by(gene, entrez, sgRNA, seq) %>%
+  summarise(
+    mean_Z_across_screens = mean(mean_Z, na.rm = TRUE),
+    n_screens = sum(!is.na(mean_Z)),
+    screens_used = paste(sort(origin[!is.na(mean_Z)]), collapse = ";"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    mean_Z_across_screens = if_else(
+      n_screens == 0,
+      NA_real_,
+      mean_Z_across_screens
+    ),
+    abs_mean_Z_across_screens = abs(mean_Z_across_screens),
+    Z_direction_across_screens = case_when(
+      mean_Z_across_screens > 0 ~ "positive",
+      mean_Z_across_screens < 0 ~ "negative",
+      mean_Z_across_screens == 0 ~ "zero",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  group_by(gene) %>%
+  mutate(
+    definitive_rank = dense_rank(desc(abs_mean_Z_across_screens))
+  ) %>%
+  ungroup() %>%
+  arrange(gene, definitive_rank, sgRNA)
+
+saveRDS(guide_z_ranks,"/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score_full.rds")
+writexl::write_xlsx(guide_z_ranks, "/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score_full.xlsx")
+saveRDS(guide_z_definitive_ranks,"/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score.rds")
+writexl::write_xlsx(guide_z_definitive_ranks, "/g/steinmetz/link/sharing/nico/bcwithqc_guides_ranked_by_Z_score.xlsx")
+
+guide_z_ranks_old <- readRDS("/g/steinmetz/link/sharing/nico/best_guides/by_Z_score/align_UMI_tools_guides_ranked_by_Z_score_full.rds")
+```
+
+
+```{r cleanup, eval=FALSE}
+delete_this = "/g/steinmetz/link/Amplicon_barcode_analysis/PA_subsampeling"
+delete_bam_and_reads(root = delete_this, dry_run = FALSE)
+```
+
+
+```{r bcwithqc_time_compare, eval=FALSE}
+res <- compare_log_runtimes(
+  old_time = c(
+    PA = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc_old/logs",
+    # DCA = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc_old/logs",
+    GAL = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc_old/logs"
+  ),
+  new_time = c(
+    PA = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/logs",
+    # DCA = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/logs",
+    GAL = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/logs"
+  )
+)
+
+t_diff_fpairs <- res$file_pairs
+t_diff_spairds <- res$sample_pairs
+t_diff_summary <- res$summary
+
+
+PA_mean_hits_bcwithqc <- automate_calc_replicate_means(
+    file_info_suffix = "bcwithqc_reads_control_median_RI_comb_sample_comb_none",
+    rds_output_folder = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds"
+) 
+```
+
+```{r load_guide_stats, eval=FALSE}
+pa_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/rds/MAUDE_gene_stats.rds"
+check_pa_bc_gene_fpath <- readRDS(pa_bc_gene_fpath)
+dca_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/rds/MAUDE_gene_stats.rds"
+check_dca_bc_gene_fpath <- readRDS(dca_bc_gene_fpath)
+gal_bc_gene_fpath <- "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc/rds/MAUDE_gene_stats.rds"
+check_gal_bc_gene_fpath <- readRDS(gal_bc_gene_fpath)
+```
+
+```{r load_guide_stats, eval=FALSE}
+# R/R_functions/EA_00_run_plot.R
+
+# 
+# count_df_long <- readRDS(cfg$paths$count_df_fpath) %>%
+#   rename(bin_name = condition)
+# saveRDS(count_df_long, cfg$paths$count_df_fpath)
+# read_count_df <- readRDS(cfg$paths$reads_count_df_fpath) %>%
+#   rename(bin_name = condition)
+# 
+# saveRDS(read_count_df, cfg$paths$reads_count_df_fpath)
+count_df_long <- readRDS(cfg$paths$count_df_fpath)
+cfg$counting$data_type <- "umis"
+if (identical("umis", cfg$counting$data_type)){
+  run_umi_read_scatter_plots(
+    umi_counts_df = count_df_long,
+    read_counts_df = readRDS(cfg$paths$reads_count_df_fpath),
+    cfg = cfg)
+}
+  
+run_count_density_plots(count_df_long = count_df_long, cfg = cfg)
+
+```
+
+```{r Jia_analysis, eval=FALSE}
+jia_read_counts <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds/count_df.rds")
+jia_umi_counts <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds_umis/count_df.rds")
+library <- readRDS(cfg$paths$library_path)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(stringr)
+library(patchwork)
+library(tidytext)
+
+# Helper: guess the sgRNA column in a table
+guess_sg_col <- function(df) {
+  candidates <- c("sgRNA", "sgrna_id", "sgrna_seq", "sgrna")
+  hit <- intersect(candidates, colnames(df))
+  if (length(hit) == 0) stop("No sgRNA column found in data frame.")
+  hit[1]
+}
+
+# Helper: guess the count column in a table
+guess_count_col <- function(df) {
+  candidates <- c("count", "counts", "value")
+  hit <- intersect(candidates, colnames(df))
+  if (length(hit) == 0) stop("No count column found in data frame.")
+  hit[1]
+}
+
+read_sg_col <- guess_sg_col(jia_read_counts)
+umi_sg_col  <- guess_sg_col(jia_umi_counts)
+read_ct_col  <- guess_count_col(jia_read_counts)
+umi_ct_col   <- guess_count_col(jia_umi_counts)
+
+# Make a common key for joining library <-> count tables.
+# Prefer sgrna_id if available; otherwise fall back to sgRNA or sgrna_seq.
+library_key_col <- guess_sg_col(library)
+
+# Standardize columns
+reads_df <- jia_read_counts %>%
+  transmute(
+    sgRNA = .data[[read_sg_col]],
+    read_count = .data[[read_ct_col]],
+    sample = if ("sample" %in% colnames(.)) sample else NA_character_,
+    condition = if ("condition" %in% colnames(.)) condition else NA_character_
+  )
+
+umis_df <- jia_umi_counts %>%
+  transmute(
+    sgRNA = .data[[umi_sg_col]],
+    umi_count = .data[[umi_ct_col]],
+    sample = if ("sample" %in% colnames(.)) sample else NA_character_,
+    condition = if ("condition" %in% colnames(.)) condition else NA_character_
+  )
+
+# If your library table uses sgrna_id, this join should work directly.
+# If not, change `sgRNA` to the appropriate key column in library.
+library_df <- library %>%
+  rename(
+    sgRNA = all_of(library_key_col)
+  ) %>%
+  select(sgRNA, gene, entrez_id, type, sgrna_seq)
+
+# Join read + UMI counts and add gene
+combined_df <- full_join(reads_df, umis_df, by = c("sgRNA", "sample", "condition")) %>%
+  left_join(library_df, by = "sgRNA") %>%
+  mutate(
+    read_count = replace_na(read_count, 0),
+    umi_count  = replace_na(umi_count, 0)
+  )
+
+# Optional: log transform for nicer plots
+combined_df <- combined_df %>%
+  mutate(
+    log10_read = log10(read_count + 1),
+    log10_umi  = log10(umi_count + 1)
+  )
+
+# ------------------------------------------------------------
+# 1) Scatter plot: read count vs UMI count by sgRNA
+# ------------------------------------------------------------
+p_scatter <- ggplot(combined_df, aes(x = read_count, y = umi_count)) +
+  geom_point(alpha = 0.35, size = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "Read count vs UMI count by sgRNA",
+    x = "Read count (log10 scale)",
+    y = "UMI count (log10 scale)"
+  ) +
+  theme_bw()
+
+# Optional: add correlation label
+cor_val <- cor(combined_df$read_count, combined_df$umi_count, method = "spearman", use = "complete.obs")
+p_scatter <- p_scatter +
+  annotate("text", x = Inf, y = Inf, label = paste0("Spearman rho = ", round(cor_val, 3)),
+           hjust = 1.1, vjust = 1.5, size = 4)
+
+# ------------------------------------------------------------
+# 2) Separate distributions of read and UMI counts
+# ------------------------------------------------------------
+dist_df <- combined_df %>%
+  select(sgRNA, gene, read_count, umi_count) %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count")
+  )
+
+p_dist <- ggplot(dist_df, aes(x = count + 1, fill = count_type)) +
+  geom_density(alpha = 0.35) +
+  scale_x_log10() +
+  labs(
+    title = "Count distributions",
+    x = "Count + 1 (log10 scale)",
+    y = "Density",
+    fill = ""
+  ) +
+  theme_bw()
+
+# ------------------------------------------------------------
+# 3) Lowest 10 sgRNAs by read / UMI count
+# ------------------------------------------------------------
+
+low20_sg_df <- combined_df %>%
+  select(sgRNA, gene, read_count, umi_count) %>%
+  distinct() %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count"),
+    label = sgRNA
+  ) %>%
+  group_by(count_type) %>%
+  slice_min(order_by = count, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_low20_sg <- ggplot(
+  low20_sg_df,
+  aes(x = tidytext::reorder_within(label, count, count_type), y = count, fill = count_type)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~count_type, scales = "free_y", ncol = 1) +
+  tidytext::scale_x_reordered() +
+  labs(
+    title = "Lowest 10 sgRNAs by count type",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_bw()
+
+
+# ------------------------------------------------------------
+# 4) Lowest 10 genes by aggregated read / UMI count
+# ------------------------------------------------------------
+
+gene_df <- combined_df %>%
+  filter(!is.na(gene), gene != "") %>%
+  filter(type == "targeting") %>%
+  group_by(gene) %>%
+  summarise(
+    read_count = sum(read_count, na.rm = TRUE),
+    umi_count  = sum(umi_count, na.rm = TRUE),
+    n_sgRNAs   = n_distinct(sgRNA),
+    .groups = "drop"
+  )
+
+low20_gene_df <- gene_df %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count")
+  ) %>%
+  group_by(count_type) %>%
+  slice_min(order_by = count, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_low20_gene <- ggplot(
+  low20_gene_df,
+  aes(x = tidytext::reorder_within(gene, count, count_type), y = count, fill = count_type)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~count_type, scales = "free_y", ncol = 1) +
+  tidytext::scale_x_reordered() +
+  labs(
+    title = "Lowest 10 targeting genes by count type",
+    x = NULL,
+    y = "Aggregated count"
+  ) +
+  theme_bw()
+
+# ------------------------------------------------------------
+# Combine and print
+# ------------------------------------------------------------
+
+print(p_scatter)
+print(p_dist)
+print(p_low20_sg)
+print(p_low20_gene)
+```

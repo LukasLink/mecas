@@ -1,0 +1,873 @@
+---
+title: "PCR_Amplicon_March"
+author: "Lukas"
+date: "2025-03-18"
+output: html_document
+params:
+  config: null
+
+  first_time: null
+
+  output_folder: null
+  input_folder: null
+  library_path: null
+  reference_fasta_path: null
+  reference_gtf_path: null
+  fastq_name_table_xlsx: null
+  strict_file_match: null
+
+  bcwithqc_dir: null
+  bcwithqc_config_path: null
+  bcwithqc_rf_folder: null
+  UMI_regex: null
+
+  skip_list: null
+  skip_list_sublib: null
+  skip_list_sample: null
+  include_controls_list: null
+  use_only_these_controls_list: null
+
+  read_counting: null
+  data_type: null
+  method: null
+  norm_method: null
+  combine_for_guide_stats: null
+  combine_for_gene_stats: null
+
+  recover_input: null
+  subsample_controls: null
+  use_custom_bins: null
+  same_controls_in_all_sublibraries: null
+
+  extra_suffix: null
+  simplified_rf_threshold: null
+  simplified_cf_threshold: null
+  upper_lower_percentage: null
+
+  drop_0s: null
+  strict_mode: null
+  min_guides_per_gene: null
+  auto_combine_replicates: null
+
+  n_threads: null
+  max_mem_bytes: null
+  genome_sa_index_n_bases: null
+---
+# Set User options here
+```{r setup, include=FALSE}
+#===============================================================================
+# Run setup 
+#===============================================================================
+
+print(.libPaths()) # Debugging; can be commented out.
+
+#-------------------------------------------------------------------------------
+# Find a specific file by walking up parent directories
+#-------------------------------------------------------------------------------
+
+find_up_file <- function(start_dir, filename, max_up = 15) {
+  d <- normalizePath(start_dir, mustWork = TRUE)
+
+  for (i in 0:max_up) {
+    candidate <- file.path(d, filename)
+    if (file.exists(candidate)) return(candidate)
+
+    parent <- dirname(d)
+    if (identical(parent, d)) break
+    d <- parent
+  }
+
+  stop("Could not find '", filename, "' searching upward from: ", start_dir)
+}
+
+#-------------------------------------------------------------------------------
+# Determine project root
+#-------------------------------------------------------------------------------
+
+# Now we find the location of the Rmd file we are running.
+# This can be set externally via SOURCE_RMD.
+rmd_path <- Sys.getenv("SOURCE_RMD", unset = "")
+
+start_dir <- if (nzchar(rmd_path) && file.exists(rmd_path)) {
+  dirname(normalizePath(rmd_path, mustWork = TRUE))
+} else {
+  getwd()
+}
+
+# Anchor file used to identify project root.
+anchor_rmd <- find_up_file(start_dir, "data_analysis_with_MAUDE.Rmd", max_up = 1)
+
+# The anchor's directory is the project root that contains functions/, config.yaml, etc.
+project_root_dir <- dirname(anchor_rmd)
+
+#-------------------------------------------------------------------------------
+# Load config.yaml
+#-------------------------------------------------------------------------------
+
+if (!requireNamespace("yaml", quietly = TRUE)) {
+  stop(
+    "The R package 'yaml' is required to read config.yaml.\n",
+    "Install it with: install.packages('yaml')"
+  )
+}
+
+# If params$config is provided, use it.
+# Otherwise, use config.yaml in project_root_dir and send a warning.
+if (!is.null(params$config) && !is.na(params$config) && nzchar(params$config)) {
+  config_path <- normalizePath(params$config, mustWork = TRUE)
+} else {
+  config_path <- file.path(project_root_dir, "config.yaml")
+
+  if (!file.exists(config_path)) {
+    stop(
+      "No config file was provided via params$config, and no default config.yaml ",
+      "was found in project_root_dir:\n",
+      config_path
+    )
+  }
+
+  warning(
+    "No config file was provided via params$config. ",
+    "Using default config.yaml from project_root_dir:\n",
+    config_path,
+    call. = FALSE
+  )
+
+  config_path <- normalizePath(config_path, mustWork = TRUE)
+}
+
+#-------------------------------------------------------------------------------
+# Source pipeline functions
+#-------------------------------------------------------------------------------
+
+source(file.path(project_root_dir, "R", "R_functions", "zzz_source_all.R"))
+
+#-------------------------------------------------------------------------------
+# Run setup
+#-------------------------------------------------------------------------------
+
+# LOREM IPSUM -> This rds files and merged_sgRNA_df must be generated before this is run. 
+
+message("Using config file: ", config_path)
+
+config <- yaml::read_yaml(config_path)
+# Priority explicit overrides > Rmd params > config.yaml
+cfg <- project_setup(
+  project_root_dir = project_root_dir,
+  config_path = config_path,
+  setup_mode = "setup",
+  only_one_logger = TRUE
+)
+# The old_suffix is here so I don't run into compatibility issues with already
+# analysed data. Should be removed in the future.
+
+
+#-------------------------------------------------------------------------------
+# Optional: handle use_only_these_controls
+#-------------------------------------------------------------------------------
+
+# If config$controls$use_only_these_controls contains entries, use them.
+# Otherwise, remove the object to preserve old downstream behavior.
+
+if (exists("use_only_these_controls_list") &&
+    length(use_only_these_controls_list) == 0) {
+  rm(use_only_these_controls_list)
+}
+```
+
+## Generate the long format read/umi counts either from my pipline or from bcwithqcs
+Also provides information for each file about coverage and correct alignment
+```{r prepare_fastq_inputs, eval=FALSE}
+manifest_output_path <- get_file_path(
+    rds_output_folder,
+    paste0("standardized_fastq_manifest_", file_info_suffix, ".tsv")
+)
+manifest <- prepare_fastq_inputs(
+  fastq_dir = input_folder,
+  fastq_name_table_file_path = fastq_name_table_xlsx,
+  output_symlink_dir = fastq_symlinks_folder,
+  manifest_output_path = manifest_output_path,
+  strict_file_match = strict_file_match
+)
+message("Using standardized FASTQ folder: ", fastq_symlinks_folder)
+message("FASTQ manifest written to: ", manifest_output_path)
+```
+
+```{r get_count_df_long, eval=TRUE}
+logger::log_info("Reading in read/UMI counts...")
+process_bcwithqc_data_backup <- process_bcwithqc_data
+pseudocount_added <- FALSE
+
+# sink(get_file_path(rds_output_folder,paste0(file_info_suffix,"_coverage.txt")),
+#      split = TRUE) # capture output into a file
+
+if (read_counting == "bcwithqc"){
+  count_df_long <- process_bcwithqc_data(
+                                     data_type = data_type,
+                                     skip_list = skip_list)
+} else if (read_counting == "align_UMI_tools") {
+  if (data_type == "umis"){
+    count_df_long <- process_folder_files(dedup_output_folder,
+                                          skip_list = skip_list) #Add threshold df if thresholds should be applied 
+  }
+  if (data_type == "reads"){
+    count_df_long <- process_folder_files(mapped_output_folder,
+                                          skip_list = skip_list) #Add threshold df if thresholds should be applied 
+  }
+} else {
+  stop(read_counting, " is not a valid read_counting value. Exiting. read_counting must be 'bcwithqc' or #align_UMI_tools'.")
+}
+
+# sink()
+
+# Extend the include_controls_list if use_only_these_controls_list is given
+if (exists("use_only_these_controls_list")) {
+  if (length(use_only_these_controls_list) > 0){
+    # list of sgRNAs that were not targeting (before) and not in allowed controls
+    excluded_controls <- count_df_long %>%
+      filter(group_category != "targeting", !sgRNA %in% use_only_these_controls_list) %>%
+      distinct(sgRNA) %>%
+      pull(sgRNA)
+  
+    include_controls_list <- c(include_controls_list, excluded_controls)
+  }
+}
+if (length(include_controls_list) > 0){
+  for (control_gene in include_controls_list){
+    count_df_long$group_category[grepl(control_gene, count_df_long$sgRNA)] <- "targeting"
+  }
+}
+
+# Combine either samples or sublibraries of the same condition. 
+if (combine_for_guide_stats != ""){
+  if (combine_for_guide_stats == "sample"){
+    count_df_long <- count_df_long %>%
+      group_by(sgRNA, sublib, condition) %>%
+      summarise(
+        # set sample name for the combined rows
+        sample = "sample_1",
+        count = sum(count, na.rm = TRUE),
+        exp = dplyr::first(exp),
+        group_category = dplyr::first(group_category),
+        
+        # keep one sublib/sgRNA (also fine even though they're grouping keys)
+        .groups = "drop"
+      )
+  }
+  if (combine_for_guide_stats == "sublib"){
+    count_df_long <- count_df_long %>%
+      group_by(sgRNA, sample, condition) %>%
+      summarise(
+        sublib = "sublib_1",
+        count = sum(count, na.rm = TRUE),
+        exp = dplyr::first(exp),
+        group_category = dplyr::first(group_category),
+        
+        # keep one sublib/sgRNA (also fine even though they're grouping keys)
+        .groups = "drop"
+      )    
+  }
+}
+
+logger::log_info("sgRNAs aligned to the wrong sublibrary were excluded from the analysis.")
+```
+
+```{r make_coverage_output, eval=TRUE}
+df_cov <- parse_coverage_file(log_file)
+
+mapping_results_df <- add_star_log_stats(df_cov)
+
+rm(df_cov)
+
+overall_targeting <- count_df_long %>%
+  summarise(
+    total_counts     = sum(count, na.rm = TRUE),
+    targeting_counts = sum(count[group_category == "targeting"], na.rm = TRUE),
+    targeting_perc   = 100 * targeting_counts / total_counts
+  ) %>%
+  mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
+
+targeting_by_group <- count_df_long %>%
+  group_by(condition, sublib, sample) %>%
+  summarise(
+    total_counts     = sum(count, na.rm = TRUE),
+    targeting_counts = sum(count[group_category == "targeting"], na.rm = TRUE),
+    targeting_perc   = 100 * targeting_counts / total_counts,
+    .groups = "drop"
+  ) %>%
+  mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
+
+overall_targeting_merged <- merged_sgRNA_df %>%
+  summarise(
+    total_counts     = sum(count, na.rm = TRUE),
+    targeting_counts = sum(count[!is.na(entrez)], na.rm = TRUE),
+    targeting_perc   = 100 * targeting_counts / total_counts
+  ) %>%
+  mutate(targeting_perc = sprintf("%.2f%%", targeting_perc))
+
+
+# ---- Write everything into ONE excel file as separate sheets ----
+write_xlsx(
+  list(
+    mapping_results          = mapping_results_df,
+    overall_targeting        = overall_targeting,
+    targeting_by_group       = targeting_by_group,
+    overall_targeting_reference = overall_targeting_merged
+  ),
+  get_file_path(results_output_folder,
+                paste0(file_info_suffix, "_mapping_results.xlsx"))
+)
+
+```
+## More detailed data exploration based on the long format read/umi counts 
+Run this to check the plots
+```{r data_exploration_violin, eval=FALSE}
+
+generate_all_violin_plots_and_summaries(count_df_long, y_limit = 8000, non_targeting = TRUE)
+generate_all_violin_plots_and_summaries(count_df_long, norm_method = "control_median", y_limit = 8000, non_targeting = TRUE) 
+
+
+
+summary_medians <- get_grouped_summary_wide(count_df_long)
+summary_means <- get_grouped_summary_wide(count_df_long, stat = "mean")
+print(summary_medians)
+print(summary_means)
+count_df_norm <- normalize_count_df_long(count_df_long, norm_method = "control_median")
+plots <- plot_violin_by_sublib_sample(count_df_long)
+for (i in 1:length(plots)) {
+  print(plots[[i]])
+}
+plots <- plot_violin_by_sublib_sample(count_df_long, norm_method = "control_median")
+for (i in 1:length(plots)) {
+  print(plots[[i]])
+}
+
+```
+
+## Bring the long form read/umi counts into a format accepted by MAUDE (wide format with input, upper and lower columns)
+
+```{r prepare_data_for_maude, eval=TRUE}
+
+if (subsample_controls == TRUE){
+  # count_df_long_old <- subsample_controls_func_old(count_df_long, merged_sgRNA_df)
+  count_df_long <- subsample_controls_func(count_df_long, merged_sgRNA_df)
+}
+
+if (!(norm_method %in% c("","control_median"))){
+  stop("Error: 'norm_method' must be one of '', 'control_median'. The script will now stop.")
+}
+if (norm_method == "control_median"){
+  count_df_long <- normalize_count_df_long(count_df_long,
+                                           norm_method = norm_method)
+}
+
+
+  
+maude_counts_df <- count_df_long_to_wide(count_df_long = count_df_long,
+                                         print = FALSE,
+                                         drop_0s = drop_0s,
+                                         recover_input = recover_input)
+if (!(method %in% c("","rep","sum",'rep_sample','rep_sublib'))){
+  stop("Error: 'method' must be one of '', 'rep', 'rep_sample', 'rep_sublib', or 'sum'. The script will now stop.")
+}
+
+if (method == ""){
+  maude_counts_df <- maude_counts_df %>% 
+    mutate(exp = "rep1")
+}
+if (method == "rep"){
+
+}
+if (method == "rep_sample"){
+  maude_counts_df <- maude_counts_df %>%
+    mutate(exp = sample)
+}
+if (method == "rep_sublib"){
+  maude_counts_df <- maude_counts_df %>%
+    mutate(exp = sublib)
+}
+if (method == "sum"){
+  stop("Method 'sum' is deprecated, use the option combine_for_guide_stats instead")
+  maude_counts_df <- count_df_long_to_wide(count_df_long = count_df_long,
+                                         print = FALSE,
+                                         drop_0s = drop_0s,
+                                         recover_input = TRUE,
+                                         for_sum = TRUE)
+  # Group by sgRNA and summarize the required columns
+  maude_counts_df <- maude_counts_df %>%
+    group_by(sgRNA, sublib) %>%
+    summarize(
+      input = pmax(sum(input, na.rm = TRUE), 0),  # Sum and ensure minimum is 0
+      upper = pmax(sum(upper, na.rm = TRUE), 0),  # Sum and ensure minimum is 0
+      lower = pmax(sum(lower, na.rm = TRUE), 0),  # Sum and ensure minimum is 0
+      isNontargeting = dplyr::first(isNontargeting),  # Take the first value of isNontargeting (same for all in the group)
+      .groups = 'drop'  # Drop the group structure after summarizing
+    ) %>%
+    mutate(
+      exp = "rep1",
+      input = input + 1,
+      upper = upper + 1,
+      lower = lower + 1
+    )
+}
+
+if (strict_mode){
+  if (pseudocount_added){
+    umi_threshold <- 2
+  } else {
+    umi_threshold <- 1
+  } 
+  cat("Strict Mode enabled\n")
+  cat("Rows before strict mode: \t", nrow(maude_counts_df),"\n")
+  maude_counts_df <- maude_counts_df %>%
+    filter(if_any(c(input, upper, lower), ~ . <= umi_threshold))
+  cat("Rows after strict mode: \t", nrow(maude_counts_df),"\n")
+}
+if (length(include_controls_list) > 0) {
+  for (control_gene in include_controls_list) {
+    maude_counts_df$isNontargeting[grepl(control_gene, maude_counts_df$sgRNA)] <- FALSE
+  }
+}
+if (exists("use_only_these_controls_list")) {
+  if (length(use_only_these_controls_list) > 0){
+    maude_counts_df$isNontargeting[ !(maude_counts_df$sgRNA %in% use_only_these_controls_list) ] <- FALSE
+  }
+}
+
+```
+
+## Exploration of the read/umi counts in MAUDE format
+
+```{r check_data_for_maude, eval=FALSE}
+if (data_type == "umis"){
+    data_name <- "UMIs"
+  }
+if (data_type == "reads"){
+    data_name <- "reads"
+  } 
+
+
+control_sanity_check(maude_counts_df)
+
+# Change FALSE to input_recovery if desired
+if (FALSE){
+  title_sufix_1 <- "(without input recovery)"
+  title_sufix_2 <- "(with input recovery)"
+} else {
+  title_sufix_1 <- "(before MAUDE preperation)"
+  title_sufix_2 <- "(ready for MAUDE)"
+}
+
+# 1. Count unique sgRNAs per (condition, exp)
+sgRNA_counts <- count_df_long %>%
+  group_by(condition, exp) %>%
+  summarise(total_count = sum(count), .groups = "drop") %>%
+  mutate(Sample = interaction(condition, exp, drop = TRUE),
+         Bin = condition)  # for x-axis
+
+# 2. Plot
+o <- ggplot(sgRNA_counts, aes(x = Sample, y = total_count, fill = Bin)) +
+  geom_col() +
+  labs(
+    title = paste("Sum of", data_name, "per sample"),
+    x = "Sample",
+    y = paste("Sum of", data_name)
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        legend.position = "none")
+
+
+# 1. Count unique sgRNAs per (condition, exp)
+sgRNA_counts <- count_df_long %>%
+  group_by(condition, exp) %>%
+  summarise(num_sgRNAs = n(), .groups = "drop") %>%
+  mutate(Sample = interaction(condition, exp, drop = TRUE),
+         Bin = condition)  # for x-axis
+
+# 2. Plot
+p <- ggplot(sgRNA_counts, aes(x = Sample, y = num_sgRNAs, fill = Bin)) +
+  geom_col() +
+  labs(
+    title = paste("Number of sgRNA entries per sample",title_sufix_1),
+    x = "Sample",
+    y = "Number of sgRNA entries"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        legend.position = "none")
+
+# 1. Count unique sgRNAs per (condition, exp)
+sgRNA_counts <- count_df_long %>%
+  group_by(condition) %>%
+  summarise(num_sgRNAs = n(), .groups = "drop") %>%
+  mutate(Bin = condition)  # for x-axis
+
+# 2. Plot
+q <- ggplot(sgRNA_counts, aes(x = Bin, y = num_sgRNAs, fill = Bin)) +
+  geom_col() +
+  labs(
+    title = paste("Number of sgRNA entries per bin", title_sufix_1),
+    x = "Bin",
+    y = "sgRNA entries"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        legend.position = "none")
+
+totals_df <- maude_counts_df %>% 
+  summarise(
+    input = sum(!is.na(input)),
+    upper = sum(!is.na(upper)),
+    lower = sum(!is.na(lower))
+  ) %>% 
+  pivot_longer(
+    cols       = everything(),
+    names_to   = "Bin",
+    values_to  = "count_non_na"
+  )
+
+r <- ggplot(totals_df, aes(x = Bin, y = count_non_na, fill = Bin)) +
+  geom_col() +
+  labs(
+    title = paste("Number of sgRNA entries per bin", title_sufix_2),
+    x = "Bin",
+    y = "Number of sgRNA entries"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        legend.position = "none")
+
+# 1. Summarise total counts per condition
+totals_df <- maude_counts_df %>% 
+  summarise(
+    input = sum(input, na.rm=TRUE),
+    upper = sum(upper, na.rm=TRUE),
+    lower = sum(lower, na.rm=TRUE)
+  ) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to  = "Bin",
+    values_to = "total_count"
+  )
+
+# 2. Plot
+s <- ggplot(totals_df, aes(x = Bin, y = total_count, fill = Bin)) +
+  geom_col() +
+  labs(
+    title = paste("Sum of", data_name, "per bin"),
+    x     = "Bin",
+    y     = "Total counts"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x  = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
+
+print(q)
+print(r)
+print(s)
+print(o)
+print(p)        
+plot_maude_qc(maude_counts_df)
+# plot_maude_qc(maude_counts_df, add_0s = TRUE)
+```
+
+## Run MAUDE and generate maude_guide_hits and maude_gene_hits
+
+```{r run_MAUDE, eval=TRUE}
+
+unique_exp <- unique(maude_counts_df$exp)
+
+# Define bin stats with 10% for lower/upper each
+lower_bin_end = upper_lower_percentage
+upper_bin_start = 1 - upper_lower_percentage
+
+maude_bins <- tibble(Bin = rep(c('upper', 'lower'), length(unique_exp)),  # Repeat 'upper' and 'lower' for each exp
+                     exp = rep(unique_exp, each = 2),  # Repeat each exp value twice for 'upper' and 'lower'
+                     binStartQ = ifelse(rep(c('upper', 'lower'), length(unique_exp)) == 'lower', 0.001, upper_bin_start),
+                     binEndQ = ifelse(rep(c('upper', 'lower'), length(unique_exp)) == 'lower', lower_bin_end, 0.999),
+                     fraction = binEndQ - binStartQ,
+                     binStartZ = qnorm(binStartQ),
+                     binEndZ = qnorm(binEndQ)) %>%
+  select(Bin, binStartQ, binEndQ, fraction, binStartZ, binEndZ, exp) %>%
+  as.data.frame()
+
+
+
+if (first_time == TRUE){
+  ## The input dataframe needs to have the lower, upper and input columns.
+  ## use maude to calculate guide level statistics.
+  maude_guide_stats <- findGuideHitsAllScreens(
+    experiments = unique(maude_counts_df['exp']),
+    countDataFrame = maude_counts_df,
+    binStats = maude_bins,
+    sortBins = c('lower', 'upper'),
+    unsortedBin = 'input',
+    negativeControl = 'isNontargeting'
+  )
+  
+  saveRDS(maude_guide_stats,file.path(rds_output_folder,
+                                      paste0("MAUDE_guide_stats", file_suffix)))
+} else {
+  maude_guide_stats <- readRDS(file.path(rds_output_folder,
+                                         paste0("MAUDE_guide_stats", file_suffix)))
+}
+
+
+if (first_time == TRUE){
+  
+  maude_guide_stats <- maude_guide_stats %>%
+    left_join(
+      merged_sgRNA_df %>%
+        select(sgrna_id, entrez) %>%
+        distinct(sgrna_id, .keep_all = TRUE),
+      by = c("sgRNA" = "sgrna_id")
+    ) %>%
+    mutate(entrez = coalesce(as.character(entrez), sgRNA))
+  
+  # any entries from include_controls_list are manually turned into genes
+  if (length(include_controls_list) > 0) {
+    for (control_gene in include_controls_list) {
+      # here we remove everything after the last _, so stuff like AAVS1_9 and
+      # AAVS1_13 are both treated as AAVS1
+      control_gene <- sub("_[^_]*$", "", control_gene)
+      maude_guide_stats$entrez[grepl(control_gene, maude_guide_stats$sgRNA)] <- control_gene
+    }
+  }
+ 
+  if (combine_for_gene_stats != "none"){
+    if (!(combine_for_gene_stats %in% c("all","sublib","sample"))){
+      stop("combine_for_gene_stats must be one of: 'all','none','sublib','sample'")
+    }
+    if (combine_for_gene_stats == "all"){
+      maude_guide_stats$exp <- "rep1"
+    }
+    if (combine_for_gene_stats == "sublib"){
+      maude_guide_stats <- maude_guide_stats %>% 
+        mutate(exp = sample)
+    }
+    if (combine_for_gene_stats == "sample"){
+      maude_guide_stats <- maude_guide_stats %>% 
+        mutate(exp = sublib)
+    }    
+  }
+  
+  ## calculate gene-level summarized scores
+  maude_gene_stats <- getElementwiseStats(
+    experiments = unique(maude_guide_stats['exp']),
+    normNBSummaries = maude_guide_stats,
+    negativeControl = 'isNontargeting',
+    elementIDs = 'entrez'
+  )
+  
+  # Filter out all genes with not enough guides pointing to them
+  maude_gene_stats <- maude_gene_stats %>%
+    filter(numGuides >= min_guides_per_gene)
+  
+  saveRDS(maude_gene_stats,file.path(rds_output_folder,
+                                     paste0("MAUDE_gene_stats", file_suffix)))
+} else {
+  maude_gene_stats <- readRDS(file.path(rds_output_folder,
+                                        paste0("MAUDE_gene_stats", file_suffix)))
+}
+
+maude_guide_stats <- readRDS(file.path(rds_output_folder,
+                                       paste0("MAUDE_guide_stats", file_suffix)))
+maude_gene_stats <- readRDS(file.path(rds_output_folder,
+                                      paste0("MAUDE_gene_stats", file_suffix)))
+
+
+```
+
+
+## Generate Waterfall plots for the data
+```{r Waterfall_plot, eval=FALSE}
+Hits_current_settings <- add_info_wrapper(file_info_suffix)
+if (length(include_controls_list) > 0) {
+  for (control_gene in include_controls_list) {
+    # here we remove everything after the last _, so stuff like AAVS1_9 and
+    # AAVS1_13 are both treated as AAVS1
+    control_gene <- sub("_[^_]*$", "", control_gene)
+    Hits_current_settings$symbol[grepl(control_gene, Hits_current_settings$entrez)] <- control_gene
+  }
+  # Filter out rows where the 'symbol' is in the include_controls_list
+  Hits_current_settings_no_controls <- Hits_current_settings %>% 
+    filter(!symbol %in% include_controls_list | is.na(symbol))
+}
+
+
+# Basic plot
+plot_significance_by_rank(Hits_current_settings)
+
+# Mark a special gene and top 10 hits
+plot_significance_by_rank(Hits_current_settings,
+                          mark_special = "EGFP",
+                          mark_cntrl = FALSE,
+                          mark_all_signif_level = 0.05,
+                          signif_lines = TRUE,
+                          box_padding = 0.6)
+
+plot_significance_by_rank(Hits_current_settings_no_controls,
+                          mark_special = c("AHSA1","AGO2"),
+                          mark_all_signif_level = 0.05,
+                          mark_cntrl = FALSE,
+                          signif_lines = TRUE,
+                          mark_N_top_hits = 3,
+                          box_padding = 0.6)
+
+plot_significance_by_rank(Hits_current_settings,
+                          mark_special = "AHSA1",
+                          mark_N_top_hits = 3,
+                          box_padding = 0.6,
+                          no_text = TRUE)
+
+source(file.path(project_root_dir, "functions", "zzz_source_all.R"))
+p <- plot_significance_by_rank(Hits_current_settings,
+                          mark_special = c("AGO2","EGFP"),
+                          mark_cntrl = FALSE,
+                          mark_all_signif_level = 0.05,
+                          signif_lines = TRUE,
+                          box_padding = 0.6,
+                          break_in_plot = c(22,70),
+                          top_padding = 3,
+                          custom_title = "Significance Z-score by gene rank for GalNAc-siRNA")
+# print(p) #Comment out the print command for non squished saving. 
+ggsave(
+  "/g/steinmetz/link/sharing/nico/poster_plots/Waterfall_GalNAc.pdf",
+  p
+)
+
+
+# Just highlight controls
+plot_significance_by_rank(Hits_current_settings, mark_cntrl = TRUE)
+plot_significance_by_rank(export_df, mark_cntrl = TRUE, mark_N_top_hits = 3, box_padding = 0.9)
+```
+
+# Combine replicas if auto_combine_repicates is set to TRUE
+
+``` {r auto_combine_replicates, eval=TRUE}
+if (auto_combine_replicates){
+  # if we have replicates, handle them now
+  if (length(unique(maude_gene_stats$exp)) > 1){
+    genes_with_rep <- add_info_wrapper(file_info_suffix)
+  
+    export_df <- genes_with_rep %>%
+      group_by(symbol, entrez) %>%
+      summarise(
+        numGuides = sum(numGuides, na.rm = TRUE),
+        seq       = first(seq),
+        sgRNA     = first(sgRNA),
+        meanZ     = mean(meanZ, na.rm = TRUE),
+  
+        # Stouffer’s method (equal weights); use count of non-NA Zs in the denominator
+        stoufferZ = sum(significanceZ, na.rm = TRUE) /
+                    sqrt(sum(!is.na(significanceZ))),
+        # For clarity: final significance Z = stoufferZ
+        significanceZ = stoufferZ,
+        
+        .groups = "drop"
+      ) %>%
+      mutate(
+        # two-sided p from Stouffer Z
+        p.value = 2 * pnorm(abs(stoufferZ), lower.tail = FALSE),
+        FDR     = p.adjust(p.value, method = "BH")
+      )
+    export_df <- export_df %>%
+      select(symbol, entrez, numGuides, stoufferZ, meanZ, significanceZ, p.value, FDR, seq, sgRNA)
+  } else {
+    print("No replicates present, skipping replicate combination")
+    export_df <- add_info_wrapper(file_info_suffix)
+  }
+} else {
+  export_df <- add_info_wrapper(file_info_suffix)
+}
+
+if (length(include_controls_list) > 0) {
+  for (control_gene in include_controls_list) {
+    export_df$symbol[export_df$entrez == control_gene] <- control_gene
+  }
+}
+
+```
+
+# Export the Data as CSV and excel file
+
+``` {r basic_export, eval=TRUE}
+
+# Write to Excel
+csv_file_path <- sub(".rds",".csv",file.path(results_output_folder,
+                                             paste0("MAUDE_Hits", file_suffix)))
+write_csv(export_df, csv_file_path)
+
+excel_file_path <- sub("\\.rds$", ".xlsx", file.path(results_output_folder,
+                                             paste0("MAUDE_Hits", file_suffix)))
+write_xlsx(export_df, excel_file_path)
+```
+
+``` {r read_count_export, eval=FALSE}
+# Save read counts to csv and rds
+rds_count_file_path <- get_file_path(rds_output_folder, paste0("maude_counts",file_suffix))
+
+counts_df <- maude_counts_df %>% left_join(merged_sgRNA_df %>% 
+                                             select(sgrna_id, entrez, Gene),
+                                           by = c("sgRNA" = "sgrna_id"))
+saveRDS(counts_df, rds_count_file_path)
+# csv_file_path <- sub(".rds",".csv",paste0(results_output_folder, "/", "Counts", file_suffix))
+# write_csv(maude_counts_df, csv_file_path)
+
+```
+
+This block is for getting ola her ranking between guides, 
+Just run 
+``` {r ola_df, eval=FALSE}
+############# Run this block once for PA, DCA, and GALNAC each #################
+################################################################################
+new_rows <- maude_guide_stats %>%
+  filter(
+    str_detect(sgRNA, fixed("HDCRISPR_A_ENSG00000118873")) | # rab
+    str_detect(sgRNA, fixed("HDCRISPR_A_ENSG00000119888")) | # EPCAM
+    str_detect(sgRNA, fixed("HDCRISPR_B_ENSG00000119888")) | # EPCAM
+    str_detect(sgRNA, fixed("HDCRISPR_A_ENSG00000164414")) | # slca1
+    str_detect(sgRNA, fixed("HDCRISPR_B_ENSG00000164414"))   # slca1
+  ) %>%
+  mutate(
+    screen = sub(".*_([^_]+)$", "\\1", basename(output_folder))
+  )
+
+if (exists("ola_df")) {
+  ola_df <- bind_rows(ola_df, new_rows) %>% distinct()
+} else {
+  ola_df <- new_rows %>% distinct()
+}
+############# Run this block only after ola_df has been built completly ########
+################################################################################
+
+ola_df <- ola_df %>% 
+  left_join(
+    merged_sgRNA_df %>% select(sgrna_id, seq, Gene, count) %>% 
+      rename(gene = Gene,
+             library_count = count),
+    by = c("sgRNA" = "sgrna_id")
+  )
+
+ranked_df <- ola_df %>%
+  group_by(gene, sgRNA) %>%
+  summarise(mean_Z = mean(Z, na.rm = TRUE), .groups = "drop") %>%
+  group_by(gene) %>%
+  mutate(
+    rank = dense_rank(dplyr::desc(abs(mean_Z)))
+  ) %>%
+  ungroup() %>%
+  arrange(gene, rank)
+
+
+saveRDS(ola_df, "/g/steinmetz/link/sharing/ola_guides_raw_df.rds")
+saveRDS(ranked_df, "/g/steinmetz/link/sharing/ola_guides_ranked_df.rds")
+```
