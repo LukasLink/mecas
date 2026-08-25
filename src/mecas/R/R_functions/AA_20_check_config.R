@@ -768,7 +768,7 @@
   
   "debug.MAUDE" = function(option, name) {
     .validate_logical(option, name)
-  },
+  }
   
 )
 
