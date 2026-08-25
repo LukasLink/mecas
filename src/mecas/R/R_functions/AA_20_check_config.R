@@ -764,7 +764,12 @@
     .validate_numeric(option, name, required = TRUE, min = 1)
   },
   
-  "plots.waterfall.file_format" = .validate_choice(c("png", "pdf", "svg"))
+  "plots.waterfall.file_format" = .validate_choice(c("png", "pdf", "svg")),
+  
+  "debug.MAUDE" = function(option, name) {
+    .validate_logical(option, name)
+  },
+  
 )
 
 #-------------------------------------------------------------------------------
