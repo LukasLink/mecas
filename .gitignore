@@ -6,3 +6,9 @@ binned_PCR_amplicon_UMI_analysis.Rproj
 /.snakemake/
 /src/mecas/containers/
 /.cache/
+*.sif
+dist/
+dist-check/
+build/
+*.egg-info/
+__pycache__/

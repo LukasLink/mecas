@@ -1,0 +1,18 @@
+include README.md
+include LICENSE
+include src/mecas/Snakefile
+include src/mecas/config.yaml
+
+recursive-include src/mecas/R *
+recursive-include src/mecas/shell *
+recursive-include src/mecas/sample_profiles *
+recursive-include src/mecas/data *
+recursive-include src/mecas/example *
+
+recursive-exclude src/mecas/data *
+include src/mecas/data/dependency_df.rds
+
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.sif
+
