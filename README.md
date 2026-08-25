@@ -30,7 +30,8 @@ Skip to the end for additional/optional installation tips.
 
 ## Usage
 
-Display the general command overview with `mecas --help` and the options for each command with `mecas COMMAND --help` (example: `mecas all --help`).
+Display the general command overview with `mecas --help` and the options for each command with
+`mecas COMMAND --help` (example: `mecas all --help`).
 
 ### Quick start
 

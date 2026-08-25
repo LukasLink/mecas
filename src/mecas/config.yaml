@@ -45,13 +45,13 @@ counting:
   #   - "reads"
   #   - "umis"
   # CLI: --reads-or-umis {reads,umis}
-  data_type: "umis"
+  data_type: "reads"
 
   # Treat each sgRNA-UMI combination as belonging to its own pseudo-sublibrary.
   # This allows individual UMIs to act as replicates during downstream analysis.
   # CLI: --umis-as-sublibs
   # The CLI flag enables this option; omitting it leaves it disabled.
-  umis_as_sublibs: true
+  umis_as_sublibs: false
  
 # ------------------------------------------------------------------------------
 # QC filtering with cutadapt
@@ -104,13 +104,13 @@ controls:
   # any gene that matches an entry in include_controls will be treated as 
   # targeting, even if it is a control. 
   include_controls:
-    - "EGFP"
-    - "AAVS1_9"
-    - "AAVS1_13"
-    - "AAVS1_18"
-    - "AAVS1_19"
-    - "AAVS1_25"
-    - "AAVS1_35"
+    # - "EGFP"
+    # - "AAVS1_9"
+    # - "AAVS1_13"
+    # - "AAVS1_18"
+    # - "AAVS1_19"
+    # - "AAVS1_25"
+    # - "AAVS1_35"
 
   # Optional: restrict analysis to use only specified controls.
   use_only_these_controls: []

@@ -1,4 +1,4 @@
-Amplicon Barcode Analysis Pipeline
+MECAS Library Construction
 Library Formatting Requirements
 ================================
 
