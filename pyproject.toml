@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mecas"
+version = "0.5.0"
+description = "MECAS — Multi-bin Error-Corrected Analysis of Screens, a Snakemake-based pipeline for pooled CRISPR screening analysis."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML>=6,<7",
+    "snakemake>=9,<10",
+    "snakemake-executor-plugin-cluster-generic",
+    "snakemake-executor-plugin-htcondor",
+    "snakemake-executor-plugin-lsf",
+    "snakemake-executor-plugin-sge",
+    "snakemake-executor-plugin-slurm",
+]
+
+[project.scripts]
+mecas = "mecas.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.exclude-package-data]
+[tool.setuptools.exclude-package-data]
+mecas = [
+    "data/9606.*",
+    "data/Battisti_*",
+    "data/Xie_*",
+    "data/h_ves_*",
+    "data/six_sublib_*",
+]

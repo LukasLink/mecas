@@ -3,55 +3,6 @@ title: "PCR_Amplicon_March"
 author: "Lukas"
 date: "2025-03-18"
 output: html_document
-params:
-  config: null
-
-  first_time: null
-
-  output_folder: null
-  input_folder: null
-  library_path: null
-  reference_fasta_path: null
-  reference_gtf_path: null
-  fastq_name_table_xlsx: null
-  strict_file_match: null
-
-  bcwithqc_dir: null
-  bcwithqc_config_path: null
-  bcwithqc_rf_folder: null
-  UMI_regex: null
-
-  skip_list: null
-  skip_list_sublib: null
-  skip_list_sample: null
-  include_controls_list: null
-  use_only_these_controls_list: null
-
-  read_counting: null
-  data_type: null
-  method: null
-  norm_method: null
-  combine_for_guide_stats: null
-  combine_for_gene_stats: null
-
-  recover_input: null
-  subsample_controls: null
-  use_custom_bins: null
-  same_controls_in_all_sublibraries: null
-
-  extra_suffix: null
-  simplified_rf_threshold: null
-  simplified_cf_threshold: null
-  upper_lower_percentage: null
-
-  drop_0s: null
-  strict_mode: null
-  min_guides_per_gene: null
-  auto_combine_replicates: null
-
-  n_threads: null
-  max_mem_bytes: null
-  genome_sa_index_n_bases: null
 ---
 # Set User options here
 ```{r setup, include=FALSE}
@@ -95,10 +46,9 @@ start_dir <- if (nzchar(rmd_path) && file.exists(rmd_path)) {
 }
 
 # Anchor file used to identify project root.
-anchor_rmd <- find_up_file(start_dir, "data_analysis_with_MAUDE.Rmd", max_up = 1)
-
-# The anchor's directory is the project root that contains functions/, config.yaml, etc.
-project_root_dir <- dirname(anchor_rmd)
+# compare_results.Rmd should live next to, or below, data_analysis_with_MAUDE.Rmd.
+anchor_project <- find_up_file(start_dir, "mecas.Rproj", max_up = 3)
+project_root_dir <- file.path(dirname(anchor_project), "src", "mecas")
 
 #-------------------------------------------------------------------------------
 # Load config.yaml

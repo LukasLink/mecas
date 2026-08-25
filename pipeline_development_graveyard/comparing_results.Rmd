@@ -50,10 +50,9 @@ start_dir <- if (nzchar(rmd_path) && file.exists(rmd_path)) {
 
 # Anchor file used to identify project root.
 # compare_results.Rmd should live next to, or below, data_analysis_with_MAUDE.Rmd.
-anchor_rmd <- find_up_file(start_dir, "data_analysis_with_MAUDE.Rmd", max_up = 1)
+anchor_project <- find_up_file(start_dir, "mecas.Rproj", max_up = 3)
+project_root_dir <- file.path(dirname(anchor_project), "src", "mecas")
 
-# The anchor's directory is the project root that contains functions/, config.yaml, etc.
-project_root_dir <- dirname(anchor_rmd)
 
 
 #-------------------------------------------------------------------------------

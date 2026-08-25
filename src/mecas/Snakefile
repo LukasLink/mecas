@@ -10,7 +10,7 @@ import gzip
 
 shell.executable("/usr/bin/bash")
 
-container: "containers/bcwithqc_maude.sif"
+container: "oras://ghcr.io/lukaslink/mecas-container:0.5.0"
 
 
 #-------------------------------------------------------------------------------
@@ -106,26 +106,28 @@ def require_dir(path, description):
         )
 
 
-require_dir(
-    config["paths"]["input_folder"],
-    "Input folder"
-)
+IS_CLEANUP = config.get("mecas_command") == "cleanup"
 
-require_file(
-    config["paths"]["library_path"],
-    "Library file"
-)
+if not IS_CLEANUP:
+    require_dir(
+        config["paths"]["input_folder"],
+        "Input folder"
+    )
 
-require_file(
-    config["paths"]["bcwithqc_config_path"],
-    "bcwithqc config"
-)
+    require_file(
+        config["paths"]["library_path"],
+        "Library file"
+    )
 
-require_file(
-  config["paths"]["fastq_name_table_xlsx"],
-    "FASTQ name table"
-)
+    require_file(
+        config["paths"]["bcwithqc_config_path"],
+        "bcwithqc config"
+    )
 
+    require_file(
+        config["paths"]["fastq_name_table_xlsx"],
+        "FASTQ name table"
+    )
 
 #-------------------------------------------------------------------------------
 # Validate data type

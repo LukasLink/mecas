@@ -17,11 +17,16 @@ PIPELINE_ITEMS = [
     "Snakefile",
     "R",
     "shell",
-    "containers",
     "sample_profiles",
     "data",
 ]
 
+APPTAINER_PREFIX = Path(
+    os.environ.get(
+        "MECAS_APPTAINER_PREFIX",
+        Path.home() / ".cache" / "mecas" / "apptainer",
+    )
+).expanduser().resolve()
 
 COMMAND_SPECS = {
     "all": {
@@ -108,6 +113,18 @@ def check_snakemake_available():
         )
 
     return snakemake_path
+  
+def check_apptainer_available():
+    apptainer_path = shutil.which("apptainer")
+
+    if apptainer_path is None:
+        sys.exit(
+            "\nERROR\n"
+            "Apptainer was not found on PATH.\n\n"
+            "MECAS requires Apptainer to download and run its container."
+        )
+
+    return apptainer_path
 #-------------------------------------------------------------------------------
 # Override for resource usage
 #-------------------------------------------------------------------------------
@@ -599,7 +616,8 @@ def build_parser():
 
 def run_cleanup(args, snakemake_args):
     snakemake_path = check_snakemake_available()
-
+    check_apptainer_available()
+    
     output_dir = Path(args.output_dir).resolve()
 
     pipeline_root = PACKAGE_ROOT
@@ -634,6 +652,8 @@ def run_cleanup(args, snakemake_args):
         args.snakemake_target,
         "--sdm",
         "apptainer",
+        "--apptainer-prefix",
+        str(APPTAINER_PREFIX),
         "--apptainer-args",
         f"--bind {apptainer_bind_string}",
         "--profile",
@@ -684,6 +704,7 @@ def main():
         return run_cleanup(args, snakemake_args)
 
     snakemake_path = check_snakemake_available()
+    check_apptainer_available()
     
     resolve_user_paths(args)
     
@@ -720,6 +741,8 @@ def main():
     common_snakemake_args = [
         "--sdm",
         "apptainer",
+        "--apptainer-prefix",
+        str(APPTAINER_PREFIX),
         "--apptainer-args",
         f"--bind {apptainer_bind_string}",
         "--profile",
