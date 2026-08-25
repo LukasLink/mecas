@@ -346,6 +346,32 @@ read_library_file <- function(library_path,
   
   type <- validate_control_type(df[[col_control]])
   
+  targeting_without_gene <- type == "targeting" &
+    is.na(entrez) &
+    is.na(symbol)
+  
+  if (any(targeting_without_gene)) {
+    invalid_sgrna_ids <- sgrna_id[targeting_without_gene]
+    
+    stop_log(
+      "Library contains guides marked as 'targeting' without an Entrez gene ID ",
+      "or gene symbol.\n\n",
+      "Every targeting guide must have a valid value in at least one of the ",
+      "'entrez_id/entrez' or 'gene_symbol/gene/symbol' columns.\n\n",
+      "Affected sgRNA IDs:\n  - ",
+      paste(head(invalid_sgrna_ids, 20), collapse = "\n  - "),
+      if (length(invalid_sgrna_ids) > 20) {
+        paste0(
+          "\n  ... and ",
+          length(invalid_sgrna_ids) - 20,
+          " additional guide(s)"
+        )
+      } else {
+        ""
+      }
+    )
+  }
+  
   if (is.null(col_count)) {
     count <- rep(as.integer(default_count), nrow(df))
   } else {

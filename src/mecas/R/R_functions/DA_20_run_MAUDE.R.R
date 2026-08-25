@@ -110,11 +110,18 @@ run_MAUDE <- function(maude_counts_df,
     maude_guide_stats <- maude_guide_stats %>%
       dplyr::left_join(
         cfg$merged_sgRNA_df %>%
-          dplyr::select(sgrna_id, entrez) %>%
+          dplyr::select(sgrna_id, entrez, symbol) %>%
           dplyr::distinct(sgrna_id, .keep_all = TRUE),
         by = c("sgRNA" = "sgrna_id")
       ) %>%
-      dplyr::mutate(entrez = dplyr::coalesce(as.character(entrez), sgRNA))
+      dplyr::mutate(
+        entrez = dplyr::coalesce(
+          as.character(entrez),
+          as.character(symbol),
+          as.character(sgRNA)
+        )
+      ) %>% 
+      dplyr::select(-symbol)
 
     # Any entries from include_controls are manually turned into genes.
     include_controls_list <- cfg$controls$include_controls %||% character()
