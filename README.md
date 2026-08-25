@@ -463,3 +463,6 @@ mecas COMMAND [OPTIONS]
 ```
 
 The container is reused in subsequent runs and does not need to be downloaded again unless the cache is removed or a different container version is requested.
+
+### Usage Tips
+The config.yaml generated in /output-dir/pipeline during `mecas setup` contains advanced options, that can be edited. 

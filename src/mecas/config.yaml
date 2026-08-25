@@ -272,3 +272,5 @@ plots:
     width: 8
     height: 6
     file_format: "png"
+debug:
+  MAUDE: false

@@ -544,7 +544,7 @@ def get_total_count_df_rows(wildcards):
   
 def get_count_mb(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    mb = 4000 + 0.0002 * total_rows
+    mb = 4000 + 0.0004 * total_rows
     return math.ceil(mb)
   
 def get_count_runtime(wildcards, input):
@@ -555,22 +555,27 @@ def get_count_runtime(wildcards, input):
   
 def get_MAUDE_mb(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    mb = 20000 + 0.0002 * total_rows
+    
+    mb = 4000 + 0.0004 * total_rows
+    if (config["consensus"]["run"] is True):
+      mb = mb * 20 
     return math.ceil(mb)
   
 def get_MAUDE_runtime(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    minutes = 600 + 0.5 * total_rows / 1_000_000
+    minutes = 20 + 1 * total_rows / 1_000_000
+    if (config["consensus"]["run"] is True):
+      minutes = minutes * 25 
     return math.ceil(minutes)
   
 def get_plot_mb(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    mb = 20000 + 0.0002 * total_rows
+    mb = 4000 + 0.0004 * total_rows
     return math.ceil(mb)
   
 def get_plot_runtime(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    minutes = 600 + 0.5 * total_rows / 1_000_000
+    minutes = 20 + 1 * total_rows / 1_000_000
     return math.ceil(minutes)
   
 def get_plot_maude_dependency(wildcards):

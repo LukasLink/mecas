@@ -658,6 +658,12 @@ project_setup <- function(project_root_dir,
         config$plots$waterfall$file_format %||% "png",
         "plots.waterfall.file_format"
       )
+    ),
+    cfg$debug <- list(
+      MAUDE = check_input(
+        config$debug$MAUDE %||% FALSE,
+        "debug.MAUDE"
+      )
     )
   )
   
@@ -752,7 +758,9 @@ project_setup <- function(project_root_dir,
     count = file.path(cfg$paths$snake$state_dir, "07_count.done"),
     MAUDE = file.path(cfg$paths$snake$state_dir, "08_MAUDE.done"),
     plot = file.path(cfg$paths$snake$state_dir, "09_plot.done")
-  )
+  ) 
+
+
   #=============================================================================
   # Logging 
   #=============================================================================
