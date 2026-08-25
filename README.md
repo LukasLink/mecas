@@ -1,22 +1,226 @@
 # MECAS: Multi-bin Error-Corrected Analysis of Screens
 
-MECAS is a [Snakemake](https://snakemake.readthedocs.io/en/stable/)-based pipeline designed for analysing pooled CRISPR screens of bin sorted samples. 
-It processes fastq sequencing files into guide and gene level statistics for overal enrichment trends across bins. 
-It uses [bcwithqc](https://github.com/hawkjo/bcwithqc) for error corrected detection of guide sequences and UMIs,
-and [MAUDE](https://github.com/de-Boer-Lab/MAUDE?tab=readme-ov-file) for guide and gene level statistical calculations. 
+MECAS is a [Snakemake](https://snakemake.readthedocs.io/en/stable/)-based pipeline designed to analyse pooled CRISPR screens of bin-sorted samples.
 
+It processes FASTQ sequencing files and calculates guide-level and gene-level statistics for overall enrichment trends across bins. MECAS uses [bcwithqc](https://github.com/hawkjo/bcwithqc) for the error-corrected detection of guide sequences and unique molecular identifiers (UMIs), and [MAUDE](https://github.com/de-Boer-Lab/MAUDE) for guide-level and gene-level statistical analyses.
 
-## Installation: 
-MECAS works on linux, requires python >= 3.13, and can be installed into your local environment using pip: 
-pip install git+https://github.com/LukasLink/mecas.git
+## Installation
 
-### Tips
-If you are installing/using MECAS on a cluster you should make sure the environment it is installed to is available to both the login and the compute nodes. 
+MECAS runs on Linux and requires:
 
-on first run it will download an apptainer [container](oras://ghcr.io/lukaslink/mecas-container:0.5.0) with all dependencies to:
-~/.cache/mecas/apptainer, you can reasign this download location with export MECAS_APPTAINER_PREFIX your/prefered/path
+* Python 3.11 or newer
+* Apptainer
+* Internet access during installation and the initial container download
+
+Install MECAS and its Python dependencies directly from GitHub using:
+
+```bash
+python -m pip install "git+https://github.com/LukasLink/mecas.git"
+```
+
+Confirm that the installation was successful:
+
+```bash
+mecas version
+mecas --help
+```
+### Installation Tips
+#### Installation on a cluster
+
+When installing MECAS on a computing cluster, ensure that the Python environment containing MECAS is stored on a filesystem accessible from both the login and compute nodes.
+
+For example:
+
+```bash
+module load Python/3.13.5-GCCcore-14.3.0
+
+python -m venv /path/on/shared/filesystem/.venvs/mecas
+source /path/on/shared/filesystem/.venvs/mecas/bin/activate
+
+python -m pip install "git+https://github.com/LukasLink/mecas.git"
+```
+
+Before using MECAS in a new shell session, load the required Python module and activate the environment again:
+
+```bash
+module load Python
+source /path/on/shared/filesystem/.venvs/mecas/bin/activate
+```
+
+#### Apptainer container
+
+During the first pipeline run, MECAS downloads the following Apptainer container:
+
+```text
+oras://ghcr.io/lukaslink/mecas-container:0.5.0
+```
+
+By default, the container is cached under:
+
+```text
+~/.cache/mecas/apptainer
+```
+
+On a computing cluster, this location must be accessible from the compute nodes. You can specify a different location by setting `MECAS_APPTAINER_PREFIX` before running MECAS:
+
+```bash
+export MECAS_APPTAINER_PREFIX=/path/on/shared/filesystem/mecas/apptainer
+mecas COMMAND [OPTIONS]
+```
+
+The container is reused in subsequent runs and does not need to be downloaded again unless the cache is removed or a different container version is requested.
 
 ## Usage
 
-### Quick start
-Once MECAS is installed you can do a ~10min test run with the provided example files. 
+Display the general command overview with:
+
+```bash
+mecas --help
+```
+
+Display the options available for a particular command with:
+
+```bash
+mecas COMMAND --help
+```
+
+For example:
+
+```bash
+mecas all --help
+```
+
+## Quick start
+
+MECAS includes a small example dataset that can be used for an approximately 10-minute test run.
+
+Copy the example files into a directory of your choice:
+
+```bash
+mecas examples --output-dir /path/to/your/directory
+```
+
+This creates the following directory:
+
+```text
+/path/to/your/directory/mecas_examples
+```
+
+Run the complete pipeline on the example dataset:
+
+```bash
+mecas all \
+    --input-dir /path/to/your/directory/mecas_examples/input_dir \
+    --output-dir /path/to/your/directory/mecas_examples/test_run \
+    --library-file /path/to/your/directory/mecas_examples/example_library.xlsx \
+    --bcwithqc-config-file /path/to/your/directory/mecas_examples/example_bcwithqc_config.json \
+    --experiment-info-file /path/to/your/directory/mecas_examples/experiment_info_file_template.xlsx \
+    --reads-or-umis reads \
+    --profile local
+```
+
+After the run completes, inspect the following result files:
+
+```text
+/path/to/your/directory/mecas_examples/test_run/results/MAUDE_Hits.xlsx
+/path/to/your/directory/mecas_examples/test_run/plots/03_waterfall_plots/waterfall_controls_top3_FDR0.05.png
+```
+
+EGFP should be the only significant result in the example analysis.
+
+## Commands
+
+| Command               | Description                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `all`                 | Run the complete pipeline.                                                                                                   |
+| `setup`               | Resolve the configuration and create the FASTQ manifest.                                                                     |
+| `QC_filter`           | Run FASTQ quality-control filtering.                                                                                         |
+| `bcwithqc_preprocess` | Prepare input files for bcwithqc.                                                                                            |
+| `bcwithqc_count`      | Run bcwithqc counting.                                                                                                       |
+| `reads_per_umi_count` | Read the BAM files generated by bcwithqc and create one RDS count file for each paired or unpaired input file.               |
+| `count`               | Create downstream count tables.                                                                                              |
+| `MAUDE`               | Run the MAUDE analysis.                                                                                                      |
+| `plot`                | Generate plots and summaries. This command can be run after `mecas MAUDE` or `mecas count`.                                  |
+| `cleanup`             | Remove intermediate results and large BAM files. Only use this command after confirming that the final results are complete. |
+| `examples`            | Copy the MECAS example files into the requested output directory.                                                            |
+| `version`             | Print the installed MECAS version and exit.                                                                                  |
+
+## Pipeline options
+
+The available options depend on the selected command. Run `mecas COMMAND --help` to display the exact options for a particular pipeline stage.
+
+### Input and output
+
+`-h`, `--help`
+Display the help message and exit.
+
+`--input-dir INPUT_DIR`
+Directory containing the input FASTQ files.
+
+`--output-dir OUTPUT_DIR`
+Master output directory for the analysis.
+
+`--library-file LIBRARY_FILE`
+Library annotation file containing the guide sequences. See the library construction section of the documentation.
+
+`--bcwithqc-config-file BCWITHQC_CONFIG_FILE`
+bcwithqc JSON configuration file.
+
+`--experiment-info-file EXPERIMENT_INFO_FILE`
+Experiment information spreadsheet containing information about the FASTQ files and bins. See the experiment information file layout section of the documentation.
+
+### Counting and analysis
+
+`--reads-or-umis {reads,umis}`
+Use read counts or UMI counts. The default is `reads`.
+
+`--umis-as-sublibs`
+Treat each sgRNA–UMI combination as a replicate in its own sublibrary.
+
+`--separate-statistics-by {none,sample,sublib,bin-group}`
+Calculate statistics separately according to the selected grouping dimension. The default is `none`.
+
+`--separate-statistics-for-gene-level-by {none,sample,sublib,all}`
+Calculate gene-level statistics separately according to the selected grouping dimension after guide-level statistics have already been calculated. The default is `none`.
+
+`--sum-sgrna-counts-for-guide-level-by {none,sample,sublib}`
+Before calculating guide-level statistics, sum counts for the same sgRNA across the selected dimension while keeping the other dimensions separate. The default is `none`.
+
+`--run-consensus-call`
+Run the MAUDE analysis 20 times and perform consensus calling to minimise random sampling effects. This option is disabled by default.
+
+`--skip-qc-filtering`
+Skip cutadapt quality-control filtering and pass the input FASTQ files directly to downstream processing. Quality-control filtering is enabled by default.
+
+### Execution profiles
+
+`--profile {local,cluster-generic,slurm,htcondor,lsf,sge}`
+Select the local or cluster environment in which the Snakemake pipeline will run. The default is `local`.
+
+`--custom-profile CUSTOM_PROFILE`
+Use a custom Snakemake profile. When supplied, this option overrides the built-in profile selected with `--profile`.
+
+### Cluster configuration
+
+`--account ACCOUNT`
+Specify the cluster account used for job submission.
+
+`--partition PARTITION`
+Specify the cluster partition or queue.
+
+`--qos QOS`
+Specify the cluster quality-of-service setting.
+
+`--reservation RESERVATION`
+Submit jobs using the specified cluster reservation.
+
+### Resource overrides
+
+`--threads THREADS`
+Override the number of threads requested for resource-intensive jobs, including `QC_filter`, `bcwithqc_preprocess`, and `bcwithqc_count`.
+
+`--memory-mb MEMORY_MB`
+Override the memory requested for resource-intensive jobs, in megabytes.
+
+`--runtime-minutes RUNTIME_MINUTES`
+Override the runtime requested for resource-intensive jobs, in minutes.
