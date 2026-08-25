@@ -79,7 +79,7 @@ run_MAUDE <- function(maude_counts_df,
     dplyr::pull(bin_name)
   
   if (isTRUE(run_maude_stage)) {
-    if (isTRUE(cfg$debug$MAUDE)){log_info("Before Guide stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+    if (isTRUE(cfg$debug$MAUDE)){log_info("Before Guide stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
     maude_guide_stats <- findGuideHitsAllScreens(
       experiments = unique(maude_counts_df["exp"]),
       countDataFrame = maude_counts_df,
@@ -88,7 +88,7 @@ run_MAUDE <- function(maude_counts_df,
       unsortedBin = unsorted_bin_name,
       negativeControl = "isNontargeting"
     )
-    if (isTRUE(cfg$debug$MAUDE)){log_info("After Guide stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+    if (isTRUE(cfg$debug$MAUDE)){log_info("After Guide stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
     logger::log_info("Saving MAUDE guide stats to: {maude_guide_stats_fpath}")
     saveRDS(maude_guide_stats, maude_guide_stats_fpath)
     
@@ -196,14 +196,14 @@ run_MAUDE <- function(maude_counts_df,
       )
     }
     # --------------------------------------------------------------------------
-    if (isTRUE(cfg$debug$MAUDE)){log_info("Before Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+    if (isTRUE(cfg$debug$MAUDE)){log_info("Before Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
     maude_gene_stats <- getElementwiseStats(
       experiments = unique(maude_guide_stats["exp"]),
       normNBSummaries = maude_guide_stats,
       negativeControl = "isNontargeting",
       elementIDs = "entrez"
     )
-    if (isTRUE(cfg$debug$MAUDE)){log_info("After Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+    if (isTRUE(cfg$debug$MAUDE)){log_info("After Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
     maude_gene_stats <- maude_gene_stats %>%
       dplyr::filter(numGuides >= cfg$filtering$min_guides_per_gene)
     
