@@ -14,7 +14,13 @@ add_info_to_gene_stats <- function(maude_guide_stats,
         dplyr::distinct(sgrna_id, .keep_all = TRUE),
       by = c("sgRNA" = "sgrna_id")
     ) %>%
-    dplyr::mutate(entrez = dplyr::coalesce(as.character(entrez), sgRNA))
+    dplyr::mutate(
+      entrez = dplyr::coalesce(
+        as.character(entrez),
+        as.character(symbol),
+        as.character(sgRNA)
+      )
+    )
   
   maude_guide_stats <- maude_guide_stats %>%
     dplyr::mutate(abs_meanZ = abs(mean)) %>%
