@@ -30,7 +30,6 @@ zip-safe = false
 where = ["src"]
 
 [tool.setuptools.exclude-package-data]
-[tool.setuptools.exclude-package-data]
 mecas = [
     "data/9606.*",
     "data/Battisti_*",

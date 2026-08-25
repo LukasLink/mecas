@@ -2,10 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
-binned_PCR_amplicon_UMI_analysis.Rproj
+mecas.Rproj
 /.snakemake/
 /src/mecas/containers/
 /.cache/
+/.cache/matplotlib
 *.sif
 dist/
 dist-check/
