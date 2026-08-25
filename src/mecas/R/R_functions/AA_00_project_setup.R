@@ -658,12 +658,13 @@ project_setup <- function(project_root_dir,
         config$plots$waterfall$file_format %||% "png",
         "plots.waterfall.file_format"
       )
-    ),
-    cfg$debug <- list(
-      MAUDE = check_input(
-        config$debug$MAUDE %||% FALSE,
-        "debug.MAUDE"
-      )
+    )
+  )
+  
+  cfg$debug = list(
+    MAUDE = check_input(
+      config$debug$MAUDE %||% FALSE,
+      "debug.MAUDE"
     )
   )
   
