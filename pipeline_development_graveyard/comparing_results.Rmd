@@ -70,7 +70,7 @@ cfg <- project_setup(
   project_root_dir,
   config_path = file.path(project_root_dir, "config.yaml")
 )
-cfg <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/.pipeline_state/resolved_config.rds")
+# cfg <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/.pipeline_state/resolved_config.rds")
 
 
 ################################################################################
@@ -2966,3 +2966,214 @@ print(p_dist)
 print(p_low20_sg)
 print(p_low20_gene)
 ```
+
+
+
+```{r}
+# Summarise bcs_summary.tsv files from PA, DCA, and GalNAc analyses and
+# draw one 100%-stacked bar for each analysis directory.
+
+plot_bcs_qc <- function(pa_dir,
+                        dca_dir,
+                        galnac_dir,
+                        output_file = NULL,
+                        width = 8,
+                        height = 6,
+                        dpi = 300) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required. Install it with install.packages('ggplot2').")
+  }
+
+  metric_cols <- c(
+    "exact", "corrected", "below_threshold", "ambiguous", "no_match"
+  )
+
+  input_dirs <- c(PA = pa_dir, DCA = dca_dir, GalNAc = galnac_dir)
+
+  find_summary_files <- function(input_dir) {
+    if (!dir.exists(input_dir)) {
+      stop("Directory does not exist: ", input_dir)
+    }
+
+    candidates <- list.files(
+      path = input_dir,
+      pattern = "^bcs_summary\\.tsv$",
+      recursive = TRUE,
+      full.names = TRUE
+    )
+
+    # Keep only files directly inside a directory named QC_metrics.
+    files <- candidates[basename(dirname(candidates)) == "QC_metrics"]
+
+    if (length(files) == 0L) {
+      stop(
+        "No QC_metrics/bcs_summary.tsv files found below: ",
+        input_dir
+      )
+    }
+
+    sort(files)
+  }
+
+  sum_one_directory <- function(input_dir, treatment) {
+    files <- find_summary_files(input_dir)
+
+    per_file <- lapply(files, function(file) {
+      x <- utils::read.delim(
+        file,
+        header = TRUE,
+        sep = "\t",
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+
+      missing_cols <- setdiff(c(metric_cols, "total"), names(x))
+      if (length(missing_cols) > 0L) {
+        stop(
+          "Missing required column(s) in ", file, ": ",
+          paste(missing_cols, collapse = ", ")
+        )
+      }
+
+      values <- x[c(metric_cols, "total")]
+      values[] <- lapply(values, function(column) {
+        numeric_column <- suppressWarnings(as.numeric(column))
+        if (anyNA(numeric_column)) {
+          stop("Non-numeric or missing QC count in: ", file)
+        }
+        numeric_column
+      })
+
+      category_sum <- rowSums(values[metric_cols])
+      if (any(category_sum != values$total)) {
+        warning(
+          "At least one row has total != sum of QC categories in: ",
+          file,
+          call. = FALSE
+        )
+      }
+
+      colSums(values)
+    })
+
+    summed <- colSums(do.call(rbind, per_file))
+    plotted_total <- sum(summed[metric_cols])
+
+    if (plotted_total <= 0) {
+      stop("The summed QC category count is zero in: ", input_dir)
+    }
+
+    summary <- data.frame(
+      treatment = treatment,
+      metric = metric_cols,
+      count = unname(summed[metric_cols]),
+      percent = 100 * unname(summed[metric_cols]) / plotted_total,
+      files_summed = length(files),
+      reported_total = unname(summed["total"]),
+      stringsAsFactors = FALSE
+    )
+
+    list(summary = summary, files = files)
+  }
+
+  results <- Map(sum_one_directory, unname(input_dirs), names(input_dirs))
+  summary_data <- do.call(rbind, lapply(results, `[[`, "summary"))
+  rownames(summary_data) <- NULL
+
+  summary_data$treatment <- factor(
+    summary_data$treatment,
+    levels = names(input_dirs)
+  )
+  summary_data$metric <- factor(summary_data$metric, levels = metric_cols)
+
+  qc_colours <- c(
+    exact = "#006400",           # dark green
+    corrected = "#90EE90",       # light green
+    below_threshold = "#D3D3D3", # light grey
+    ambiguous = "#FFA500",       # orange
+    no_match = "#808080"         # grey
+  )
+
+  p <- ggplot2::ggplot(
+    summary_data,
+    ggplot2::aes(x = treatment, y = percent, fill = metric)
+  ) +
+    ggplot2::geom_col(
+      width = 0.72,
+      position = ggplot2::position_stack(reverse = TRUE)
+    ) +
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = ifelse(
+          as.character(metric) == "corrected",
+          sprintf("%.1f%%", percent),
+          ""
+        )
+      ),
+      position = ggplot2::position_stack(vjust = 0.5, reverse = TRUE),
+      colour = "black",
+      fontface = "bold",
+      size = 4.5
+    ) +
+    ggplot2::scale_fill_manual(
+      values = qc_colours,
+      breaks = metric_cols,
+      drop = FALSE
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 100),
+      breaks = seq(0, 100, 20),
+      expand = ggplot2::expansion(mult = c(0, 0))
+    ) +
+    ggplot2::labs(
+      title = "QC metrics across treatments",
+      x = NULL,
+      y = "Reads (%)",
+      fill = NULL
+    ) +
+    ggplot2::theme_classic(base_size = 14) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(hjust = 0.5),
+      legend.position = "right"
+    )
+
+  if (!is.null(output_file)) {
+    output_parent <- dirname(output_file)
+    if (!dir.exists(output_parent)) {
+      dir.create(output_parent, recursive = TRUE)
+    }
+    ggplot2::ggsave(
+      filename = output_file,
+      plot = p,
+      width = width,
+      height = height,
+      dpi = dpi,
+      bg = "white"
+    )
+  }
+
+  invisible(list(
+    plot = p,
+    summary = summary_data,
+    files = stats::setNames(lapply(results, `[[`, "files"), names(input_dirs))
+  ))
+}
+
+# Ready-to-run example using the Z: -> /g/steinmetz mapping:
+#
+qc_result <- plot_bcs_qc(
+  pa_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_PA_bcwithqc/bcwithqc_output",
+  dca_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_DCA_bcwithqc/bcwithqc_output",
+  galnac_dir = "/g/steinmetz/link/Amplicon_barcode_analysis/HepG2_dual_rep_GALNAC_bcwithqc",
+  output_file = "/g/steinmetz/link/PA_DCA_GalNAc_QC_metrics.png"
+)
+
+qc_result$plot       # display the plot
+qc_result$summary    # inspect summed counts and percentages
+qc_result$files      # inspect which files were included
+
+
+```
+
+
+
