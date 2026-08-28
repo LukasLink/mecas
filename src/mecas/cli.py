@@ -337,7 +337,7 @@ def copy_examples(args):
     if not source_dir.is_dir():
         sys.exit(
             "\nERROR\n"
-            f"MECAS example directory does not exist:\n{source_dir}"
+            f"MECAS examples directory does not exist:\n{source_dir}"
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
