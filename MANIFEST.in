@@ -7,7 +7,7 @@ recursive-include src/mecas/R *
 recursive-include src/mecas/shell *
 recursive-include src/mecas/sample_profiles *
 recursive-include src/mecas/data *
-recursive-include src/mecas/example *
+recursive-include src/mecas/examples *
 
 recursive-exclude src/mecas/data *
 include src/mecas/data/dependency_df.rds
