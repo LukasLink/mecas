@@ -330,7 +330,7 @@ def set_nested(cfg, dotted_key, value):
 # Copy example directory
 #-------------------------------------------------------------------------------
 def copy_examples(args):
-    source_dir = PACKAGE_ROOT / "example"
+    source_dir = PACKAGE_ROOT / "examples"
     output_dir = Path(args.output_dir).resolve()
     destination_dir = output_dir / "mecas_examples"
 
