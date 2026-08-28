@@ -332,7 +332,7 @@ def set_nested(cfg, dotted_key, value):
 def copy_examples(args):
     source_dir = PACKAGE_ROOT / "example"
     output_dir = Path(args.output_dir).resolve()
-    destination_dir = output_dir / "mecas_example"
+    destination_dir = output_dir / "mecas_examples"
 
     if not source_dir.is_dir():
         sys.exit(
@@ -681,6 +681,14 @@ def main():
 
     # Forward all unknown options directly to Snakemake.
     args, snakemake_args = parser.parse_known_args()
+    
+    # Make sure we are not passing whitespaces accidentally
+    snakemake_args = [
+        arg for arg in snakemake_args
+        if arg.strip()
+    ]
+    
+    
 
     if getattr(args, "version_command", False):
         print(f"mecas {VERSION}")
