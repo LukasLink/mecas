@@ -1,0 +1,162 @@
+---
+title: "Plots for Master"
+author: "Lukas"
+date: "2026-08-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(ggplot2)
+library(dplyr)
+
+# Generate a generic distribution in log10 readout space
+plot_data <- data.frame(
+  log_readout = seq(0, 6, length.out = 1500)
+) %>%
+  mutate(
+    cell_count = dnorm(log_readout, mean = 3, sd = 0.8) * 1800
+  )
+
+# Sorting boundaries: bottom 5%, bottom 10%, top 10%, and top 5%
+bin_boundaries <- qnorm(
+  c(0.02, 0.11, 0.89, 0.98),
+  mean = 3,
+  sd = 0.8
+)
+
+plot_data <- plot_data %>%
+  mutate(
+    bin = case_when(
+      log_readout <= bin_boundaries[1] ~ "Bin 1",
+      log_readout <= bin_boundaries[2] ~ "Bin 2",
+      log_readout >= bin_boundaries[4] ~ "Bin 3",
+      log_readout >= bin_boundaries[3] ~ "Bin 4",
+      TRUE ~ "Not sorted"
+    ),
+    bin = factor(
+      bin,
+      levels = c(
+    "Bin 1",
+    "Bin 2",
+        "Not sorted",
+    "Bin 3",
+    "Bin 4"
+      )
+    )
+  )
+
+# Positions for bin labels
+bin_label_positions <- data.frame(
+  label = c(
+    "Bin 1",
+    "Bin 2",
+    "Bin 3",
+    "Bin 4"
+  ),
+  log_readout = c(
+    mean(c(0, bin_boundaries[1])),
+    mean(bin_boundaries[1:2]),
+    mean(bin_boundaries[3:4]),
+    mean(c(bin_boundaries[4], 6))
+  ),
+  cell_count = max(plot_data$cell_count) * 0.62
+)
+
+cell_sorting_plot <- ggplot(
+  plot_data,
+  aes(x = log_readout, y = cell_count)
+) +
+  geom_area(aes(fill = bin), alpha = 0.65) +
+  geom_line(linewidth = 1.4, colour = "#527FB8") +
+  geom_vline(
+    xintercept = bin_boundaries,
+    linewidth = 1.1,
+    colour = "black"
+  ) +
+  geom_text(
+    data = bin_label_positions,
+    aes(
+      x = log_readout,
+      y = cell_count,
+      label = label
+    ),
+    inherit.aes = FALSE,
+    size = 4.5,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Bin 1" = "#4C78A8",
+      "Bin 2" = "#9EC1DE",
+      "Not sorted" = "#DCE6F0",
+      "Bin 3" = "#F4A582",
+      "Bin 4" = "#C94C4C"
+    )
+  ) +
+  scale_x_continuous(
+    breaks = 0:6,
+    labels = c(
+      "0",
+      expression(10^1),
+      expression(10^2),
+      expression(10^3),
+      expression(10^4),
+      expression(10^5),
+      expression(10^6)
+    ),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_y_continuous(
+    limits = c(0, max(plot_data$cell_count) * 1.08),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  labs(
+    title = "Cell Sorting",
+    x = "Readout",
+    y = "Cell count"
+  ) +
+  theme_classic(base_size = 16) +
+  theme(
+    plot.title = element_text(
+      size = 22,
+      face = "bold",
+      hjust = 0.5,
+      margin = margin(b = 15)
+    ),
+    axis.title = element_text(face = "bold"),
+    axis.line = element_line(linewidth = 0.8),
+    axis.ticks = element_line(linewidth = 0.8),
+    legend.position = "none"
+  )
+
+cell_sorting_plot
+
+ggsave(
+  "/g/steinmetz/link/cell_sorting_four_bins.png",
+  cell_sorting_plot,
+  width = 8,
+  height = 5.5,
+  dpi = 300,
+  bg = "white"
+)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

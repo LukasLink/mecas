@@ -301,7 +301,8 @@ log_project_setup <- function(cfg) {
   
   logger::log_info("REPLICATES / STATISTICAL GROUPING")
   logger::log_info("method:                            {cfg$replicates$method}")
-  logger::log_info("combine_for_guide_stats:           {cfg$replicates$combine_for_guide_stats}")
+  guide_stats_out <- ifelse(cfg$replicates$combine_for_guide_stats == "", "none", cfg$replicates$combine_for_guide_stats)
+  logger::log_info("combine_for_guide_stats:           {guide_stats_out}")
   logger::log_info("combine_for_gene_stats:            {cfg$replicates$combine_for_gene_stats}")
   logger::log_info("auto_combine_replicates:           {cfg$replicates$auto_combine_replicates}")
   logger::log_info("----------------------------------------------------------")
