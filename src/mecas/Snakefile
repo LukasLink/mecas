@@ -10,7 +10,7 @@ import gzip
 
 shell.executable("/usr/bin/bash")
 
-container: "oras://ghcr.io/lukaslink/mecas-container:0.5.0"
+container: "oras://ghcr.io/lukaslink/mecas-container:0.5.5"
 
 
 #-------------------------------------------------------------------------------
@@ -564,7 +564,7 @@ def get_MAUDE_mb(wildcards, input):
   
 def get_MAUDE_runtime(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    minutes = 20 + 20 * total_rows / 1_000_000
+    minutes = 20 + 40 * total_rows / 1_000_000
     if (config["consensus"]["run"] is True):
       minutes = minutes * 25 
     return math.ceil(minutes)
