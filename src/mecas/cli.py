@@ -543,7 +543,13 @@ def add_common_arguments(parser):
         default=False,
         help="Skip cutadapt QC filtering and pass the input FASTQ files directly to downstream processing (default: QC filtering enabled).",
     )
-    
+     # ONly for testing, maybe remove in final version
+    parser.add_argument(
+        "--debug",
+        choices=("MAUDE",),
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--account", default=None)
     parser.add_argument("--partition", default=None)
     parser.add_argument("--qos", default=None)
@@ -768,6 +774,7 @@ def main():
         f"combine_for_gene_stats={args.separate_statistics_for_gene_level_by}",
         f"combine_for_guide_stats={COMBINE_FOR_GUIDE_STATS_MAP[args.sum_sgrna_counts_for_guide_level_by]}",
         f"run_consensus_call={args.run_consensus_call}",
+        f"debug_maude={args.debug == 'MAUDE'}", # ONly for testing, maybe remove in final version
         f"mecas_command={args.command}",
     ]
 
