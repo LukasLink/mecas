@@ -33,6 +33,7 @@ CLI_TO_CONFIG = {
     "combine_for_guide_stats": ("replicates", "combine_for_guide_stats"),
     "combine_for_gene_stats": ("replicates", "combine_for_gene_stats"),
     "run_consensus_call": ("consensus", "run"),
+    "debug_maude": ("debug", "MAUDE"),
 }
 
 # TO DO: change parsing of replicate_method and combine_for_guide stats away from empty string!
@@ -563,7 +564,7 @@ def get_MAUDE_mb(wildcards, input):
   
 def get_MAUDE_runtime(wildcards, input):
     total_rows = get_total_count_df_rows(wildcards)
-    minutes = 20 + 40 * total_rows / 1_000_000
+    minutes = 20 + 20 * total_rows / 1_000_000
     if (config["consensus"]["run"] is True):
       minutes = minutes * 25 
     return math.ceil(minutes)
@@ -1269,8 +1270,8 @@ rule MAUDE:
         count_done=os.path.join(STATE_DIR, "07_count.done")
     output:
         MAUDE_guide_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_guide_stats.rds"),
-        MAUDE_count_df = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_ready_count_df.rds"),
-        MAUDE_binStats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_binStats.rds"),
+        # MAUDE_count_df = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_ready_count_df.rds"),
+        # MAUDE_binStats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_binStats.rds"),
         MAUDE_gene_stats = os.path.join(RDS_OUTPUT_FOLDER, "MAUDE_gene_stats.rds"),
         done = os.path.join(STATE_DIR, "08_MAUDE.done")
     threads: 1
