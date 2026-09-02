@@ -53,6 +53,19 @@ initialize_pipeline_logger <- function(log_file) {
       format = "{format(time, '%Y-%m-%d %H:%M:%S')} [{level}] {msg}"
     )
   )
+  
+  globalCallingHandlers(
+    message = function(m) {
+      logger::log_info("MESSAGE: {conditionMessage(m)}")
+    },
+    warning = function(w) {
+      logger::log_warn("WARNING: {conditionMessage(w)}")
+    },
+    error = function(e) {
+      logger::log_error("ERROR: {conditionMessage(e)}")
+    }
+  )
+  
   logger::log_info("----------------------------------------------------------")
   logger::log_info("----------------------------------------------------------")
   logger::log_info("Logger initialized. Find log file at: {log_file}")
@@ -61,8 +74,7 @@ initialize_pipeline_logger <- function(log_file) {
 
 stop_log <- function(..., call. = FALSE) {
   msg <- paste0(...)
-  
-  log_error(msg)
+
   stop(msg, call. = call.)
 }
 #===============================================================================
