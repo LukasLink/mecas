@@ -468,3 +468,4 @@ The container is reused in subsequent runs and does not need to be downloaded ag
 The config.yaml generated in /output-dir/pipeline during `mecas setup` contains advanced options, that can be edited. 
 
 The snakemake command `--force` can be added given as an option to avoid having to delete output files to get snakemake to re-run a task during a re-run. 
+If you would rather delete output files instead a quick way to do this is enter the hidden directory output-directory/.pipeline_state and delete the .done files for all stages that you wish to re-run.
