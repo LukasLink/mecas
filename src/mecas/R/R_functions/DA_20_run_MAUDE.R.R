@@ -227,16 +227,19 @@ run_MAUDE <- function(maude_counts_df,
     data.table::setDT(maude_guide_stats)
     
     maxGuidesPerElement = maude_guide_stats[
-      !isNontargeting & !is.na(entrez),
+      isNontargeting == FALSE & !is.na(entrez),
       .N,
       by = .(exp, entrez)
     ][, max(N)]
     
     ntGuidesPerExp = maude_guide_stats[
-      isNontargeting,
+      isNontargeting == TRUE,
       .N,
       by = exp
     ]$N
+    
+    # Back to dataframe
+    data.table::setDF(maude_guide_stats)
     # Minimum number of null groups available without bootstrapping
     minRequiredNullGroups = 200
     

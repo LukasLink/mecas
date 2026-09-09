@@ -10,7 +10,7 @@ import gzip
 
 shell.executable("/usr/bin/bash")
 
-container: "oras://ghcr.io/lukaslink/mecas-container:0.5.7"
+container: "oras://ghcr.io/lukaslink/mecas-container:0.5.8"
 
 
 #-------------------------------------------------------------------------------
