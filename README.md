@@ -459,7 +459,7 @@ On a computing cluster, this location must be accessible from the compute nodes.
 
 ```bash
 export MECAS_APPTAINER_PREFIX=/path/on/shared/filesystem/mecas/apptainer
-mecas COMMAND [OPTIONS]
+mecas [COMMAND] [OPTIONS]
 ```
 
 The container is reused in subsequent runs and does not need to be downloaded again unless the cache is removed or a different container version is requested.
@@ -469,3 +469,21 @@ The config.yaml generated in /output-dir/pipeline during `mecas setup` contains 
 
 The snakemake command `--force` can be added given as an option to avoid having to delete output files to get snakemake to re-run a task during a re-run. 
 If you would rather delete output files instead a quick way to do this is enter the hidden directory output-directory/.pipeline_state and delete the .done files for all stages that you wish to re-run.
+
+Since mecas may run for quite a while on larger datasets it is recommended to use a detachable screen session. to run the process.
+This allows MECAS to continue running if you disconnect from the server or close your terminal.
+
+```bash
+screen -S mecas_project
+mecas [COMMAND] [OPTIONS]
+```
+Detach from the screen without stopping MECAS by pressing: Ctrl+A, then D
+Then reconnect later with:
+```bash
+screen -r mecas_project
+```
+If the connection was interrupted without properly detaching the screen, it may still be marked as attached. It can be detached and reconnected with:
+```bash
+screen -d -r mecas_project
+```
+
