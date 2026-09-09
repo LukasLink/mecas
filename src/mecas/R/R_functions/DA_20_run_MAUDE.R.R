@@ -81,7 +81,15 @@ run_MAUDE <- function(maude_counts_df,
     dplyr::pull(bin_name)
   
   if (isTRUE(run_maude_stage)) {
-    if (isTRUE(cfg$debug$MAUDE)){log_info("Before Guide stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
+    if (isTRUE(cfg$debug$MAUDE)){
+      log_info("Before Guide stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+      debug_pre_guide_fpath <- file.path(
+        cfg$paths$rds_output_folder,
+        "DEBUG_maude_df_before_guide_stats.rds"
+      )
+      saveRDS(maude_counts_df, debug_pre_guide_fpath)
+    }
+    # GUIDE STATS CALL #########################################################
     maude_guide_stats <- findGuideHitsAllScreens(
       experiments = unique(maude_counts_df["exp"]),
       countDataFrame = maude_counts_df,
@@ -205,14 +213,83 @@ run_MAUDE <- function(maude_counts_df,
       )
     }
     # --------------------------------------------------------------------------
-    if (isTRUE(cfg$debug$MAUDE)){log_info("Before Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
+    if (isTRUE(cfg$debug$MAUDE)){
+      log_info("Before Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+
+      debug_before_gene_fpath <- file.path(
+        cfg$paths$rds_output_folder,
+        "DEBUG_maude_df_before_gene_stats.rds"
+      )
+      saveRDS(maude_guide_stats, debug_before_gene_fpath)
+    }
+    # Calcualting values for MAUDE to estimate if we need to bootstrap the NT guides, and if yes how much. 
+    # Calculate how much NT bootstrapping is required
+    data.table::setDT(maude_guide_stats)
+    
+    maxGuidesPerElement = maude_guide_stats[
+      !isNontargeting & !is.na(entrez),
+      .N,
+      by = .(exp, entrez)
+    ][, max(N)]
+    
+    ntGuidesPerExp = maude_guide_stats[
+      isNontargeting,
+      .N,
+      by = exp
+    ]$N
+    # Minimum number of null groups available without bootstrapping
+    minRequiredNullGroups = 200
+    
+    ntSampleFold = max(
+      1,
+      ceiling(
+        minRequiredNullGroups * maxGuidesPerElement /
+          min(ntGuidesPerExp)
+      )
+    )
+    
+    minNullGroupsAfterBootstrap = min(
+      (ntGuidesPerExp * ntSampleFold) %/% maxGuidesPerElement
+    )
+    
+
+    
+    if(ntSampleFold > 1){
+      log_warn("Not enough non-targeting guides for {minRequiredNullGroups} null groups. Bootstrapping {ntSampleFold}-fold.")
+    }
+    if(ntSampleFold > 100 ){
+      log_warn("Extremly heavy bootstrapping can skew statistics. Consider re-doing the experiment with more Non-targeting guides or reduced number of guides per gene.")
+    }
+    # Maximum number available after bootstrapping
+    maxAvailableNullGroups = max(
+      (ntGuidesPerExp * ntSampleFold) %/% maxGuidesPerElement
+    )
+    
+    if(maxAvailableNullGroups > 2000){
+      maxNullGroups <- 2000
+      log_warn("Limiting number of null groups to 2000 to reduce processing time.")
+    } else {
+      maxNullGroups <- NULL
+    }
+    
+    # GENE STATS CALL ##########################################################
     maude_gene_stats <- getElementwiseStats(
       experiments = unique(maude_guide_stats["exp"]),
       normNBSummaries = maude_guide_stats,
       negativeControl = "isNontargeting",
-      elementIDs = "entrez"
+      elementIDs = "entrez",
+      maxNullGroups = maxNullGroups,
+      ntSampleFold = ntSampleFold
+      
     )
-    if (isTRUE(cfg$debug$MAUDE)){log_info("After Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
+    if (isTRUE(cfg$debug$MAUDE)){
+      log_info("After Gene stats | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")
+      debug_post_gene_fpath <- file.path(
+        cfg$paths$rds_output_folder,
+        "DEBUG_maude_df_after_gene_stats.rds"
+      )
+      saveRDS(maude_gene_stats, debug_post_gene_fpath)
+    }
     maude_gene_stats <- maude_gene_stats %>%
       dplyr::filter(numGuides >= cfg$filtering$min_guides_per_gene)
     
