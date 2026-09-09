@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 import subprocess
 
-VERSION = "0.5.0"
+VERSION = "0.5.7"
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 
