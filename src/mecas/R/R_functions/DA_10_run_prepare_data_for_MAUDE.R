@@ -37,9 +37,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
       call. = FALSE
     )
   }
-  log_info(
-    "before normalize_count_df_long | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
-  )
+  if (isTRUE(cfg$debug$MAUDE)){("before normalize_count_df_long | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
   if (identical(norm_method, "control_median")) {
     list2env(
       normalize_count_df_long(
@@ -51,9 +49,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
       envir = environment()
     )
   }
-  log_info(
-    "After normalize_count_df_long | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
-  )
+    if (isTRUE(cfg$debug$MAUDE)){log_info("After normalize_count_df_long | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
   #-----------------------------------------------------------------------------
   # Convert long count table to MAUDE wide format
   #-----------------------------------------------------------------------------
@@ -69,9 +65,7 @@ run_prepare_data_for_MAUDE <- function(count_df_long,
     umis_as_sublibs = cfg$counting$umis_as_sublibs
   )
   rm(count_df_long)
-  log_info(
-    "After count_df_long_to_wide | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}"
-  )
+  if (isTRUE(cfg$debug$MAUDE)){log_info("After count_df_long_to_wide | R memory: {sprintf('%.2f GB', memory_used_gb())} | RSS: {sprintf('%.2f GB', memory_rss_gb())}")}
   #-----------------------------------------------------------------------------
   # Replicate handling
   #-----------------------------------------------------------------------------
