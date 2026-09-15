@@ -114,9 +114,6 @@ run_MAUDE <- function(maude_counts_df,
   
   if (isTRUE(run_maude_stage)) {
     
-
-    
-    
     maude_guide_stats <- maude_guide_stats %>%
       dplyr::left_join(
         cfg$merged_sgRNA_df %>%
