@@ -67,6 +67,10 @@ After the run completes, inspect the following result files:
 
 EGFP should be the only significant result in the example analysis.
 
+IMPORTANT NOTE: 
+Since this pipeline is snakemake based, you need to inspect the snakemake logs for info, warning, and error
+messages. You can find them in output-directory/logs/[profile]_logs.
+
 ### Commands
 
 | Command               | Description                                                                                                                  |

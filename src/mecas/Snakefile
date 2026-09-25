@@ -843,7 +843,9 @@ rule QC_filter_SE_worker:
             "$read_count" \
             "$read_count" \
             > "{output.report}"
-
+            
+          ln -sfn -- "{input.fastq}" "{output.fastq}"
+          
           echo "QC filtering disabled."
           echo "Input/retained reads: $read_count"
         fi
