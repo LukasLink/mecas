@@ -170,6 +170,14 @@ Override the memory requested for resource-intensive jobs, in megabytes.
 `--runtime-minutes RUNTIME_MINUTES`
 Override the runtime requested for resource-intensive jobs, in minutes.
 
+#### Advanced Options
+After `mecas setup` has completed, a config file will be created in
+`your_path/output_dir/pipeline/config.yaml`. This file gives access to several
+advanced options like fine grained adjustments to generated plots, Read filtering
+parameters, and excluding n% of non-targeting control guides from the process
+to retain them for inspection. 
+
+
 ## Library construction
 
 The library file defines the sgRNA or barcode library used by the pipeline. An example library file, `example_library.xlsx`, is provided by `mecas examples`.

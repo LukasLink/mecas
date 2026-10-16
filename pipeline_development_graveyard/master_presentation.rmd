@@ -6,7 +6,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+library(conflicted)
+
+conflicts_prefer(dplyr::filter)
+
 ```
 
 ## R Markdown
@@ -16,8 +22,6 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
-library(ggplot2)
-library(dplyr)
 
 # Generate a generic distribution in log10 readout space
 plot_data <- data.frame(
@@ -155,8 +159,339 @@ ggsave(
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+
+
+```{r stacked_barplots_bcwithqc, echo=FALSE}
+
+
+# Z:\ corresponds to /g/steinmetz/
+base_dir <- "/g/steinmetz/link/Amplicon_barcode_analysis"
+
+
+PA     = readRDS(file.path(base_dir, "HepG2_dual_rep_PA_mecas/results/MAUDE_Hits.rds"))
+DCA    = readRDS(file.path(base_dir, "HepG2_dual_rep_DCA_mecas/results/MAUDE_Hits.rds"))
+GALNAC = readRDS(file.path(base_dir, "HepG2_dual_rep_GALNAC_mecas/results/MAUDE_Hits.rds"))
+screens <- list(PA = PA, DCA = DCA, GALNAC = GALNAC)
+directions <- c("positive", "negative")
+
+# Unique Entrez IDs for each screen and direction
+hit_ids <- lapply(screens, function(df) {
+  sig <- df[!is.na(df$FDR) & df$FDR <= 0.05 &
+            !is.na(df$significanceZ), ]
+
+  list(
+    positive = unique(as.character(
+      sig$entrez[sig$significanceZ > 0 & !is.na(sig$entrez)]
+    )),
+    negative = unique(as.character(
+      sig$entrez[sig$significanceZ < 0 & !is.na(sig$entrez)]
+    ))
+  )
+})
+
+rows <- list()
+
+for (screen in names(screens)) {
+  df <- screens[[screen]]
+
+  for (direction in directions) {
+    direction_match <- if (direction == "positive") {
+      !is.na(df$significanceZ) & df$significanceZ > 0
+    } else {
+      !is.na(df$significanceZ) & df$significanceZ < 0
+    }
+
+    row_match <- !is.na(df$FDR) & df$FDR <= 0.05 & direction_match
+    ids <- unique(as.character(df$entrez[row_match & !is.na(df$entrez)]))
+    other_screens <- setdiff(names(screens), screen)
+
+    overlaps <- setNames(rep(NA_integer_, length(screens)),
+                         paste0("overlap_", names(screens)))
+
+    for (other in other_screens) {
+      overlaps[paste0("overlap_", other)] <-
+        length(intersect(ids, hit_ids[[other]][[direction]]))
+    }
+
+    shared_all_three <- length(Reduce(
+      intersect,
+      c(list(ids), lapply(other_screens, function(other) {
+        hit_ids[[other]][[direction]]
+      }))
+    ))
+
+    rows[[length(rows) + 1]] <- data.frame(
+      screen = screen,
+      direction = direction,
+      n_entries = sum(row_match),
+      n_unique_entrez = length(ids),
+      as.list(overlaps),
+      shared_all_three = shared_all_three,
+      check.names = FALSE
+    )
+  }
+}
+
+summary_table <- do.call(rbind, rows)
+rownames(summary_table) <- NULL
+summary_table
+
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r reads_per_umi_barplot, echo=FALSE}
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+input_file <- "/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/plots/01a_reads_per_umi_distribution_plots/reads_per_umi_distribution.tsv.gz"
+output_file <- "/g/steinmetz/link/reads_per_umi_distribution_input_bin.png"
+
+plot_data <- read_tsv(input_file, show_col_types = FALSE) |>
+  filter(sample == "combined_samples", bin_name == "I")
+
+display_limit <- max(plot_data$display_limit, na.rm = TRUE)
+
+plot_data <- plot_data |>
+  filter(count <= display_limit)
+
+p <- ggplot(plot_data, aes(x = count, y = fraction)) +
+  geom_col(fill = "#384860", width = 0.85) +
+  scale_x_continuous(
+    breaks = seq_len(display_limit),
+    limits = c(0.5, display_limit + 0.5),
+    expand = c(0, 0)
+  ) +
+  labs(
+    title = "Reads per UMI distribution (first 99% of UMIs)",
+    x = "Reads per UMI",
+    y = "Fraction of UMIs"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 18),
+    panel.grid.minor = element_line(color = "grey90"),
+    panel.border = element_rect(color = "grey40", fill = NA)
+  )
+
+ggsave(output_file, p, width = 12, height = 7, dpi = 300)
+```
+
+```{r Jia_analysis, eval=FALSE}
+jia_read_counts <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds/count_df.rds")
+jia_umi_counts <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/Jia_CM_prelim/rds_umis/count_df.rds")
+library <- readRDS("/g/steinmetz/link/Amplicon_barcode_analysis/library/CM_specific_library.rds")
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(stringr)
+library(patchwork)
+library(tidytext)
+
+# Helper: guess the sgRNA column in a table
+guess_sg_col <- function(df) {
+  candidates <- c("sgRNA", "sgrna_id", "sgrna_seq", "sgrna")
+  hit <- intersect(candidates, colnames(df))
+  if (length(hit) == 0) stop("No sgRNA column found in data frame.")
+  hit[1]
+}
+
+# Helper: guess the count column in a table
+guess_count_col <- function(df) {
+  candidates <- c("count", "counts", "value")
+  hit <- intersect(candidates, colnames(df))
+  if (length(hit) == 0) stop("No count column found in data frame.")
+  hit[1]
+}
+
+read_sg_col <- guess_sg_col(jia_read_counts)
+umi_sg_col  <- guess_sg_col(jia_umi_counts)
+read_ct_col  <- guess_count_col(jia_read_counts)
+umi_ct_col   <- guess_count_col(jia_umi_counts)
+
+# Make a common key for joining library <-> count tables.
+# Prefer sgrna_id if available; otherwise fall back to sgRNA or sgrna_seq.
+library_key_col <- guess_sg_col(library)
+
+# Standardize columns
+reads_df <- jia_read_counts %>%
+  transmute(
+    sgRNA = .data[[read_sg_col]],
+    read_count = .data[[read_ct_col]],
+    sample = if ("sample" %in% colnames(.)) sample else NA_character_,
+    condition = if ("condition" %in% colnames(.)) condition else NA_character_
+  )
+
+umis_df <- jia_umi_counts %>%
+  transmute(
+    sgRNA = .data[[umi_sg_col]],
+    umi_count = .data[[umi_ct_col]],
+    sample = if ("sample" %in% colnames(.)) sample else NA_character_,
+    condition = if ("condition" %in% colnames(.)) condition else NA_character_
+  )
+
+# If your library table uses sgrna_id, this join should work directly.
+# If not, change `sgRNA` to the appropriate key column in library.
+library_df <- library %>%
+  rename(
+    sgRNA = all_of(library_key_col)
+  ) %>%
+  select(sgRNA, gene, entrez_id, type, sgrna_seq)
+
+# Join read + UMI counts and add gene
+combined_df <- full_join(reads_df, umis_df, by = c("sgRNA", "sample", "condition")) %>%
+  left_join(library_df, by = "sgRNA") %>%
+  mutate(
+    read_count = replace_na(read_count, 0),
+    umi_count  = replace_na(umi_count, 0)
+  )
+
+# Optional: log transform for nicer plots
+combined_df <- combined_df %>%
+  mutate(
+    log10_read = log10(read_count + 1),
+    log10_umi  = log10(umi_count + 1)
+  )
+
+# ------------------------------------------------------------
+# 1) Scatter plot: read count vs UMI count by sgRNA
+# ------------------------------------------------------------
+p_scatter <- ggplot(combined_df, aes(x = read_count, y = umi_count)) +
+  geom_point(alpha = 0.35, size = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "Read count vs UMI count by sgRNA",
+    x = "Read count (log10 scale)",
+    y = "UMI count (log10 scale)"
+  ) +
+  theme_bw()
+
+# Optional: add correlation label
+cor_val <- cor(combined_df$read_count, combined_df$umi_count, method = "spearman", use = "complete.obs")
+p_scatter <- p_scatter +
+  annotate("text", x = Inf, y = Inf, label = paste0("Spearman rho = ", round(cor_val, 3)),
+           hjust = 1.1, vjust = 1.5, size = 4)
+
+# ------------------------------------------------------------
+# 2) Separate distributions of read and UMI counts
+# ------------------------------------------------------------
+dist_df <- combined_df %>%
+  select(sgRNA, gene, read_count, umi_count) %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count")
+  )
+
+p_dist <- ggplot(dist_df, aes(x = count + 1, fill = count_type)) +
+  geom_density(alpha = 0.35) +
+  scale_x_log10() +
+  labs(
+    title = "Count distributions",
+    x = "Count + 1 (log10 scale)",
+    y = "Density",
+    fill = ""
+  ) +
+  theme_bw()
+
+# ------------------------------------------------------------
+# 3) Lowest 10 sgRNAs by read / UMI count
+# ------------------------------------------------------------
+
+low20_sg_df <- combined_df %>%
+  select(sgRNA, gene, read_count, umi_count) %>%
+  distinct() %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count"),
+    label = sgRNA
+  ) %>%
+  group_by(count_type) %>%
+  slice_min(order_by = count, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_low20_sg <- ggplot(
+  low20_sg_df,
+  aes(x = tidytext::reorder_within(label, count, count_type), y = count, fill = count_type)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~count_type, scales = "free_y", ncol = 1) +
+  tidytext::scale_x_reordered() +
+  labs(
+    title = "Lowest 10 sgRNAs by count type",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_bw()
+
+
+# ------------------------------------------------------------
+# 4) Lowest 10 genes by aggregated read / UMI count
+# ------------------------------------------------------------
+
+gene_df <- combined_df %>%
+  filter(!is.na(gene), gene != "") %>%
+  filter(type == "targeting") %>%
+  group_by(gene) %>%
+  summarise(
+    read_count = sum(read_count, na.rm = TRUE),
+    umi_count  = sum(umi_count, na.rm = TRUE),
+    n_sgRNAs   = n_distinct(sgRNA),
+    .groups = "drop"
+  )
+
+low20_gene_df <- gene_df %>%
+  pivot_longer(
+    cols = c(read_count, umi_count),
+    names_to = "count_type",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count_type = recode(count_type,
+                        read_count = "Read count",
+                        umi_count = "UMI count")
+  ) %>%
+  group_by(count_type) %>%
+  slice_min(order_by = count, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_low20_gene <- ggplot(
+  low20_gene_df,
+  aes(x = tidytext::reorder_within(gene, count, count_type), y = count, fill = count_type)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~count_type, scales = "free_y", ncol = 1) +
+  tidytext::scale_x_reordered() +
+  labs(
+    title = "Lowest 10 targeting genes by count type",
+    x = NULL,
+    y = "Aggregated count"
+  ) +
+  theme_bw()
+
+# ------------------------------------------------------------
+# Combine and print
+# ------------------------------------------------------------
+
+print(p_scatter)
+print(p_dist)
+print(p_low20_sg)
+print(p_low20_gene)
+```
