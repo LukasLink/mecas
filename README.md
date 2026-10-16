@@ -2,7 +2,12 @@
 
 MECAS is a [Snakemake](https://snakemake.readthedocs.io/en/stable/)-based pipeline designed to analyse pooled CRISPR screens of bin-sorted samples.
 
-It processes FASTQ sequencing files and calculates guide-level and gene-level statistics for overall enrichment trends across bins. MECAS uses [bcwithqc](https://github.com/hawkjo/bcwithqc) for the error-corrected detection of guide sequences and unique molecular identifiers (UMIs), and [MAUDE](https://github.com/de-Boer-Lab/MAUDE) for guide-level and gene-level statistical analyses.
+It processes FASTQ sequencing files and calculates read/UMI counts and
+guide-level and gene-level statistics for overall enrichment trends across bins.
+MECAS uses [bcwithqc](https://github.com/hawkjo/bcwithqc) for the error-corrected detection of guide sequences and unique molecular identifiers (UMIs),
+and [MAUDE](https://github.com/de-Boer-Lab/MAUDE) for guide-level and gene-level statistical analyses.
+
+![MECAS use case](MECAS_use_case.png)
 
 ## Installation
 
