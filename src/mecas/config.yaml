@@ -258,7 +258,7 @@ plots:
     
   waterfall:
   
-    mark_cntrl: true
+    mark_cntrl: false
     mark_special: null       # or ["AHSA1", "AGO2"]
     mark_N_top_hits: 3
     box_padding: 0.8
