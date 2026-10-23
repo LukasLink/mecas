@@ -113,8 +113,8 @@ Master output directory for the analysis.
 Library annotation file containing the guide sequences. See the library construction section below, and the `example_library.xlsx` produced by `mecas examples`.
 
 `--bcwithqc-config-file BCWITHQC_CONFIG_FILE`
-bcwithqc JSON configuration file specifying the locations of guide and UMI sequences within the FASTQ reads. See the [bcwithqc documentation](https://github.com/hawkjo/bcwithqc).
-TO DO: This is the main bottleneck for the user, without a functional bcwithqc GUI, at least provide a writeup so motivated users can generate their own Config file. 
+bcwithqc JSON configuration file specifying the locations of guide and UMI sequences within the FASTQ reads.
+See the corresponding section below and the [bcwithqc documentation](https://github.com/hawkjo/bcwithqc).
 
 `--experiment-info-file EXPERIMENT_INFO_FILE`
 Experiment information spreadsheet containing information about the FASTQ files and bins. See the corresponding section below or the `Explanation` sheet in the `experiment_info_file_template.xlsx` produced by `mecas examples`.
@@ -182,12 +182,56 @@ advanced options like fine grained adjustments to generated plots, Read filterin
 parameters, and excluding n% of non-targeting control guides from the process
 to retain them for inspection. 
 
+## Required input files
 
-## Library construction
+The pipeline requires the following user-provided files:
+
+- FASTQ files, compressed or uncompressed. Single-end and paired-end reads can be mixed in the same run if they are specified correctly in the experiment information file.
+- An `experiment-info.xlsx` file that associates each FASTQ file with a bin, read direction, sublibrary, and sample, and describes the bins.
+- A `bcwithqc-config.json` file that specifies the read structure and where guide sequences and optional UMIs are located. See [Building the bcwithqc config file](#building-the-bcwithqc-config-file).
+- A library file (`.csv`, `.tsv`, `.xlsx`, or `.rds`) containing the guide sequences. See [Library construction](#library-construction).
+
+### Experiment information file
+
+The `experiment-info.xlsx` file has two sheets: `fastq_names` and `bins`.
+The `experiment_info_file_template.xlsx` created by `mecas examples` provides a starting point.
+
+#### `fastq_names` sheet
+
+Add one row for each FASTQ file. For paired-end data, list the R1 and R2 files on separate rows.
+For single-end data, leave `read` blank.
+
+| `original_file` | `bin_name` | `sublibrary` | `sample` | `read` |
+| --- | --- | --- | --- | --- |
+| `my_unsorted_bin_R1.fastq.gz` | `input` | `L1` | `sampleA` | `R1` |
+| `my_unsorted_bin_R2.fastq.gz` | `input` | `L1` | `sampleA` | `R2` |
+| `my_top_10_bin.fastq.gz` | `top_10` | `L1` | `sampleA` | |
+| `my_bot_10_bin.fastq.gz` | `bottom_10` | `L1` | `sampleA` | |
+| `my_top_20_bin.fastq.gz` | `top_20` | `L1` | `sampleA` | |
+| `my_bot_20_bin.fastq.gz` | `bottom_20` | `L1` | `sampleA` | |
+
+Use the exact FASTQ filenames in `original_file`.
+The `bin_name`, `sublibrary`, and `sample` values associate each file with its bin, sublibrary, and sample.
+
+#### `bins` sheet
+
+Add one row for each bin used in the experiment.
+
+| `bin_name` | `sorted_or_unsorted` | `bin_fraction_min` | `bin_fraction_max` |
+| --- | --- | ---: | ---: |
+| `input` | `unsorted` | | |
+| `bottom_10` | `sorted` | 0 | 0.1 |
+| `bottom_20` | `sorted` | 0.1 | 0.2 |
+| `top_10` | `sorted` | 0.9 | 1 |
+| `top_20` | `sorted` | 0.9 | 0.8 |
+
+The bin names in this sheet must match the `bin_name` values in the `fastq_names` sheet. Unsorted bins do not need fraction boundaries; sorted bins use `bin_fraction_min` and `bin_fraction_max` to describe their fraction boundaries.
+
+### Library construction
 
 The library file defines the sgRNA or barcode library used by the pipeline. An example library file, `example_library.xlsx`, is provided by `mecas examples`.
 
-### Summary
+#### Summary
 
 The library file must contain columns corresponding to these canonical names:
 
@@ -201,7 +245,7 @@ control
 
 Alternative column names are accepted as described below.
 
-### Supported file formats
+#### Supported file formats
 
 MECAS supports the following library file formats:
 
@@ -212,9 +256,9 @@ MECAS supports the following library file formats:
 
 For an RDS file, the stored object must be a data frame.
 
-### Required columns
+#### Required columns
 
-#### 1. sgRNA identifier
+##### 1. sgRNA identifier
 
 Canonical column name:
 
@@ -252,7 +296,7 @@ sgRNA_A_3
 
 This column contains the identifier for each sgRNA or barcode entry.
 
-#### 2. sgRNA sequence
+##### 2. sgRNA sequence
 
 Canonical column name:
 
@@ -277,7 +321,7 @@ Requirements:
 
 This column contains the nucleotide sequence of each sgRNA or barcode.
 
-#### 3. Entrez gene ID
+##### 3. Entrez gene ID
 
 Canonical column name:
 
@@ -313,7 +357,7 @@ ENSG00000141510
 
 This column contains the Entrez gene identifier, where available.
 
-#### 4. Gene symbol
+##### 4. Gene symbol
 
 Canonical column name:
 
@@ -335,7 +379,7 @@ Requirements:
 
 This column contains the gene symbol or target name.
 
-#### 5. Control or type annotation
+##### 5. Control or type annotation
 
 Canonical column name:
 
@@ -362,9 +406,9 @@ targeting_control
 
 This column defines whether each sgRNA targets a gene or belongs to one of the control categories.
 
-### Optional columns
+#### Optional columns
 
-#### 6. Sublibrary
+##### 6. Sublibrary
 
 The sublibrary column is required when sgRNAs must be matched to specific sublibraries. It is optional otherwise.
 
@@ -389,7 +433,7 @@ Requirements:
 
 This column identifies the sublibrary to which each sgRNA belongs.
 
-#### 7. Count
+##### 7. Count
 
 Canonical column name:
 
@@ -426,13 +470,170 @@ sgrna.id
 sgrna_id
 ```
 
-### Additional processing
+#### Additional processing
 
 * Sequence values are converted to uppercase.
 * Missing sublibrary values are replaced with `L1`.
 * If the `count` column is absent, all rows receive a count of `1`.
 * Missing values are not allowed when the `count` column is present.
 * Duplicate sgRNA identifiers are made unique by adding numeric suffixes, and MECAS logs a warning.
+
+
+### bcwithqc config file construction
+
+The bcwithqc config is a JSON file that describes where barcode and UMI sequences occur in each read.
+Start with the example file created by `mecas examples`,
+then edit its read structures and block sequences to match your library and FASTQ reads.
+Save the result as `.json` or `.json.gz`.
+
+The top-level options apply to the whole file:
+
+| Option | Meaning |
+| --- | --- |
+| `unknown_read_orientation` | Set to `true` if paired reads may have been swapped between R1 and R2 and must be identified. Otherwise, set to `false`. |
+| `single_end_reads` | Set to `true` for single-end reads or `false` for paired-end reads. Paired-end configs need both `barcode_struct_r1` and `barcode_struct_r2`. |
+
+`barcode_struct_r1`, and `barcode_struct_r2` then declare the structure of the
+two read directions. For single end reads you do not need `barcode_struct_r2`,
+and if there are only barcodes on one direction of read-pair you do not need to
+include the structure of the read without barcodes. 
+Each read structure contains `keep_nonbarcode` and an ordered list of `blocks`.
+The top-level `keep_nonbarcode` controls whether any undeclared sequence after the final block is kept.
+Blocks describe the read from left to right: they must be contiguous,
+start at the left end of the read, and may be followed by an undeclared overhang.
+
+Each block needs these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `blockname` | A name for the block. |
+| `blockfunction` | `barcode` or `UMI`, describing the block’s role. |
+| `blocktype` | `barcodeList`, `constantRegion`, or `randomBarcode`. |
+| `sequence` | A list of sequences for `barcodeList` or `constantRegion`. A constant region has one sequence; a barcode list can have several. |
+| `length` | The length of a `randomBarcode` block. |
+| `maxerrors` | Maximum errors allowed when matching the block. |
+| `keepblock` | Whether to keep the block for alignment. If `false` this block will not appear in the ouput FASTQ or BAM file. |
+
+Use `sequence` for fixed sequences and `length` for random sequences. For example,
+a barcode list contains the possible barcode sequences, while a random barcode block can describe a UMI by its length.
+
+This paired-end example has a barcode, a constant region, and a six-base UMI in each read:
+
+```json
+{
+    "unknown_read_orientation": false,
+    "single_end_reads": false,
+    "barcode_struct_r1": {
+        "keep_nonbarcode": false,
+        "blocks": [
+            {
+                "maxerrors": 1,
+                "blockfunction": "barcode",
+                "sequence": [
+                    "CCTTAACAT",
+                    "AGCGTAGAA",
+                    "TATAGGTGT",
+                    "GGCGACTCA"
+                ],
+                "blocktype": "barcodeList",
+                "blockname": "bc_r1",
+                "keepblock": false
+            },
+            {
+                "maxerrors": 1,
+                "blockfunction": "barcode",             
+                "sequence": [
+                    "GGGTCAGTACGTACGAGTCCC"
+                ],
+                "blocktype": "constantRegion",
+                "blockname": "con_r1",
+                "keepblock": true
+            },
+            {
+                "maxerrors": 0,
+                "blockfunction": "UMI",
+                "length": 6,
+                "blocktype": "randomBarcode",
+                "blockname": "umi_r1",
+                "keepblock": false
+            }
+        ]
+    },
+    "barcode_struct_r2": {
+        "keep_nonbarcode": true,
+        "blocks":[            
+            {
+                "maxerrors": 1,
+                "blockfunction": "barcode",
+                "sequence": [
+                    "CCTTAACAT",
+                    "AGCGTAGAA",
+                    "TATAGGTGT",
+                    "GGCGACTCA"
+                ],
+                "blocktype": "barcodeList",
+                "blockname": "bc_r2",
+                "keepblock": false
+            },
+            {
+                "maxerrors": 1,
+                "blockfunction": "barcode",             
+                "sequence": [
+                    "GGGTCAGTACGTACGAGTCCC"
+                ],
+                "blocktype": "constantRegion",
+                "blockname": "con_r2",
+                "keepblock": false
+            },
+            {
+                "maxerrors": 0,
+                "blockfunction": "UMI",
+                "length": 6,
+                "blocktype": "randomBarcode",
+                "blockname": "umi_r2",
+                "keepblock": false
+            }
+        ]
+    }   
+}
+```
+
+The R1 and R2 structures can differ;
+set each read’s block order, sequences, error allowance,
+and keep options to match the actual reads.
+Ensure the file is valid JSON: use double quotes around keys and string values,
+and do not leave a trailing comma after the last item.
+
+Constant regions can also contain a list of different sequences, if there 
+may be multiple different possible constant regions. This can also be used
+to desribe a possible stagger in your reads. Simply remove the first base from
+your constant region (because sequences can not be empty strings) and then
+describe the stagger as below.
+```json
+"blocks": [
+  {
+    "maxerrors": 1,
+    "blockfunction": "discard",
+    "sequence": [
+      "T",
+      "AT",
+      "GAT",
+      "CGAT"
+    ],
+    "blocktype": "constantRegion",
+    "blockname": "stagger",
+    "keepblock": false
+  }
+```
+| Sequence | Meaning |
+| --- | --- |
+| `T` | A stagger of 0, T is the first base of the constant sequence. |
+| `AT` | A stagger of 1: `A` |
+| `GAT` | A stagger of 2: `GA` |
+| `CGAT` | A stagger of 3: `CGA` |
+
+For additional details, see the [bcwithqc documentation](https://github.com/hawkjo/bcwithqc).
+
 
 ## Tips
 ### Installation Tips
