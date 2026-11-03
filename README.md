@@ -7,6 +7,11 @@ guide-level and gene-level statistics for overall enrichment trends across bins.
 MECAS uses [bcwithqc](https://github.com/hawkjo/bcwithqc) for the error-corrected detection of guide sequences and unique molecular identifiers (UMIs),
 and [MAUDE](https://github.com/de-Boer-Lab/MAUDE) for guide-level and gene-level statistical analyses.
 
+Experimental requirements: 
+* The CRISPR library contains non-targeting guides
+* An unsorted bin was sequenced
+* Sorting bins do not overlap (can still be analysed in separat MECAS runs)
+
 ![MECAS use case](MECAS_use_case.png)
 
 ## Installation

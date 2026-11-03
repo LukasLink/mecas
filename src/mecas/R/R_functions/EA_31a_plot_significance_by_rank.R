@@ -26,7 +26,9 @@ plot_significance_by_rank <- function(Hits_df,
   
   # Centers of the two boxes (on y-axis)
   y_center1 <- y_min           # lower box
-  y_center2 <- y_center1 + box_height + box_gap    # upper box
+  fdr_box_height <- box_height * if (isTRUE(signif_lines) && !is.null(mark_all_signif_level)) 2 else 1
+  y_center2 <- y_center1 + fdr_box_height / 2 + box_gap + box_height / 2
+  threshold_line_added <- FALSE
   
   # x range (can reuse for both boxes)
   x_min_box <- max(Hits_df$rank) - 3000
@@ -91,21 +93,7 @@ plot_significance_by_rank <- function(Hits_df,
           aes(x = rank, y = significanceZ),
           color = "red",
           size = 1.5
-        ) +
-        annotate("rect",
-                 xmin = x_min_box,
-                 xmax = x_max_box,
-                 ymin = y_center1 - box_height / 2,
-                 ymax = y_center1 + box_height / 2,
-                 fill = "white", color = "black", linewidth = 0.3) +
-        annotate("point",
-                 x = x_min_box + 200,
-                 y = y_center1,
-                 color = "red", size = 2) +
-        annotate("text",
-                 x = x_min_box + 400,
-                 y = y_center1,
-                 label = signif_label_text, hjust = 0, size = 3)
+        )
     }
     
     # Add lines if requested
@@ -134,6 +122,7 @@ plot_significance_by_rank <- function(Hits_df,
           y_pos <- lowest_sig
         }
         
+        threshold_line_added <- TRUE
         p <- p +
           geom_hline(
             yintercept = y_pos,
@@ -166,6 +155,7 @@ plot_significance_by_rank <- function(Hits_df,
           y_neg <- highest_sig
         }
         
+        threshold_line_added <- TRUE
         p <- p +
           geom_hline(
             yintercept = y_neg,
@@ -177,42 +167,67 @@ plot_significance_by_rank <- function(Hits_df,
     }
   }
   
+  # One FDR box, with an extra row when threshold lines are displayed.
+  if (!is.null(mark_all_signif_level)) {
+    hit_key_y <- y_center1 + if (threshold_line_added) box_height / 2 else 0
+    actual_box_height <- if (threshold_line_added) fdr_box_height else box_height
+    p <- p +
+      annotate("rect", xmin = x_min_box, xmax = x_max_box,
+               ymin = y_center1 - actual_box_height / 2,
+               ymax = y_center1 + actual_box_height / 2,
+               fill = "white", color = "black", linewidth = 0.3) +
+      annotate("point", x = x_min_box + 200, y = hit_key_y,
+               color = "red", size = 2) +
+      annotate("text", x = x_min_box + 400, y = hit_key_y,
+               label = signif_label_text, hjust = 0, size = 3)
+    
+    if (threshold_line_added) {
+      line_key_y <- y_center1 - box_height / 2
+      p <- p +
+        annotate("segment", x = x_min_box + 75, xend = x_min_box + 325,
+                 y = line_key_y, yend = line_key_y,
+                 color = "red", linetype = "dashed", linewidth = 0.3) +
+        annotate("text", x = x_min_box + 400, y = line_key_y,
+                 label = "FDR threshold", hjust = 0, size = 3)
+    }
+  }
   
   # Mark top hits (both ends), excluding special symbols
   if (mark_N_top_hits >= 1 && "symbol" %in% names(Hits_df)) {
     top_hits_df <- Hits_df %>%
       filter(!(symbol %in% mark_special)) %>%  # exclude special symbol
       arrange(significanceZ) %>%
-      slice(c(1:mark_N_top_hits, (n() - mark_N_top_hits + 1):n()))
+      slice(unique(c(seq_len(min(mark_N_top_hits, n())),
+                     tail(seq_len(n()), mark_N_top_hits))))
     
-    top_hits_pos <- top_hits_df %>% filter(significanceZ >= 0)
-    top_hits_neg <- top_hits_df %>% filter(significanceZ < 0)
+    # Label both tails regardless of FDR; only significant hits become red.
+    top_hits_df$label_color <- "black"
+    if (!is.null(mark_all_signif_level)) {
+      is_significant <- !is.na(top_hits_df$FDR) &
+        top_hits_df$FDR <= mark_all_signif_level
+      top_hits_df$label_color[is_significant] <- "red"
+    }
     
-    if (no_text == TRUE){
+    # Points are already colored by the significant-hit/control layers above.
+    if (!isTRUE(no_text)) {
       p <- p +
-        geom_point(data = top_hits_df, aes(x = rank, y = significanceZ),
-                   color = "red", size = 1.5)
-    } else {
-      p <- p +
-        geom_point(data = top_hits_df, aes(x = rank, y = significanceZ),
-                   color = "red", size = 1.5) +
         geom_text_repel(
           data = top_hits_df,
-          aes(x = rank, y = significanceZ, label = symbol),
-          color = "red",           # or "orange" for special symbol
+          aes(x = rank, y = significanceZ, label = symbol,
+              color = I(label_color), segment.color = I(label_color)),
           size = 3,
-          box.padding = box_padding,       # space around the label box
-          point.padding = 0.6,     # space around the point
-          force = 10,               # strength of repulsion between labels
-          force_pull = 0.5,          # how strongly labels are pulled back to points
-          max.overlaps = Inf,      # allow all overlaps to be considered
-          max.time = 5,           # more time for optimization
+          box.padding = box_padding,
+          point.padding = 0.6,
+          force = 10,
+          force_pull = 0.5,
+          max.overlaps = Inf,
+          max.time = 5,
           min.segment.length = 0,
-          segment.color = "red",# line color from label to point
-          segment.size = 0.3       # line thickness
+          segment.size = 0.3
         )
     }
   }
+  
   # Mark special symbols (can be multiple)
   if (!is.null(mark_special) && length(mark_special) > 0 && "symbol" %in% names(Hits_df)) {
     special_df <- Hits_df %>% filter(symbol %in% mark_special)
