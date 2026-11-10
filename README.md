@@ -120,6 +120,7 @@ Library annotation file containing the guide sequences. See the library construc
 `--bcwithqc-config-file BCWITHQC_CONFIG_FILE`
 bcwithqc JSON configuration file specifying the locations of guide and UMI sequences within the FASTQ reads.
 See the corresponding section below and the [bcwithqc documentation](https://github.com/hawkjo/bcwithqc).
+The easiest way is to use the [bcwithqc graphic user interface](https://hawkjo.github.io/bcwithqc/gui/barcode_configurator.html) to generate the json file.
 
 `--experiment-info-file EXPERIMENT_INFO_FILE`
 Experiment information spreadsheet containing information about the FASTQ files and bins. See the corresponding section below or the `Explanation` sheet in the `experiment_info_file_template.xlsx` produced by `mecas examples`.
@@ -487,6 +488,9 @@ sgrna_id
 ### bcwithqc config file construction
 
 The bcwithqc config is a JSON file that describes where barcode and UMI sequences occur in each read.
+The easiest way is to use the [bcwithqc graphic user interface](https://hawkjo.github.io/bcwithqc/gui/barcode_configurator.html) to generate the json file.
+
+If you want to build it yourself follow the instructions below:
 Start with the example file created by `mecas examples`,
 then edit its read structures and block sequences to match your library and FASTQ reads.
 Save the result as `.json` or `.json.gz`.
